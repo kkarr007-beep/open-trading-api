@@ -17,6 +17,9 @@ def setup() -> None:
     _set_windows_codepage()
     for stream in (sys.stdout, sys.stderr):
         _reconfigure(stream)
+    # 들어오는 쪽도 맞춰야 한다. 한글이 섞인 경로를 붙여 넣거나 끌어다 놓으면
+    # 입력 인코딩이 어긋나 글자가 깨지고, 있는 파일을 없다고 판단한다.
+    _reconfigure(sys.stdin)
 
 
 def _set_windows_codepage() -> None:
