@@ -43,7 +43,6 @@ jobs:
             --collect-submodules insurance_audit `
             --exclude-module scipy `
             --exclude-module matplotlib `
-            --exclude-module tkinter `
             --exclude-module IPython `
             --exclude-module pytest `
             insurance_audit/packaging/exe_entry.py
@@ -57,8 +56,8 @@ jobs:
           # 프로그램이 스스로 입출력 인코딩을 맞추는지 여기서 함께 확인된다.
           python -m insurance_audit.make_sample --rows 3000 --out sample.csv
 
-          # 끌어다 놓기 경로
-          ./dist/유착분석.exe sample.csv
+          # 끌어다 놓기 경로 (CI에서는 GUI 없이 콘솔 모드로 검증)
+          ./dist/유착분석.exe --console sample.csv
           if (-not (Test-Path "분석결과")) {
             Write-Error "끌어다 놓기 경로에서 결과 폴더가 생성되지 않았습니다"
             exit 1
@@ -66,7 +65,7 @@ jobs:
           Remove-Item -Recurse -Force 분석결과
 
           # 묻고 답하는 경로
-          "sample.csv`n`n`n`n`n" | ./dist/유착분석.exe
+          "sample.csv`n`n`n`n`n" | ./dist/유착분석.exe --console
           if (-not (Test-Path "분석결과")) {
             Write-Error "결과 폴더가 생성되지 않았습니다"
             exit 1

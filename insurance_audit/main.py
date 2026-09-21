@@ -53,16 +53,33 @@ def build_parser() -> argparse.ArgumentParser:
 def run(argv: list[str] | None = None) -> int:
     console.setup()
     args = build_parser().parse_args(argv)
-    started = time.time()
 
-    print("[1/5] 데이터 읽는 중...")
     try:
         raw = loader.read_many(args.input, args.encoding)
     except (loader.ColumnError, FileNotFoundError) as error:
         print(f"오류: {error}", file=sys.stderr)
         return 1
-    print(f"      {len(raw):,}행 / {len(raw.columns)}개 컬럼 인식")
 
+    return run_pipeline(
+        raw,
+        outdir=args.outdir,
+        years=args.year,
+        org_level=args.org_level,
+        prefix=args.prefix,
+    )
+
+
+def run_pipeline(
+    raw: pd.DataFrame,
+    *,
+    outdir: str = "결과",
+    years: list[int] | None = None,
+    org_level: str | None = None,
+    prefix: str = "유착분석",
+) -> int:
+    """데이터프레임부터 보고서 산출까지. CLI와 GUI가 함께 쓴다."""
+    started = time.time()
+    print(f"[1/5] 데이터 확인: {len(raw):,}행 / {len(raw.columns)}개 컬럼")
     column_check = loader.describe_columns(raw)
 
     print("[2/5] 전처리 및 분석 단위 분리 중...")
@@ -71,24 +88,24 @@ def run(argv: list[str] | None = None) -> int:
         f"      지급 {len(data['payments']):,}행 → 조사 배당 {len(data['cases']):,}건"
     )
 
-    years = profile.available_years(data["cases"])
-    if args.year:
-        unknown = sorted(set(args.year) - set(years))
+    avail_years = profile.available_years(data["cases"])
+    if years:
+        unknown = sorted(set(years) - set(avail_years))
         if unknown:
             print(
-                f"오류: 데이터에 없는 기준년입니다: {unknown} (가능: {years})",
+                f"오류: 데이터에 없는 기준년입니다: {unknown} (가능: {avail_years})",
                 file=sys.stderr,
             )
             return 1
-        data = profile.filter_years(data, args.year)
-        print(f"      기준년 {', '.join(map(str, args.year))} 선택 → {len(data['cases']):,}건")
-    elif years:
-        print(f"      기준년 {years[0]}~{years[-1]} 전체 ({len(years)}개 연도)")
+        data = profile.filter_years(data, years)
+        print(f"      기준년 {', '.join(map(str, years))} 선택 → {len(data['cases']):,}건")
+    elif avail_years:
+        print(f"      기준년 {avail_years[0]}~{avail_years[-1]} 전체 ({len(avail_years)}개 연도)")
 
     if data["cases"].empty:
         print("오류: 선택한 조건에 해당하는 건이 없습니다.", file=sys.stderr)
         return 1
-    data["옵션"] = {"조직계층": args.org_level}
+    data["옵션"] = {"조직계층": org_level}
     if not stats.HAS_SCIPY:
         print("      (scipy 없음: 정규근사로 검정합니다)")
 
@@ -97,7 +114,7 @@ def run(argv: list[str] | None = None) -> int:
     for module in MODULES:
         try:
             result = module.run(data)
-        except Exception as error:  # 한 지표가 죽어도 나머지는 살린다
+        except Exception as error:
             print(f"      {module.NAME}: 실패 ({error})", file=sys.stderr)
             continue
         results.append(result)
@@ -112,15 +129,15 @@ def run(argv: list[str] | None = None) -> int:
         print(f"      {entity}: {len(frame):,}건 (높음 {high}건)")
 
     print("[5/5] 현황 집계 및 보고서 저장 중...")
-    views = _build_views(data, rankings, args.org_level)
-    outdir = Path(args.outdir)
+    views = _build_views(data, rankings, org_level)
+    outdir_path = Path(outdir)
     stamp = time.strftime("%Y%m%d_%H%M")
     xlsx_path = report_xlsx.write(
-        outdir / f"{args.prefix}_{stamp}.xlsx",
+        outdir_path / f"{prefix}_{stamp}.xlsx",
         rankings, results, data, drill, column_check, views,
     )
     html_path = report_html.write(
-        outdir / f"{args.prefix}_{stamp}.html", rankings, results, data, views
+        outdir_path / f"{prefix}_{stamp}.html", rankings, results, data, views
     )
 
     print(f"\n완료 ({time.time() - started:.1f}초)")

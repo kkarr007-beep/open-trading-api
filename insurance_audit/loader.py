@@ -6,6 +6,7 @@ SQL에서 내려받아 엑셀을 거친 파일이라 머리글의 공백과 표�
 
 from __future__ import annotations
 
+import io
 import re
 import unicodedata
 from pathlib import Path
@@ -50,6 +51,32 @@ def resolve_columns(raw_columns: list[object]) -> dict[object, str]:
     return mapping
 
 
+def _apply_mapping(frame: pd.DataFrame) -> pd.DataFrame:
+    """컬럼을 내부키로 바꾸고 필수 컬럼을 확인한다."""
+    mapping = resolve_columns(list(frame.columns))
+    missing = [key for key in config.REQUIRED if key not in mapping.values()]
+    if missing:
+        raise ColumnError(
+            "필수 컬럼을 찾지 못했습니다: "
+            + ", ".join(missing)
+            + "\n읽어들인 머리글: "
+            + ", ".join(str(column) for column in frame.columns[:40])
+        )
+    return frame[list(mapping)].rename(columns=mapping)
+
+
+def read_clipboard_text(text: str) -> pd.DataFrame:
+    """클립보드에서 복사한 탭 구분 텍스트를 내부키 컬럼 표로 바꾼다."""
+    frame = pd.read_csv(
+        io.StringIO(text),
+        dtype=str,
+        sep="\t",
+        keep_default_na=False,
+        na_values=("", "NULL", "null", "NaN"),
+    )
+    return _apply_mapping(frame)
+
+
 def read_table(
     path: str | Path, encoding: str | None = None, nrows: int | None = None
 ) -> pd.DataFrame:
@@ -67,18 +94,7 @@ def read_table(
     else:
         frame = _read_csv(path, encoding, nrows)
 
-    mapping = resolve_columns(list(frame.columns))
-    missing = [key for key in config.REQUIRED if key not in mapping.values()]
-    if missing:
-        raise ColumnError(
-            "필수 컬럼을 찾지 못했습니다: "
-            + ", ".join(missing)
-            + "\n읽어들인 머리글: "
-            + ", ".join(str(column) for column in frame.columns[:40])
-        )
-
-    frame = frame[list(mapping)].rename(columns=mapping)
-    return frame
+    return _apply_mapping(frame)
 
 
 def _read_csv(path: Path, encoding: str | None, nrows: int | None = None) -> pd.DataFrame:
