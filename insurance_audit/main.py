@@ -60,13 +60,14 @@ def run(argv: list[str] | None = None) -> int:
         print(f"오류: {error}", file=sys.stderr)
         return 1
 
-    return run_pipeline(
+    code, _ = run_pipeline(
         raw,
         outdir=args.outdir,
         years=args.year,
         org_level=args.org_level,
         prefix=args.prefix,
     )
+    return code
 
 
 def run_pipeline(
@@ -76,8 +77,11 @@ def run_pipeline(
     years: list[int] | None = None,
     org_level: str | None = None,
     prefix: str = "유착분석",
-) -> int:
-    """데이터프레임부터 보고서 산출까지. CLI와 GUI가 함께 쓴다."""
+) -> tuple[int, dict]:
+    """데이터프레임부터 보고서 산출까지. CLI와 GUI가 함께 쓴다.
+
+    Returns (exit_code, info). info는 성공 시 rankings·경로 등을 담는다.
+    """
     started = time.time()
     print(f"[1/5] 데이터 확인: {len(raw):,}행 / {len(raw.columns)}개 컬럼")
     column_check = loader.describe_columns(raw)
@@ -96,7 +100,7 @@ def run_pipeline(
                 f"오류: 데이터에 없는 기준년입니다: {unknown} (가능: {avail_years})",
                 file=sys.stderr,
             )
-            return 1
+            return 1, {}
         data = profile.filter_years(data, years)
         print(f"      기준년 {', '.join(map(str, years))} 선택 → {len(data['cases']):,}건")
     elif avail_years:
@@ -104,7 +108,7 @@ def run_pipeline(
 
     if data["cases"].empty:
         print("오류: 선택한 조건에 해당하는 건이 없습니다.", file=sys.stderr)
-        return 1
+        return 1, {}
     data["옵션"] = {"조직계층": org_level}
     if not stats.HAS_SCIPY:
         print("      (scipy 없음: 정규근사로 검정합니다)")
@@ -140,10 +144,18 @@ def run_pipeline(
         outdir_path / f"{prefix}_{stamp}.html", rankings, results, data, views
     )
 
-    print(f"\n완료 ({time.time() - started:.1f}초)")
+    elapsed = time.time() - started
+    print(f"\n완료 ({elapsed:.1f}초)")
     print(f"  엑셀: {xlsx_path}")
     print(f"  HTML: {html_path}")
-    return 0
+    return 0, {
+        "rankings": rankings,
+        "xlsx_path": str(xlsx_path),
+        "html_path": str(html_path),
+        "outdir": str(outdir_path.resolve()),
+        "elapsed": elapsed,
+        "cases_count": len(data["cases"]),
+    }
 
 
 def _build_views(
