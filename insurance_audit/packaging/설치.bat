@@ -10,7 +10,11 @@ echo.
 set PY=
 where py >nul 2>&1 && set PY=py
 if not defined PY (
-  where python >nul 2>&1 && set PY=python
+  REM 윈도우가 기본으로 두는 WindowsApps 껍데기 파일은 파이썬이 아니다.
+  REM 이것을 잡으면 설치가 엉뚱한 곳에서 실패한다.
+  for /f "delims=" %%p in ('where python 2^>nul') do (
+    echo %%p | find /i "\WindowsApps\" >nul || set PY=python
+  )
 )
 if not defined PY (
   echo [X] 파이썬을 찾을 수 없습니다.
