@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -16,6 +17,25 @@ from .metrics.base import MetricResult
 
 HEADER_FILL = "FFD9E1F2"
 BAND_FILL = {"높음": "FFF8CBAD", "중간": "FFFFE699", "낮음": None}
+
+# openpyxl 이 거부하는 제어문자. 값 하나만 섞여 있어도 저장 전체가 실패하므로
+# 분석을 다 끝내고 결과를 잃는다. 시트로 넘기기 직전에 걷어낸다.
+_ILLEGAL = r"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]"
+
+
+def _sheet(writer, frame: pd.DataFrame, name: str, index: bool = False) -> None:
+    """제어문자를 걷어내고 시트로 쓴다. 시트 이름 길이 제한도 여기서 맞춘다."""
+    safe = frame.copy()
+    for column in safe.columns:
+        if safe[column].dtype == object or safe[column].dtype == "string":
+            safe[column] = safe[column].astype("string").str.replace(
+                _ILLEGAL, "", regex=True
+            )
+    safe.columns = [re.sub(_ILLEGAL, "", str(c)) for c in safe.columns]
+    if index:
+        # 업체×연도 행렬처럼 이름이 인덱스로 들어가는 시트가 있다.
+        safe.index = [re.sub(_ILLEGAL, "", str(v)) for v in safe.index]
+    safe.to_excel(writer, sheet_name=name[:31], index=index)
 
 
 def write(
@@ -32,28 +52,25 @@ def write(
     views = views or {}
 
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
-        _summary(data, results, rankings).to_excel(
-            writer, sheet_name="00_요약", index=False
-        )
+        _sheet(writer, _summary(data, results, rankings), "00_요약")
 
         for order, entity in enumerate(("담당자", "결재자", "법인", "소속", "조합"), start=1):
             frame = rankings.get(entity)
             if frame is None or frame.empty:
                 continue
-            frame.to_excel(writer, sheet_name=f"{order:02d}_{entity}순위", index=False)
+            _sheet(writer, frame, f"{order:02d}_{entity}순위")
 
         _write_views(writer, views)
 
         for order, result in enumerate(results, start=20):
             if result.detail is None or result.detail.empty:
                 continue
-            sheet = f"{order}_{result.name}"[:31]
-            result.detail.to_excel(writer, sheet_name=sheet, index=False)
+            _sheet(writer, result.detail, f"{order}_{result.name}")
 
         if not drill.empty:
-            drill.to_excel(writer, sheet_name="90_소명대상건", index=False)
+            _sheet(writer, drill, "90_소명대상건")
         if not column_check.empty:
-            column_check.to_excel(writer, sheet_name="99_컬럼점검", index=False)
+            _sheet(writer, column_check, "99_컬럼점검")
 
         _style(writer)
 
@@ -73,8 +90,7 @@ def _write_views(writer: pd.ExcelWriter, views: dict[str, object]) -> None:
         frame = views.get(key)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
             continue
-        index = key == "업체연도행렬"
-        frame.to_excel(writer, sheet_name=sheet[:31], index=index)
+        _sheet(writer, frame, sheet, index=key == "업체연도행렬")
 
 
 def _summary(

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -16,6 +17,10 @@ import pandas as pd
 from . import config
 
 _DIGITS = re.compile(r"\D")
+
+# DB 반출 값에 제어문자가 섞여 오는 경우가 있다. 그대로 두면 분석을 다 끝낸 뒤
+# 엑셀 저장 단계에서 openpyxl 이 거부해 결과가 통째로 날아간다. 적재 때 걷어낸다.
+_CONTROL_CHARS = r"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]"
 
 
 def _parse_dates(series: pd.Series) -> pd.Series:
@@ -27,7 +32,11 @@ def _parse_dates(series: pd.Series) -> pd.Series:
     parsed = pd.to_datetime(compact.where(compact.str.len() == 8), format="%Y%m%d", errors="coerce")
     remaining = parsed.isna() & text.notna()
     if remaining.any():
-        parsed.loc[remaining] = pd.to_datetime(text[remaining], errors="coerce")
+        # 표기가 제각각인 나머지를 pandas 추론에 맡긴다. 못 읽으면 NaT 로 두면 되므로
+        # 형식이 모호하다는 경고까지 화면에 띄울 필요는 없다.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            parsed.loc[remaining] = pd.to_datetime(text[remaining], errors="coerce")
     return parsed
 
 
@@ -75,7 +84,13 @@ def prepare(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
     for column in payments.columns:
         if payments[column].dtype == object:
-            payments[column] = payments[column].astype("string").str.strip().replace("", pd.NA)
+            payments[column] = (
+                payments[column]
+                .astype("string")
+                .str.replace(_CONTROL_CHARS, "", regex=True)
+                .str.strip()
+                .replace("", pd.NA)
+            )
 
     for role in ("담당자", "결재자", "법인", "조사자"):
         payments[f"{role}_id"] = _identity(payments, role)

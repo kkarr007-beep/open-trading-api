@@ -1372,9 +1372,18 @@ class App:
                     self.root.after(0, lambda: self._on_done(info))
                 else:
                     self.root.after(0, self._on_fail)
-            except Exception:
+            except PermissionError as error:
                 traceback.print_exc()
-                self.root.after(0, self._on_fail)
+                reason = (
+                    "결과 파일을 저장하지 못했습니다.\n"
+                    "같은 이름의 엑셀 파일을 열어 두었다면 닫고 다시 실행하세요.\n\n"
+                    f"{error}"
+                )
+                self.root.after(0, lambda: self._on_fail(reason))
+            except Exception as error:
+                traceback.print_exc()
+                detail = f"{type(error).__name__}: {error}"
+                self.root.after(0, lambda: self._on_fail(detail))
             finally:
                 sys.stdout = old_stdout
                 sys.stderr = old_stderr
@@ -1395,11 +1404,11 @@ class App:
         if ok:
             _open_folder(resolved)
 
-    def _on_fail(self):
-        messagebox.showerror(
-            "오류",
-            "분석 중 오류가 발생했습니다.\n진행 상황 로그를 확인하세요.",
-        )
+    def _on_fail(self, reason: str = ""):
+        body = "분석 중 오류가 발생했습니다.\n진행 상황 로그를 확인하세요."
+        if reason:
+            body = f"{reason}\n\n자세한 내용은 진행 상황 로그에 있습니다."
+        messagebox.showerror("오류", body)
 
     def _unlock(self):
         self.running = False
