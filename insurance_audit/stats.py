@@ -171,6 +171,22 @@ def percentile_score(
     return result
 
 
+def two_proportion_z(
+    count_a: np.ndarray, total_a: np.ndarray, count_b: np.ndarray, total_b: np.ndarray
+) -> np.ndarray:
+    """두 기간의 점유율 차이 검정. 조직의 주력 업체가 실제로 바뀌었는지 본다."""
+    count_a = np.asarray(count_a, dtype=float)
+    total_a = np.asarray(total_a, dtype=float)
+    count_b = np.asarray(count_b, dtype=float)
+    total_b = np.asarray(total_b, dtype=float)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pooled = (count_a + count_b) / (total_a + total_b)
+        variance = pooled * (1 - pooled) * (1 / total_a + 1 / total_b)
+        z = (count_a / total_a - count_b / total_b) / np.sqrt(variance)
+    return np.where(np.isfinite(z), z, 0.0)
+
+
 def signal_score(series: pd.Series, floor: float, saturation: float) -> pd.Series:
     """검정 통계량을 0~100으로 편다.
 

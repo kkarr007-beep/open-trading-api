@@ -12,7 +12,9 @@ import sys
 import time
 from pathlib import Path
 
-from . import loader, prep, report_html, report_xlsx, score, stats
+import pandas as pd
+
+from . import config, loader, prep, profile, report_html, report_xlsx, score, stats
 from .metrics import MODULES
 
 
@@ -32,6 +34,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--encoding", "-e", default=None,
         help="CSV 인코딩을 직접 지정 (예: cp949). 생략하면 자동 판별합니다.",
+    )
+    parser.add_argument(
+        "--year", "-y", nargs="+", type=int, default=None,
+        help="분석할 기준년. 생략하면 전체. 예: --year 2024 2025",
+    )
+    parser.add_argument(
+        "--org-level", default=None, choices=("소속1", "소속2", "소속3"),
+        help="조직별 집계와 전환 분석에 쓸 소속 계층. 생략하면 표본을 보고 정합니다.",
     )
     parser.add_argument(
         "--prefix", default="유착분석",
@@ -59,6 +69,25 @@ def run(argv: list[str] | None = None) -> int:
     print(
         f"      지급 {len(data['payments']):,}행 → 조사 배당 {len(data['cases']):,}건"
     )
+
+    years = profile.available_years(data["cases"])
+    if args.year:
+        unknown = sorted(set(args.year) - set(years))
+        if unknown:
+            print(
+                f"오류: 데이터에 없는 기준년입니다: {unknown} (가능: {years})",
+                file=sys.stderr,
+            )
+            return 1
+        data = profile.filter_years(data, args.year)
+        print(f"      기준년 {', '.join(map(str, args.year))} 선택 → {len(data['cases']):,}건")
+    elif years:
+        print(f"      기준년 {years[0]}~{years[-1]} 전체 ({len(years)}개 연도)")
+
+    if data["cases"].empty:
+        print("오류: 선택한 조건에 해당하는 건이 없습니다.", file=sys.stderr)
+        return 1
+    data["옵션"] = {"조직계층": args.org_level}
     if not stats.HAS_SCIPY:
         print("      (scipy 없음: 정규근사로 검정합니다)")
 
@@ -81,20 +110,48 @@ def run(argv: list[str] | None = None) -> int:
         high = int((frame["등급"] == "높음").sum())
         print(f"      {entity}: {len(frame):,}건 (높음 {high}건)")
 
-    print("[5/5] 보고서 저장 중...")
+    print("[5/5] 현황 집계 및 보고서 저장 중...")
+    views = _build_views(data, rankings, args.org_level)
     outdir = Path(args.outdir)
     stamp = time.strftime("%Y%m%d_%H%M")
     xlsx_path = report_xlsx.write(
-        outdir / f"{args.prefix}_{stamp}.xlsx", rankings, results, data, drill, column_check
+        outdir / f"{args.prefix}_{stamp}.xlsx",
+        rankings, results, data, drill, column_check, views,
     )
     html_path = report_html.write(
-        outdir / f"{args.prefix}_{stamp}.html", rankings, results, data
+        outdir / f"{args.prefix}_{stamp}.html", rankings, results, data, views
     )
 
     print(f"\n완료 ({time.time() - started:.1f}초)")
     print(f"  엑셀: {xlsx_path}")
     print(f"  HTML: {html_path}")
     return 0
+
+
+def _build_views(
+    data: dict[str, pd.DataFrame],
+    rankings: dict[str, pd.DataFrame],
+    org_level: str | None,
+) -> dict[str, object]:
+    """현황 표를 한데 모은다. 엑셀 시트와 HTML 도해가 같은 표를 쓴다."""
+    cases = data["cases"]
+    level = org_level or profile.org_level_for(cases)
+
+    top_handlers = (
+        rankings["담당자"]["id"].head(config.CHART_TOP_HANDLERS).tolist()
+        if "담당자" in rankings and not rankings["담당자"].empty
+        else []
+    )
+
+    return {
+        "조직계층": level,
+        "연도별업체": profile.vendor_by_year(cases),
+        "업체연도행렬": profile.vendor_share_matrix(cases, config.CHART_TOP_VENDORS),
+        "소속2별업체": profile.vendor_by_org(cases, "소속2"),
+        "소속3별업체": profile.vendor_by_org(cases, "소속3"),
+        "조직별업체": profile.vendor_by_org(cases, level),
+        "담당자별업체": profile.handler_vendor_mix(cases, top_handlers),
+    }
 
 
 if __name__ == "__main__":

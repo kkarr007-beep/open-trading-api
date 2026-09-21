@@ -11,6 +11,8 @@ from . import (
     f_payee,
     g_subrogation,
     h_speed,
+    i_mobility,
+    j_regime,
 )
 
 # 실행 순서. 보고서 시트 순서도 이 순서를 따른다.
@@ -23,6 +25,8 @@ MODULES = (
     f_payee,
     g_subrogation,
     h_speed,
+    i_mobility,
+    j_regime,
 )
 
 __all__ = ["MODULES"]

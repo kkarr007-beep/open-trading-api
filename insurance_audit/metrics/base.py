@@ -105,8 +105,9 @@ def concentration_test(
         return pd.DataFrame()
 
     # 본인을 제외한 나머지 인원이 그 상대에게 보낸 비율이 기대 배당률이다.
-    others_target = merged["상대총건수"] - merged["배당건수"]
-    others_total = merged["점포총건수"] - merged["행위자총건수"]
+    # 아무도 안 쓰는 상대면 기대율이 0이 되어 검정이 발산하므로 약하게 보정한다.
+    others_target = merged["상대총건수"] - merged["배당건수"] + 0.5
+    others_total = merged["점포총건수"] - merged["행위자총건수"] + 1.0
     expected = np.divide(
         others_target,
         others_total,

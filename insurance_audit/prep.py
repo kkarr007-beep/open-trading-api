@@ -92,9 +92,21 @@ def prepare(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
         payments, ("소속3", "소속3코드", "소속2", "소속2코드", "소속1", "소속1코드")
     )
 
+    payments["연도"] = _resolve_year(payments)
     payments = _add_intervals(payments)
     cases = _collapse_to_cases(payments)
     return {"payments": payments, "cases": cases}
+
+
+def _resolve_year(frame: pd.DataFrame) -> pd.Series:
+    """분석 기준 연도. 기준년 컬럼을 우선하고 없으면 사고일에서 뽑는다."""
+    year = pd.Series(pd.NA, index=frame.index, dtype="Int64")
+    if "기준년" in frame.columns:
+        digits = frame["기준년"].astype("string").str.replace(r"\D", "", regex=True)
+        year = pd.to_numeric(digits.str[:4], errors="coerce").astype("Int64")
+    if "사고일" in frame.columns:
+        year = year.fillna(frame["사고일"].dt.year.astype("Int64"))
+    return year
 
 
 def _first_available(frame: pd.DataFrame, candidates: tuple[str, ...]) -> pd.Series:
@@ -141,7 +153,8 @@ def _collapse_to_cases(payments: pd.DataFrame) -> pd.DataFrame:
         "담보구분", "담보구분코드", "사고원인", "사고원인코드",
         "피해유형", "피해유형코드", "대표재해코드", "상품코드",
         "구상여부", "구상여부코드", "피보험자id", "피보험자",
-        "사고일", "상신일", "결재일", "지급일", "기준년",
+        "사고일", "상신일", "결재일", "지급일", "기준년", "연도",
+        "소속1", "소속2", "소속2코드", "소속3", "소속3코드",
         "결재소요일", "사고후상신일", "상신후지급일", "사고후지급일",
     ]
     for column in carry:

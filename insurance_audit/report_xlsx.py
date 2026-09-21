@@ -25,22 +25,26 @@ def write(
     data: dict[str, pd.DataFrame],
     drill: pd.DataFrame,
     column_check: pd.DataFrame,
+    views: dict[str, object] | None = None,
 ) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    views = views or {}
 
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         _summary(data, results, rankings).to_excel(
             writer, sheet_name="00_요약", index=False
         )
 
-        for order, entity in enumerate(("담당자", "결재자", "법인", "조합"), start=1):
+        for order, entity in enumerate(("담당자", "결재자", "법인", "소속", "조합"), start=1):
             frame = rankings.get(entity)
             if frame is None or frame.empty:
                 continue
             frame.to_excel(writer, sheet_name=f"{order:02d}_{entity}순위", index=False)
 
-        for order, result in enumerate(results, start=10):
+        _write_views(writer, views)
+
+        for order, result in enumerate(results, start=20):
             if result.detail is None or result.detail.empty:
                 continue
             sheet = f"{order}_{result.name}"[:31]
@@ -54,6 +58,23 @@ def write(
         _style(writer)
 
     return path
+
+
+def _write_views(writer: pd.ExcelWriter, views: dict[str, object]) -> None:
+    """현황 표. 혐의 순위와 별개로 전체 그림을 보는 시트다."""
+    sheets = (
+        ("10_연도별업체순위", "연도별업체"),
+        ("11_업체×연도위임율", "업체연도행렬"),
+        ("12_소속2별업체", "소속2별업체"),
+        ("13_소속3별업체", "소속3별업체"),
+        ("14_담당자별업체", "담당자별업체"),
+    )
+    for sheet, key in sheets:
+        frame = views.get(key)
+        if not isinstance(frame, pd.DataFrame) or frame.empty:
+            continue
+        index = key == "업체연도행렬"
+        frame.to_excel(writer, sheet_name=sheet[:31], index=index)
 
 
 def _summary(

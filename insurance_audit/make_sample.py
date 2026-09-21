@@ -25,6 +25,8 @@ SEEDED = {
     "지급처반복": "예금주 P99999 가 서로 다른 피보험자 건으로 반복 수령",
     "구상포기": "법인 V20 구상률 급감",
     "처리속도": "법인 V08 처리일수 급단축",
+    "인물이동": "담당자 H0150 이 B03→B11→B17 로 옮겨도 법인 V09 편중 유지",
+    "조직전환": "지점 B05 에서 2025년 팀장 교체와 함께 주력이 V02 → V17 로 이동",
 }
 
 COVERS = [("대인", "C1"), ("대물", "C2"), ("재물", "C3")]
@@ -60,10 +62,30 @@ def generate(n_cases: int = 40_000, seed: int = 20260921) -> pd.DataFrame:
 
     handler = rng.choice(handler_ids, n_cases)
     branch = np.array([branch_of[h] for h in handler])
-    approver = np.array(
-        [approver_of_branch[b][rng.integers(0, 2)] for b in branch]
-    )
+
+    # 연도를 먼저 정해야 발령과 팀장 교체를 연도에 걸 수 있다.
+    accident = np.datetime64("2023-01-01") + rng.integers(0, 1095, n_cases).astype("timedelta64[D]")
+    year = accident.astype("datetime64[Y]").astype(int) + 1970
+
+    # --- 심는 패턴 9: 소속을 옮겨도 따라다니는 업체 -----------------------
+    # 해마다 다른 지점으로 발령이 나지만 위임처는 그대로다.
+    posting = {2023: "B03", 2024: "B11", 2025: "B17"}
+    mover = handler == "H0150"
+    branch = np.where(mover, np.array([posting.get(y, "B03") for y in year]), branch)
+
+    # --- 심는 패턴 10: 팀장 교체와 함께 지점 주력 업체가 바뀜 --------------
+    # 결재자는 연도에 따라 갈리고, 그에 맞춰 위임처도 통째로 옮겨간다.
+    regime = branch == "B05"
+    approver = np.array([approver_of_branch[b][rng.integers(0, 2)] for b in branch])
+    approver = np.where(regime, np.where(year <= 2024, "A010", "A011"), approver)
+
     vendor = rng.choice(vendor_ids, n_cases)
+    vendor = np.where(
+        regime & (rng.random(n_cases) < 0.62),
+        np.where(year <= 2024, "V02", "V17"),
+        vendor,
+    )
+    vendor = np.where(mover & (rng.random(n_cases) < 0.70), "V09", vendor)
 
     # --- 심는 패턴 1: 특정 담당자의 법인 편중 -----------------------------
     focus = handler == "H0007"
@@ -106,7 +128,6 @@ def generate(n_cases: int = 40_000, seed: int = 20260921) -> pd.DataFrame:
     subrogation = np.where(vendor == "V20", rng.random(n_cases) < 0.04, subrogation)
 
     # --- 심는 패턴 8: 특정 법인의 처리 속도 단축 --------------------------
-    accident = np.datetime64("2024-01-01") + rng.integers(0, 640, n_cases).astype("timedelta64[D]")
     duration = rng.integers(12, 70, n_cases)
     duration = np.where(vendor == "V08", rng.integers(1, 6, n_cases), duration)
     submit = accident + duration.astype("timedelta64[D]")
