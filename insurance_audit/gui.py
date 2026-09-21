@@ -311,6 +311,11 @@ class App:
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
         self.preview_tree.pack(fill="both", expand=True)
+        self.preview_tree.tag_configure("alt", background=_COLORS["row_alt"])
+
+        # Ctrl+V 단축키
+        self.root.bind_all("<Control-v>", lambda e: self._paste_clipboard())
+        self.root.bind_all("<Control-V>", lambda e: self._paste_clipboard())
 
     # ── 실행 탭 ──────────────────────────────────────────
 
@@ -501,6 +506,12 @@ class App:
         entity_combo.pack(side="left", padx=(8, 16))
         entity_combo.bind("<<ComboboxSelected>>", lambda e: self._show_entity())
 
+        self._entity_count_label = ttk.Label(
+            control_bar, text="", foreground=_COLORS["text_sub"],
+            font=("맑은 고딕", 9),
+        )
+        self._entity_count_label.pack(side="left")
+
         # 파일 열기 버튼
         self._open_xlsx_btn = ttk.Button(
             control_bar, text="엑셀 열기",
@@ -591,6 +602,12 @@ class App:
             return
 
         frame = rankings[entity]
+        n_high = int((frame["등급"] == "높음").sum())
+        n_mid = int((frame["등급"] == "중간").sum())
+        self._entity_count_label.config(
+            text=f"{len(frame):,}건  (높음 {n_high}  중간 {n_mid})",
+        )
+
         self.result_tree.delete(*self.result_tree.get_children())
 
         display_cols = ["명"]
@@ -618,11 +635,17 @@ class App:
             elif col.startswith(("A_", "B_", "C_", "D_", "E_", "F_", "G_", "H_", "I_", "J_")):
                 width = 55
                 col_display = col.split("_")[0]
-                self.result_tree.heading(col, text=col_display)
+                self.result_tree.heading(
+                    col, text=col_display,
+                    command=lambda c=col: self._sort_result_tree(c),
+                )
                 self.result_tree.column(col, width=width, anchor=anchor, minwidth=40)
                 continue
 
-            self.result_tree.heading(col, text=col)
+            self.result_tree.heading(
+                col, text=col,
+                command=lambda c=col: self._sort_result_tree(c),
+            )
             self.result_tree.column(col, width=width, anchor=anchor, minwidth=40)
 
         for i, (_, row) in enumerate(frame.iterrows()):
@@ -637,7 +660,30 @@ class App:
             tag = band if band in ("높음", "중간", "낮음") else "낮음"
             self.result_tree.insert("", "end", values=values, tags=(tag,))
 
+        self._sort_ascending = {}
         self._clear_detail()
+
+    def _sort_result_tree(self, col: str):
+        ascending = not self._sort_ascending.get(col, False)
+        self._sort_ascending[col] = ascending
+
+        items = []
+        for iid in self.result_tree.get_children():
+            val = self.result_tree.set(iid, col)
+            try:
+                sort_key = float(val) if val not in ("-", "") else -1e9
+            except ValueError:
+                sort_key = val
+            items.append((sort_key, iid))
+
+        reverse = not ascending
+        try:
+            items.sort(key=lambda x: x[0], reverse=reverse)
+        except TypeError:
+            items.sort(key=lambda x: str(x[0]), reverse=reverse)
+
+        for idx, (_, iid) in enumerate(items):
+            self.result_tree.move(iid, "", idx)
 
     def _on_row_select(self):
         sel = self.result_tree.selection()
