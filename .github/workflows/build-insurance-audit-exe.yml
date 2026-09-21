@@ -93,4 +93,5 @@ jobs:
         with:
           name: 유착분석-실행파일
           path: 배포/
-          retention-days: 30
+          # 90일로 둔다. 내부망 반입은 승인 절차를 거치느라 시간이 걸린다.
+          retention-days: 90
