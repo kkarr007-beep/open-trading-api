@@ -1,0 +1,84 @@
+name: 유착분석 실행파일 빌드
+
+# 내부망 PC에는 파이썬이 없고 설치 권한도 막혀 있다. 윈도우용 단일 실행 파일로
+# 묶으면 파이썬 설치 없이 그대로 돌릴 수 있다. exe 는 윈도우에서만 만들 수 있어
+# 윈도우 실행 환경에서 빌드한다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 빌드에 쓸 파이썬 버전
+        required: false
+        default: "3.12"
+  push:
+    paths:
+      - "insurance_audit/**"
+      - ".github/workflows/build-insurance-audit-exe.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version || '3.12' }}
+
+      - name: 의존성 설치
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          # scipy 는 선택 사항인데 용량이 커서 넣지 않는다. 없으면 정규근사로 돈다.
+          python -m pip install pandas numpy openpyxl pyinstaller
+
+      - name: 실행 파일 생성
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --console `
+            --name "유착분석" `
+            --paths . `
+            --collect-submodules insurance_audit `
+            --exclude-module scipy `
+            --exclude-module matplotlib `
+            --exclude-module tkinter `
+            --exclude-module IPython `
+            --exclude-module pytest `
+            insurance_audit/packaging/exe_entry.py
+
+      - name: 동작 확인
+        shell: pwsh
+        run: |
+          # 합성 데이터로 전체 경로를 한 번 돌려 본다. 실행 파일이 켜지기만 하고
+          # 분석에서 죽는 경우를 빌드 단계에서 걸러야 한다.
+          python -m insurance_audit.make_sample --rows 3000 --out 샘플.csv
+          "샘플.csv`n`n`n" | ./dist/유착분석.exe
+          if (-not (Test-Path "분석결과")) {
+            Write-Error "결과 폴더가 생성되지 않았습니다"
+            exit 1
+          }
+          Get-ChildItem 분석결과
+          $html = Get-ChildItem 분석결과 -Filter *.html
+          $xlsx = Get-ChildItem 분석결과 -Filter *.xlsx
+          if (-not $html -or -not $xlsx) {
+            Write-Error "보고서가 생성되지 않았습니다"
+            exit 1
+          }
+          Write-Host "동작 확인 완료"
+
+      - name: 배포 묶음 구성
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path 배포 | Out-Null
+          Copy-Item dist/유착분석.exe 배포/
+          Copy-Item insurance_audit/packaging/읽어보기.txt 배포/ -ErrorAction SilentlyContinue
+          Copy-Item insurance_audit/README.md 배포/사용설명.md
+          Get-ChildItem 배포 | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 유착분석-실행파일
+          path: 배포/
+          retention-days: 30

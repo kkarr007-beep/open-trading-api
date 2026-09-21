@@ -50,16 +50,22 @@ def resolve_columns(raw_columns: list[object]) -> dict[object, str]:
     return mapping
 
 
-def read_table(path: str | Path, encoding: str | None = None) -> pd.DataFrame:
-    """CSV/엑셀을 읽어 내부키 컬럼명으로 바꾼 표를 돌려준다."""
+def read_table(
+    path: str | Path, encoding: str | None = None, nrows: int | None = None
+) -> pd.DataFrame:
+    """CSV/엑셀을 읽어 내부키 컬럼명으로 바꾼 표를 돌려준다.
+
+    nrows 는 어떤 값이 들어 있는지만 미리 볼 때 쓴다. 10만 행을 다 읽고 나서
+    앞부분만 보는 것은 의미가 없다.
+    """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"입력 파일을 찾을 수 없습니다: {path}")
 
     if path.suffix.lower() in {".xlsx", ".xlsm", ".xls"}:
-        frame = pd.read_excel(path, dtype=str)
+        frame = pd.read_excel(path, dtype=str, nrows=nrows)
     else:
-        frame = _read_csv(path, encoding)
+        frame = _read_csv(path, encoding, nrows)
 
     mapping = resolve_columns(list(frame.columns))
     missing = [key for key in config.REQUIRED if key not in mapping.values()]
@@ -75,7 +81,7 @@ def read_table(path: str | Path, encoding: str | None = None) -> pd.DataFrame:
     return frame
 
 
-def _read_csv(path: Path, encoding: str | None) -> pd.DataFrame:
+def _read_csv(path: Path, encoding: str | None, nrows: int | None = None) -> pd.DataFrame:
     candidates = (encoding,) if encoding else ENCODING_CANDIDATES
     last_error: Exception | None = None
     for candidate in candidates:
@@ -88,6 +94,7 @@ def _read_csv(path: Path, encoding: str | None) -> pd.DataFrame:
                 engine="python",
                 keep_default_na=False,
                 na_values=("", "NULL", "null", "NaN"),
+                nrows=nrows,
             )
         except (UnicodeDecodeError, LookupError) as error:
             last_error = error
