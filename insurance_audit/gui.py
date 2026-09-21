@@ -20,8 +20,12 @@ try:
     from tkinter import ttk, filedialog, messagebox
 
     HAS_TK = True
+    # 상속할 클래스는 임포트 시점에 정해진다. tkinter 가 없는 환경(CI 등)에서도
+    # 모듈은 읽혀야 하므로 대역을 둔다. 그런 환경에서는 창을 만들지 않는다.
+    _BASE_WINDOW = tk.Toplevel
 except ImportError:
     HAS_TK = False
+    _BASE_WINDOW = object
 
 from . import config, console, loader, prep, profile
 from . import main as pipeline_mod
@@ -83,6 +87,310 @@ _COLORS = {
     "border": "#d1d5db",
 }
 
+_NONE_CHOICE = "(없음)"
+
+
+# ──────────────────────────────────────────────────────────────
+# 컬럼 매핑 확인 창
+# ──────────────────────────────────────────────────────────────
+
+
+class ColumnMapDialog(_BASE_WINDOW):
+    """자동으로 붙인 컬럼 매핑을 보여주고 고치게 한다.
+
+    머리글 표기가 흔들려도 대부분 자동으로 붙지만, 확신이 서지 않는 것은
+    사람이 눈으로 확인해야 한다. 엉뚱한 컬럼으로 분석이 돌아가면
+    결과가 조용히 틀린다.
+    """
+
+    def __init__(self, parent: tk.Tk, frame: pd.DataFrame, suggestion: dict):
+        super().__init__(parent)
+        self.title("컬럼 매핑 확인")
+        self.geometry("760x620")
+        self.minsize(640, 480)
+        self.configure(bg=_COLORS["bg"])
+        self.transient(parent)
+        self.result: dict[object, str] | None = None
+
+        self._frame = frame
+        self._raw_columns = [str(c) for c in frame.columns]
+        self._confidence: dict[str, str] = suggestion["confidence"]
+        self._vars: dict[str, tk.StringVar] = {}
+        self._rows: dict[str, ttk.Frame] = {}
+        self._only_check = tk.BooleanVar(value=False)
+
+        current = {key: col for col, key in suggestion["mapping"].items()}
+        self._samples = self._collect_samples()
+
+        self._build(current)
+        self._refresh_summary()
+
+        self.protocol("WM_DELETE_WINDOW", self._cancel)
+        self.grab_set()
+
+    def _collect_samples(self) -> dict[str, str]:
+        samples = {}
+        head = self._frame.head(20)
+        for column in self._frame.columns:
+            value = next(
+                (str(v) for v in head[column] if pd.notna(v) and str(v).strip()), ""
+            )
+            samples[str(column)] = value[:22]
+        return samples
+
+    def _build(self, current: dict[str, object]):
+        top = ttk.Frame(self)
+        top.pack(fill="x", padx=14, pady=(14, 0))
+
+        ttk.Label(
+            top, text="컬럼 매핑 확인", font=("맑은 고딕", 13, "bold"),
+        ).pack(anchor="w")
+
+        self._summary = ttk.Label(
+            top, text="", foreground=_COLORS["text_sub"], font=("맑은 고딕", 9),
+        )
+        self._summary.pack(anchor="w", pady=(4, 0))
+
+        ttk.Label(
+            top,
+            text="빨간 항목은 반드시 지정해야 합니다. 노란 항목은 자동으로 붙였으나 확인이 필요합니다.",
+            foreground=_COLORS["text_sub"], font=("맑은 고딕", 9),
+        ).pack(anchor="w", pady=(2, 0))
+
+        ttk.Checkbutton(
+            top, text="확인이 필요한 항목만 보기",
+            variable=self._only_check, command=self._apply_filter,
+        ).pack(anchor="w", pady=(8, 8))
+
+        # 스크롤 영역
+        body = ttk.Frame(self)
+        body.pack(fill="both", expand=True, padx=14)
+
+        canvas = tk.Canvas(
+            body, bg=_COLORS["card"], highlightthickness=1,
+            highlightbackground=_COLORS["border"],
+        )
+        scrollbar = ttk.Scrollbar(body, orient="vertical", command=canvas.yview)
+        self._list = ttk.Frame(canvas, style="Card.TFrame")
+
+        self._list.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        window = canvas.create_window((0, 0), window=self._list, anchor="nw")
+        canvas.bind(
+            "<Configure>", lambda e: canvas.itemconfig(window, width=e.width),
+        )
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        canvas.bind_all(
+            "<MouseWheel>",
+            lambda e: canvas.yview_scroll(int(-e.delta / 120), "units"),
+        )
+        self._canvas = canvas
+
+        choices = [_NONE_CHOICE] + self._raw_columns
+        for key in self._ordered_keys(current):
+            self._add_row(key, current.get(key), choices)
+
+        # 하단 버튼
+        footer = ttk.Frame(self)
+        footer.pack(fill="x", padx=14, pady=12)
+
+        ttk.Button(footer, text="취소", command=self._cancel).pack(side="right")
+        ttk.Button(
+            footer, text="  적용  ", command=self._accept, style="Accent.TButton",
+        ).pack(side="right", padx=(0, 8))
+        ttk.Button(
+            footer, text="자동 매칭 다시", command=self._reset,
+        ).pack(side="left")
+
+    def _ordered_keys(self, current: dict[str, object]) -> list[str]:
+        """필수 → 확인 필요 → 배정됨 → 미배정 순으로 세운다."""
+        def rank(key: str) -> tuple[int, int]:
+            if key in config.REQUIRED:
+                return (0, config.REQUIRED.index(key))
+            if self._confidence.get(key) == "확인":
+                return (1, 0)
+            if key in current:
+                return (2, 0)
+            return (3, 0)
+
+        keys = list(config.COLUMN_ALIASES)
+        return sorted(keys, key=lambda k: (rank(k), keys.index(k)))
+
+    def _add_row(self, key: str, column: object | None, choices: list[str]):
+        row = ttk.Frame(self._list, style="Card.TFrame", padding=(8, 3))
+        row.pack(fill="x")
+        self._rows[key] = row
+
+        required = key in config.REQUIRED
+        state = self._state_of(key, column)
+        dot = {"필수미지정": "●", "확인": "●", "정확": "●"}.get(state, "○")
+        color = {
+            "필수미지정": _COLORS["risk_high"],
+            "확인": _COLORS["risk_mid"],
+            "정확": _COLORS["risk_low"],
+        }.get(state, _COLORS["text_sub"])
+
+        mark = ttk.Label(
+            row, text=dot, foreground=color, background=_COLORS["card"],
+            font=("맑은 고딕", 9), width=2,
+        )
+        mark.pack(side="left")
+        self._rows[key + "__mark"] = mark
+
+        ttk.Label(
+            row, text=key + (" *" if required else ""), width=16, anchor="w",
+            background=_COLORS["card"],
+            font=("맑은 고딕", 9, "bold" if required else "normal"),
+            foreground=_COLORS["text"] if required else _COLORS["text_sub"],
+        ).pack(side="left")
+
+        var = tk.StringVar(value=str(column) if column is not None else _NONE_CHOICE)
+        self._vars[key] = var
+        combo = ttk.Combobox(
+            row, textvariable=var, values=choices, state="readonly", width=26,
+        )
+        combo.pack(side="left", padx=(4, 8))
+        combo.bind("<<ComboboxSelected>>", lambda e, k=key: self._on_pick(k))
+
+        sample = ttk.Label(
+            row, text=self._sample_for(var.get()), width=24, anchor="w",
+            background=_COLORS["card"], foreground=_COLORS["text_sub"],
+            font=("맑은 고딕", 9),
+        )
+        sample.pack(side="left")
+        self._rows[key + "__sample"] = sample
+
+    def _sample_for(self, column: str) -> str:
+        if column == _NONE_CHOICE:
+            return ""
+        return self._samples.get(column, "")
+
+    def _state_of(self, key: str, column: object | None) -> str:
+        if column is None or column == _NONE_CHOICE:
+            return "필수미지정" if key in config.REQUIRED else "없음"
+        return self._confidence.get(key, "정확")
+
+    def _on_pick(self, key: str):
+        """사람이 고른 항목은 확인을 마친 것으로 본다."""
+        self._confidence[key] = "정확"
+        column = self._vars[key].get()
+        self._rows[key + "__sample"].config(text=self._sample_for(column))
+
+        state = self._state_of(key, column)
+        mark = self._rows[key + "__mark"]
+        mark.config(
+            text="●" if state != "없음" else "○",
+            foreground={
+                "필수미지정": _COLORS["risk_high"],
+                "확인": _COLORS["risk_mid"],
+                "정확": _COLORS["risk_low"],
+            }.get(state, _COLORS["text_sub"]),
+        )
+        self._refresh_summary()
+
+    def _apply_filter(self):
+        only = self._only_check.get()
+        for key in config.COLUMN_ALIASES:
+            row = self._rows.get(key)
+            if row is None:
+                continue
+            column = self._vars[key].get()
+            state = self._state_of(key, column)
+            show = not only or state in ("확인", "필수미지정")
+            if show:
+                row.pack(fill="x")
+            else:
+                row.pack_forget()
+
+    def _reset(self):
+        suggestion = loader.suggest_columns(list(self._frame.columns))
+        self._confidence = suggestion["confidence"]
+        current = {key: col for col, key in suggestion["mapping"].items()}
+        for key, var in self._vars.items():
+            column = current.get(key)
+            var.set(str(column) if column is not None else _NONE_CHOICE)
+            self._rows[key + "__sample"].config(text=self._sample_for(var.get()))
+            state = self._state_of(key, column)
+            self._rows[key + "__mark"].config(
+                text="●" if state != "없음" else "○",
+                foreground={
+                    "필수미지정": _COLORS["risk_high"],
+                    "확인": _COLORS["risk_mid"],
+                    "정확": _COLORS["risk_low"],
+                }.get(state, _COLORS["text_sub"]),
+            )
+        self._refresh_summary()
+        self._apply_filter()
+
+    def _current_mapping(self) -> dict[object, str]:
+        mapping: dict[object, str] = {}
+        for key, var in self._vars.items():
+            column = var.get()
+            if column and column != _NONE_CHOICE:
+                mapping[column] = key
+        return mapping
+
+    def _refresh_summary(self):
+        mapping = self._current_mapping()
+        missing = [k for k in config.REQUIRED if k not in mapping.values()]
+        need_check = sum(
+            1
+            for key, var in self._vars.items()
+            if var.get() != _NONE_CHOICE and self._confidence.get(key) == "확인"
+        )
+        text = f"{len(self._raw_columns)}개 머리글 중 {len(mapping)}개 인식"
+        if need_check:
+            text += f" · 확인 필요 {need_check}개"
+        if missing:
+            text += f" · 필수 누락: {', '.join(missing)}"
+        self._summary.config(
+            text=text,
+            foreground=_COLORS["risk_high"] if missing else _COLORS["text_sub"],
+        )
+
+    def _accept(self):
+        mapping = self._current_mapping()
+
+        duplicates = [
+            column
+            for column in set(mapping)
+            if sum(1 for v in self._vars.values() if v.get() == column) > 1
+        ]
+        if duplicates:
+            messagebox.showwarning(
+                "중복 지정",
+                "한 컬럼을 여러 항목에 지정했습니다:\n"
+                + ", ".join(str(d) for d in duplicates),
+                parent=self,
+            )
+            return
+
+        missing = [k for k in config.REQUIRED if k not in mapping.values()]
+        if missing:
+            messagebox.showwarning(
+                "필수 컬럼",
+                "다음 항목은 반드시 지정해야 합니다:\n" + ", ".join(missing),
+                parent=self,
+            )
+            return
+
+        self.result = mapping
+        self._close()
+
+    def _cancel(self):
+        self.result = None
+        self._close()
+
+    def _close(self):
+        self._canvas.unbind_all("<MouseWheel>")
+        self.grab_release()
+        self.destroy()
+
+
 # ──────────────────────────────────────────────────────────────
 # stdout → Text 위젯 전달
 # ──────────────────────────────────────────────────────────────
@@ -117,6 +425,7 @@ class App:
     def __init__(self, root: tk.Tk, argv: list[str] | None = None):
         self.root = root
         self.raw_data: pd.DataFrame | None = None
+        self.source_frame: pd.DataFrame | None = None
         self.pipeline_info: dict = {}
         self.years: list[int] = []
         self.year_vars: dict[int, tk.BooleanVar] = {}
@@ -275,6 +584,11 @@ class App:
             btn_frame, text="CSV 파일 열기", command=self._open_file,
         )
         self.file_btn.pack(side="left")
+
+        self.remap_btn = ttk.Button(
+            btn_frame, text="컬럼 매핑", command=self._remap_columns,
+        )
+        self.remap_btn.pack(side="left", padx=(8, 0))
 
         ttk.Label(
             top,
@@ -845,10 +1159,7 @@ class App:
             return
 
         try:
-            self.raw_data = loader.read_clipboard_text(text)
-        except loader.ColumnError as exc:
-            messagebox.showerror("컬럼 오류", str(exc))
-            return
+            frame = loader.parse_clipboard_text(text)
         except Exception as exc:
             messagebox.showerror(
                 "읽기 실패",
@@ -856,7 +1167,7 @@ class App:
             )
             return
 
-        self._on_data_loaded()
+        self._accept_frame(frame)
 
     def _open_file(self):
         path = filedialog.askopenfilename(
@@ -870,25 +1181,58 @@ class App:
         if not path:
             return
         try:
-            self.raw_data = loader.read_table(path)
+            frame = loader.parse_table(path)
         except (loader.ColumnError, FileNotFoundError) as exc:
             messagebox.showerror("파일 오류", str(exc))
             return
         except Exception as exc:
             messagebox.showerror("읽기 실패", str(exc))
             return
-        self._on_data_loaded()
+        self._accept_frame(frame)
 
     def _load_files(self, paths: list[str]):
         try:
-            self.raw_data = loader.read_many(paths)
+            frames = [loader.parse_table(path) for path in paths]
+            frame = pd.concat(frames, ignore_index=True, sort=False)
         except (loader.ColumnError, FileNotFoundError) as exc:
             messagebox.showerror("파일 오류", str(exc))
             return
         except Exception as exc:
             messagebox.showerror("읽기 실패", str(exc))
             return
+        self._accept_frame(frame)
+
+    # ── 컬럼 매핑 ──────────────────────────────────────
+
+    def _accept_frame(self, frame: pd.DataFrame, force_dialog: bool = False):
+        """머리글 그대로인 표를 받아 매핑을 확정한 뒤 적재한다."""
+        suggestion = loader.suggest_columns(list(frame.columns))
+        needs_review = bool(suggestion["missing_required"]) or any(
+            level == "확인" for level in suggestion["confidence"].values()
+        )
+
+        mapping = suggestion["mapping"]
+        if force_dialog or needs_review:
+            dialog = ColumnMapDialog(self.root, frame, suggestion)
+            self.root.wait_window(dialog)
+            if dialog.result is None:
+                return
+            mapping = dialog.result
+
+        try:
+            self.raw_data = loader.apply_mapping(frame, mapping)
+        except loader.ColumnError as exc:
+            messagebox.showerror("컬럼 오류", str(exc))
+            return
+
+        self.source_frame = frame
         self._on_data_loaded()
+
+    def _remap_columns(self):
+        if self.source_frame is None:
+            messagebox.showinfo("컬럼 매핑", "먼저 데이터를 입력하세요.")
+            return
+        self._accept_frame(self.source_frame, force_dialog=True)
 
     def _on_data_loaded(self):
         n_rows = len(self.raw_data)
@@ -978,6 +1322,7 @@ class App:
         self.run_btn.config(state="disabled")
         self.paste_btn.config(state="disabled")
         self.file_btn.config(state="disabled")
+        self.remap_btn.config(state="disabled")
 
         if self.all_years_var.get() or not self.year_vars:
             selected_years = None
@@ -1051,6 +1396,7 @@ class App:
         self.run_btn.config(state="normal")
         self.paste_btn.config(state="normal")
         self.file_btn.config(state="normal")
+        self.remap_btn.config(state="normal")
 
 
 def _open_folder(path: Path):
