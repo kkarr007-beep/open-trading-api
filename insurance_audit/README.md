@@ -43,9 +43,17 @@ python -m insurance_audit.main --input 조사배당.csv --encoding cp949
 
 ## 필요 환경
 
-`pandas`, `numpy`, `openpyxl`. `scipy`는 있으면 쓰고 없으면 정규근사로 갈음한다.
-차트 라이브러리나 그래프 패키지는 쓰지 않는다. 내부망에서 설치가 막히는 경우를
-고려해 의존성을 최소로 뒀다.
+파이썬 3.9 이상과 `pandas`, `numpy`, `openpyxl`. `scipy`는 있으면 쓰고 없으면
+정규근사로 갈음한다. 차트 라이브러리나 그래프 패키지는 쓰지 않는다. 내부망에서
+설치가 막히는 경우를 고려해 의존성을 최소로 뒀다.
+
+옮긴 PC에서 먼저 점검한다.
+
+```bash
+python -m insurance_audit.check_env
+```
+
+무엇이 있고 무엇이 없는지, 없으면 어떻게 확인할지까지 알려준다.
 
 ## 먼저 검증하고 쓴다
 
