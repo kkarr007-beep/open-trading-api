@@ -114,9 +114,13 @@ class ColumnMapDialog(_BASE_WINDOW):
 
         self._frame = frame
         self._raw_columns = [str(c) for c in frame.columns]
-        self._confidence: dict[str, str] = suggestion["confidence"]
+        # 콤보박스는 문자열만 돌려준다. 엑셀 머리글이 숫자인 경우가 있어
+        # 원본 컬럼을 되찾을 수 있게 짝을 남겨 둔다.
+        self._origin = {str(c): c for c in frame.columns}
+        self._confidence: dict[str, str] = dict(suggestion["confidence"])
         self._vars: dict[str, tk.StringVar] = {}
         self._rows: dict[str, ttk.Frame] = {}
+        self._order: list[str] = []
         self._only_check = tk.BooleanVar(value=False)
 
         current = {key: col for col, key in suggestion["mapping"].items()}
@@ -191,7 +195,8 @@ class ColumnMapDialog(_BASE_WINDOW):
         self._canvas = canvas
 
         choices = [_NONE_CHOICE] + self._raw_columns
-        for key in self._ordered_keys(current):
+        self._order = self._ordered_keys(current)
+        for key in self._order:
             self._add_row(key, current.get(key), choices)
 
         # 하단 버튼
@@ -294,17 +299,13 @@ class ColumnMapDialog(_BASE_WINDOW):
 
     def _apply_filter(self):
         only = self._only_check.get()
-        for key in config.COLUMN_ALIASES:
-            row = self._rows.get(key)
-            if row is None:
-                continue
-            column = self._vars[key].get()
-            state = self._state_of(key, column)
-            show = not only or state in ("확인", "필수미지정")
-            if show:
-                row.pack(fill="x")
-            else:
-                row.pack_forget()
+        # 다시 pack 하면 맨 뒤로 붙으므로 전부 떼었다가 차례대로 붙인다.
+        for key in self._order:
+            self._rows[key].pack_forget()
+        for key in self._order:
+            state = self._state_of(key, self._vars[key].get())
+            if not only or state in ("확인", "필수미지정"):
+                self._rows[key].pack(fill="x")
 
     def _reset(self):
         suggestion = loader.suggest_columns(list(self._frame.columns))
@@ -331,7 +332,7 @@ class ColumnMapDialog(_BASE_WINDOW):
         for key, var in self._vars.items():
             column = var.get()
             if column and column != _NONE_CHOICE:
-                mapping[column] = key
+                mapping[self._origin.get(column, column)] = key
         return mapping
 
     def _refresh_summary(self):
@@ -433,6 +434,7 @@ class App:
         self.org_level_var = tk.StringVar(value="자동")
         self.outdir_var = tk.StringVar(value="분석결과")
         self.running = False
+        self.dialog_open = False
         self.exit_code = 0
 
         root.title("외부조사 법인 유착 혐의 1차 분석")
@@ -1144,6 +1146,10 @@ class App:
     # ── 데이터 입력 ────────────────────────────────────
 
     def _paste_clipboard(self):
+        # Ctrl+V 는 앱 전체에 걸려 있다. 매핑 창이 떠 있거나 분석이 도는 중에
+        # 눌리면 창이 겹쳐 뜨므로 막는다.
+        if self.running or self.dialog_open:
+            return
         try:
             text = self.root.clipboard_get()
         except tk.TclError:
@@ -1213,8 +1219,12 @@ class App:
 
         mapping = suggestion["mapping"]
         if force_dialog or needs_review:
-            dialog = ColumnMapDialog(self.root, frame, suggestion)
-            self.root.wait_window(dialog)
+            self.dialog_open = True
+            try:
+                dialog = ColumnMapDialog(self.root, frame, suggestion)
+                self.root.wait_window(dialog)
+            finally:
+                self.dialog_open = False
             if dialog.result is None:
                 return
             mapping = dialog.result
