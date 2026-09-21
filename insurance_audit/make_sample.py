@@ -15,6 +15,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import console
+
 # 일부러 심어 둔 유착 패턴. 분석 결과와 대조하는 정답지 역할을 한다.
 SEEDED = {
     "배당편중": "담당자 H0007 → 법인 V03 (75%)",
@@ -276,6 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--encoding", default="utf-8-sig", help="저장 인코딩")
     args = parser.parse_args(argv)
 
+    console.setup()
     frame = generate(args.rows)
     path = Path(args.out)
     path.parent.mkdir(parents=True, exist_ok=True)

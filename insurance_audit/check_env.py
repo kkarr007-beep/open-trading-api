@@ -11,6 +11,8 @@ from __future__ import annotations
 import importlib
 import sys
 
+from . import console
+
 REQUIRED = {
     "pandas": "표 처리. 없으면 실행 불가",
     "numpy": "수치 계산. 없으면 실행 불가",
@@ -24,6 +26,7 @@ MIN_PYTHON = (3, 9)
 
 
 def main() -> int:
+    console.setup()
     print("실행 환경 점검\n" + "=" * 46)
 
     version = sys.version_info

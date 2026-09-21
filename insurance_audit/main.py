@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import config, loader, prep, profile, report_html, report_xlsx, score, stats
+from . import config, console, loader, prep, profile, report_html, report_xlsx, score, stats
 from .metrics import MODULES
 
 
@@ -51,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run(argv: list[str] | None = None) -> int:
+    console.setup()
     args = build_parser().parse_args(argv)
     started = time.time()
 

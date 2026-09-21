@@ -12,6 +12,8 @@ import sys
 import traceback
 from pathlib import Path
 
+from . import console
+
 BANNER = """
 ==================================================
   외부조사 법인 유착 혐의 1차 분석
@@ -19,21 +21,22 @@ BANNER = """
 """
 
 
-def _prompt(message: str) -> str:
-    """입력을 받되 끝에 도달하면 빈 답으로 본다.
+def _prompt(message: str) -> str | None:
+    """입력을 받는다. 더 받을 입력이 없으면 None 을 돌려준다.
 
-    자동 점검처럼 입력을 미리 넣어 돌리는 경우 EOF 가 나는데, 이때 오류를
-    띄우면 실제 문제와 구분이 안 된다.
+    빈 줄과 입력 끝을 구분해야 한다. 둘을 같게 보면, 답을 더 받아야 하는
+    자리에서 끝에 도달했을 때 같은 질문을 끝없이 되묻게 된다.
     """
     try:
         return input(message).strip()
     except EOFError:
         print()
-        return ""
+        return None
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    console.setup()
     print(BANNER)
 
     try:
@@ -93,7 +96,12 @@ def _resolve_inputs(argv: list[str]) -> list[Path]:
 
     paths: list[Path] = []
     while True:
-        raw = _prompt(f"파일 {len(paths) + 1}: ").strip('"').strip("'")
+        raw = _prompt(f"파일 {len(paths) + 1}: ")
+        if raw is None:
+            if not paths:
+                print("  파일을 지정하지 않아 종료합니다.")
+            break
+        raw = raw.strip('"').strip("'")
         if not raw:
             if paths:
                 break
@@ -113,7 +121,7 @@ def _resolve_inputs(argv: list[str]) -> list[Path]:
 def _ask_years(inputs: list[Path]) -> list[int]:
     """기준년 선택. 어떤 해가 들어 있는지 먼저 보여 주고 고르게 한다."""
     print()
-    answer = _prompt("전체 기간을 분석할까요? (Enter=전체, n=연도 선택): ").lower()
+    answer = (_prompt("전체 기간을 분석할까요? (Enter=전체, n=연도 선택): ") or "").lower()
     if answer not in {"n", "no", "아니오", "ㅜ"}:
         return []
 
@@ -121,7 +129,7 @@ def _ask_years(inputs: list[Path]) -> list[int]:
     if years:
         print(f"  데이터에 있는 기준년: {', '.join(map(str, years))}")
 
-    raw = _prompt("  분석할 연도 (띄어쓰기로 구분, 예: 2024 2025): ")
+    raw = _prompt("  분석할 연도 (띄어쓰기로 구분, 예: 2024 2025): ") or ""
     picked = []
     for token in raw.split():
         try:
@@ -145,7 +153,7 @@ def _peek_years(inputs: list[Path]) -> list[int]:
 def _ask_outdir(first: Path) -> Path:
     default = first.parent / "분석결과"
     print()
-    raw = _prompt(f"결과를 저장할 폴더 (Enter={default.name}): ").strip('"')
+    raw = (_prompt(f"결과를 저장할 폴더 (Enter={default.name}): ") or "").strip('"')
     return Path(raw) if raw else default
 
 

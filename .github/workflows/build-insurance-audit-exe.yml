@@ -54,7 +54,9 @@ jobs:
           # 합성 데이터로 전체 경로를 한 번 돌려 본다. 실행 파일이 켜지기만 하고
           # 분석에서 죽는 경우를 빌드 단계에서 걸러야 한다.
           python -m insurance_audit.make_sample --rows 3000 --out 샘플.csv
-          "샘플.csv`n`n`n" | ./dist/유착분석.exe
+          # 영문 윈도우 실행 환경은 콘솔 기본 코드페이지가 한글을 담지 못한다.
+          # 프로그램이 스스로 출력 인코딩을 맞추는지 여기서 같이 확인된다.
+          "샘플.csv`n`n`n`n`n" | ./dist/유착분석.exe
           if (-not (Test-Path "분석결과")) {
             Write-Error "결과 폴더가 생성되지 않았습니다"
             exit 1
