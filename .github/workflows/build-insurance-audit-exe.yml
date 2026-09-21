@@ -73,8 +73,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path 배포 | Out-Null
           Copy-Item dist/유착분석.exe 배포/
-          Copy-Item insurance_audit/packaging/읽어보기.txt 배포/ -ErrorAction SilentlyContinue
-          Copy-Item insurance_audit/README.md 배포/사용설명.md
+          Copy-Item insurance_audit/packaging/실행파일_읽어보기.txt 배포/읽어보기.txt
+          Copy-Item insurance_audit/README.md 배포/자세한설명.md
           Get-ChildItem 배포 | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v4
