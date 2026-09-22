@@ -180,7 +180,10 @@ def _build_views(
         "소속2별업체": profile.vendor_by_org(cases, "소속2"),
         "소속3별업체": profile.vendor_by_org(cases, "소속3"),
         "조직별업체": profile.vendor_by_org(cases, level),
-        "담당자별업체": profile.handler_vendor_mix(cases, top_handlers),
+        # 도해는 자리가 좁아 상위 몇 명만 그리지만, 표는 전원을 낸다.
+        "담당자별업체_상위": profile.person_vendor_mix(cases, "담당자", top_handlers),
+        "담당자별업체": profile.person_vendor_mix(cases, "담당자"),
+        "차상위자별업체": profile.person_vendor_mix(cases, "결재자"),
     }
 
 

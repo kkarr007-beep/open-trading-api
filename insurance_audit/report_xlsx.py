@@ -85,6 +85,7 @@ def _write_views(writer: pd.ExcelWriter, views: dict[str, object]) -> None:
         ("12_소속2별업체", "소속2별업체"),
         ("13_소속3별업체", "소속3별업체"),
         ("14_담당자별업체", "담당자별업체"),
+        ("15_차상위자별업체", "차상위자별업체"),
     )
     for sheet, key in sheets:
         frame = views.get(key)

@@ -313,9 +313,11 @@ def dumbbells(rows: list[dict], caption: str = "") -> str:
 
 
 CSS = """
-.figure { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-  padding: 14px 12px; overflow-x: auto; margin-bottom: 8px; }
-.figure svg { width: 100%; height: auto; min-width: 640px; display: block; }
+.figure { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 10px; overflow-x: auto; margin-bottom: 8px; max-width: 100%; }
+/* SVG 안의 글자는 접히지 않아 최소 너비가 필요하다. 다만 넘칠 때는 감싼 상자
+   안에서만 굴러야 한다. 좁은 화면에서 본문까지 밀려 나가면 읽을 수 없다. */
+.figure svg { width: 100%; height: auto; min-width: 520px; display: block; }
 .row-label { fill: var(--text); font-size: 12px; font-family: inherit; }
 .row-total { fill: var(--muted); font-size: 11px; font-family: inherit;
   font-variant-numeric: tabular-nums; }
@@ -339,8 +341,13 @@ CSS = """
 .dumbbell { stroke: var(--series-1); stroke-width: 2; }
 .dot-before { fill: var(--surface); stroke: var(--series-1); stroke-width: 2; }
 .dot-after { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; }
-.legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px;
-  font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 10px;
+  font-size: 10pt; color: var(--muted); }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+@media print {
+  /* 인쇄면에 맞춰 줄어들어야 한다. 최소 너비를 두면 오른쪽이 잘린다. */
+  .figure { overflow: visible; break-inside: avoid; }
+  .figure svg { min-width: 0; }
+}
 """

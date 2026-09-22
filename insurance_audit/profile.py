@@ -103,24 +103,46 @@ def vendor_by_org(cases: pd.DataFrame, level: str) -> pd.DataFrame:
     return counts.sort_values([level, "조직내순위"]).reset_index(drop=True)
 
 
-def handler_vendor_mix(cases: pd.DataFrame, handlers: list[str]) -> pd.DataFrame:
-    """담당자별 업체 구성비. 도해에 쓸 담당자만 추린다."""
-    if "담당자_id" not in cases.columns or not handlers:
+def person_vendor_mix(
+    cases: pd.DataFrame, role: str, ids: list[str] | None = None
+) -> pd.DataFrame:
+    """인물별 업체 구성비. 업체를 접지 않고 전부 낸다.
+
+    ids 를 주지 않으면 전원을 낸다. 누가 어느 업체에 얼마나 보냈는지는
+    상위 몇 명만 봐서는 판단이 서지 않는다.
+    """
+    key, name = f"{role}_id", f"{role}_명"
+    if key not in cases.columns or "법인_명" not in cases.columns:
         return pd.DataFrame()
 
-    work = cases[cases["담당자_id"].isin(handlers)].dropna(subset=["법인_id"])
+    work = cases.dropna(subset=[key, "법인_id"])
+    if ids is not None:
+        work = work[work[key].isin(ids)]
     if work.empty:
         return pd.DataFrame()
 
     counts = (
-        work.groupby(["담당자_id", "담당자_명", "법인_명"], dropna=False, sort=False)
+        work.groupby([key, name, "법인_명"], dropna=False, sort=False)
         .size()
         .reset_index(name="위임건수")
     )
-    totals = counts.groupby("담당자_id", sort=False)["위임건수"].transform("sum")
-    counts["담당자총건수"] = totals
+    totals = counts.groupby(key, sort=False)["위임건수"].transform("sum")
+    counts["총건수"] = totals
     counts["구성비"] = (counts["위임건수"] / totals * 100).round(2)
-    return counts.sort_values(["담당자_id", "위임건수"], ascending=[True, False]).reset_index(drop=True)
+    counts["업체순위"] = (
+        counts.groupby(key, sort=False)["위임건수"]
+        .rank(ascending=False, method="min").astype(int)
+    )
+    return counts.sort_values(
+        [key, "위임건수"], ascending=[True, False]
+    ).reset_index(drop=True)
+
+
+def handler_vendor_mix(
+    cases: pd.DataFrame, handlers: list[str] | None = None
+) -> pd.DataFrame:
+    """담당자별 업체 구성비."""
+    return person_vendor_mix(cases, "담당자", handlers)
 
 
 def composition_series(
