@@ -14,7 +14,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import config, console, loader, prep, profile, report_app, report_html, report_xlsx, score, stats
+from . import (
+    analytics, config, console, loader, prep, profile,
+    report_app, report_html, report_xlsx, score, stats,
+)
 from .metrics import MODULES
 
 
@@ -88,9 +91,17 @@ def run_pipeline(
 
     print("[2/5] 전처리 및 분석 단위 분리 중...")
     data = prep.prepare(raw)
+    quality = analytics.data_quality(raw, data)
     print(
-        f"      지급 {len(data['payments']):,}행 → 조사 배당 {len(data['cases']):,}건"
+        f"      지급 {quality['지급행수']:,}행 → 처리 {quality['처리건수']:,}건"
+        f" (위임 {quality['위임청구건수']:,}건 · 자체처리 {quality['자체처리건수']:,}건"
+        f" · 위임율 {quality['위임율']:.1f}%)"
     )
+    print(f"      위임 배정 {quality['위임건수']:,}건 (청구건×손사법인 기준)")
+    # 식별 컬럼이 비어 있으면 그 항목으로 묶는 집계가 통째로 적게 잡힌다.
+    thin = [f"{f['항목']} {f['채움률']:.0f}%" for f in quality["컬럼"] if f["채움률"] < 90]
+    if thin:
+        print(f"      주의: 채움률이 낮은 항목 — {', '.join(thin)}")
 
     avail_years = profile.available_years(data["cases"])
     if years:
@@ -145,7 +156,7 @@ def run_pipeline(
     )
     # 편중 대시보드 — 실무 판독용 메인 산출물. 애플 스타일 대화형 단일 파일.
     dash_path = report_app.write(
-        outdir_path / f"{prefix}_대시보드_{stamp}.html", data
+        outdir_path / f"{prefix}_대시보드_{stamp}.html", data, raw
     )
 
     elapsed = time.time() - started

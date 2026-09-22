@@ -94,18 +94,25 @@ def vendor_shares(cases: pd.DataFrame) -> pd.DataFrame:
 
 
 def person_concentration(cases: pd.DataFrame, role: str) -> pd.DataFrame:
-    """인물별 법인·조사자 HHI와 Top-N. role 은 '담당자' 또는 '결재자'."""
+    """인물별 법인·조사자 HHI와 Top-N. role 은 '담당자' 또는 '결재자'.
+
+    반출 표는 처리 건 전체이므로 위임(손사법인이 붙은 건)과 자체 처리를
+    갈라서 센다. 편중은 위임 건 안에서만 따진다.
+    """
     key, name = f"{role}_id", f"{role}_명"
     if key not in cases.columns or "법인_id" not in cases.columns:
         return pd.DataFrame()
 
-    work = cases.dropna(subset=[key, "법인_id"])
-    if work.empty:
+    # 식별자가 없는 행만 뺀다. 법인이 없는 행은 자체 처리 건이라 분모에 남긴다.
+    scope = cases.dropna(subset=[key])
+    if scope.empty:
         return pd.DataFrame()
 
-    has_inv = "조사자_명" in work.columns
+    has_inv = "조사자_명" in scope.columns
     rows = []
-    for pid, block in work.groupby(key, sort=False):
+    for pid, whole in scope.groupby(key, sort=False):
+        handled = int(whole["청구번호"].nunique()) if "청구번호" in whole.columns else len(whole)
+        block = whole[whole["법인_id"].notna()]
         total = len(block)
         if total < config.MIN_CASES_PERSON:
             continue
@@ -117,10 +124,12 @@ def person_concentration(cases: pd.DataFrame, role: str) -> pd.DataFrame:
 
         record = {
             "id": str(pid),
-            "명": str(block[name].iloc[0]) if name in block.columns else str(pid),
-            "부서": _first(block, "소속2"),
-            "팀": _first(block, "소속3"),
-            "총건수": total,
+            "명": str(whole[name].iloc[0]) if name in whole.columns else str(pid),
+            "부서": _first(whole, "소속2"),
+            "팀": _first(whole, "소속3"),
+            "처리건수": handled,
+            "총건수": total,          # 위임 건수. 편중 계산의 분모다.
+            "위임율": round(total / handled * 100, 1) if handled else 0.0,
             "법인HHI": round(v_hhi, 3),
             "법인편중": _hhi_grade(v_hhi),
             "거래법인수": int(vendor_counts.size),
@@ -169,21 +178,29 @@ def org_concentration(cases: pd.DataFrame, level: str) -> pd.DataFrame:
     """부서(소속2)·팀(소속3)별 법인 HHI, 최다 법인, Top-N 분포."""
     if level not in cases.columns or "법인_명" not in cases.columns:
         return pd.DataFrame()
-    work = cases.dropna(subset=[level, "법인_id"])
+    # 조직이 빈 행을 버리면 건수가 통째로 빠진다. '미상'으로 남겨 둔다.
+    work = cases.copy()
+    work[level] = work[level].fillna("미상")
     if work.empty:
         return pd.DataFrame()
 
     rows = []
-    for org, block in work.groupby(level, sort=False):
+    for org, whole in work.groupby(level, sort=False):
+        handled = int(whole["청구번호"].nunique()) if "청구번호" in whole.columns else len(whole)
+        block = whole[whole["법인_id"].notna()]
         total = len(block)
+        if total == 0:
+            continue
         vendor_counts = block["법인_명"].value_counts()
         v_hhi = _hhi(vendor_counts)
         top_v = _top_breakdown(vendor_counts, config.TOP_VENDORS_PER_PERSON)
         rows.append(
             {
                 "조직": str(org),
+                "처리건수": handled,
                 "총건수": total,
-                "인원수": int(block[f"담당자_id"].nunique()) if "담당자_id" in block.columns else 0,
+                "위임율": round(total / handled * 100, 1) if handled else 0.0,
+                "인원수": int(whole["담당자_id"].nunique()) if "담당자_id" in whole.columns else 0,
                 "법인HHI": round(v_hhi, 3),
                 "법인편중": _hhi_grade(v_hhi),
                 "최다법인": top_v[0]["명"] if top_v else "",
@@ -201,7 +218,9 @@ def org_member_matrix(cases: pd.DataFrame, level: str, org: str) -> dict:
     """한 조직 안 담당자 × 법인 건수 히트맵. 팀 내 개인별 쏠림 비교용."""
     if level not in cases.columns:
         return {}
-    block = cases[(cases[level] == org)].dropna(subset=["담당자_id", "법인_id"])
+    scope = cases.copy()
+    scope[level] = scope[level].fillna("미상")
+    block = scope[scope[level] == org].dropna(subset=["담당자_id", "법인_id"])
     if block.empty:
         return {}
 
@@ -341,6 +360,51 @@ def _segment_stats(seg: pd.DataFrame) -> dict | None:
 # ──────────────────────────────────────────────────────────────
 # 통합
 # ──────────────────────────────────────────────────────────────
+
+
+def data_quality(raw: pd.DataFrame, data: dict[str, pd.DataFrame]) -> dict:
+    """데이터가 어떻게 읽혔는지 요약. 숫자가 이상할 때 먼저 볼 표다.
+
+    컬럼 채움률이 낮으면 그 컬럼을 쓰는 집계가 통째로 비어 보인다.
+    실제로 사번이 대부분 비어 있어 건수가 무너진 적이 있다.
+    """
+    cases = data["cases"]
+    payments = data["payments"]
+    delegated = cases["위임여부"] if "위임여부" in cases.columns else cases["법인_id"].notna()
+
+    fields = []
+    for label, column in (
+        ("담당자", "담당자_id"), ("차상위자", "결재자_id"), ("손사법인", "법인_id"),
+        ("조사자", "조사자_id"), ("부서(소속2)", "소속2"), ("팀(소속3)", "소속3"),
+    ):
+        if column in cases.columns:
+            fields.append(
+                {
+                    "항목": label,
+                    "채움률": round(float(cases[column].notna().mean()) * 100, 1),
+                    "고유값": int(cases[column].nunique(dropna=True)),
+                }
+            )
+
+    # 처리는 청구건 기준, 위임은 청구건×법인 기준이다. 한 청구건이 여러 법인에
+    # 나갈 수 있어 단위가 다르므로, 자체 처리는 '위임이 하나도 없는 청구건'으로 센다.
+    if "청구번호" in cases.columns:
+        handled = int(cases["청구번호"].nunique())
+        with_vendor = int(cases.loc[delegated, "청구번호"].nunique())
+    else:
+        handled = len(cases)
+        with_vendor = int(delegated.sum())
+
+    return {
+        "원본행수": int(len(raw)),
+        "지급행수": int(len(payments)),
+        "처리건수": handled,
+        "위임청구건수": with_vendor,
+        "위임건수": int(delegated.sum()),
+        "자체처리건수": max(handled - with_vendor, 0),
+        "위임율": round(with_vendor / handled * 100, 1) if handled else 0.0,
+        "컬럼": fields,
+    }
 
 
 def build(data: dict[str, pd.DataFrame]) -> dict:

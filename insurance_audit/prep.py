@@ -51,13 +51,33 @@ def _parse_numeric(series: pd.Series) -> pd.Series:
 
 
 def _identity(frame: pd.DataFrame, role: str) -> pd.Series:
-    """사번·코드가 있으면 그쪽을 식별자로 쓴다. 동명이인을 한 사람으로 묶지 않기 위함."""
+    """식별자를 고른다.
+
+    사번·코드가 있으면 동명이인을 가르는 데 좋지만, 실데이터에서는 사번이
+    대부분 비어 있는 경우가 많다. 예전에는 사번에 값이 하나라도 있으면 그
+    컬럼 전체를 식별자로 삼아, 사번이 빈 행이 통째로 버려졌다(차상위자 2만
+    건이 60건으로 줄어드는 원인이었다).
+
+    그래서 채움률이 가장 높은 컬럼을 주 식별자로 삼고, 그래도 비어 있는 행은
+    나머지 후보로 메워 어떤 행도 버리지 않는다.
+    """
+    candidates = []
     for column in config.IDENTITY_PREFERENCE[role]:
         if column in frame.columns:
-            series = frame[column].astype("string").str.strip()
-            if series.notna().any():
-                return series.replace("", pd.NA)
-    return pd.Series(pd.NA, index=frame.index, dtype="string")
+            series = frame[column].astype("string").str.strip().replace("", pd.NA)
+            coverage = float(series.notna().mean())
+            if coverage > 0:
+                candidates.append((coverage, column, series))
+    if not candidates:
+        return pd.Series(pd.NA, index=frame.index, dtype="string")
+
+    # 채움률이 가장 높은 것을 기준으로. 비슷하면 사번·코드(앞 후보)를 우선한다.
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    best_cov, _, base = candidates[0]
+    result = base.copy()
+    for _, _, series in candidates:
+        result = result.fillna(series)
+    return result
 
 
 def _label(frame: pd.DataFrame, role: str) -> pd.Series:
@@ -182,6 +202,10 @@ def _collapse_to_cases(payments: pd.DataFrame) -> pd.DataFrame:
     cases["총수령액"] = cases.get(
         "지급보험금", pd.Series(0.0, index=cases.index)
     ).fillna(0) + cases["합의금"].fillna(0)
+
+    # 반출 표는 처리 건 전체다. 그중 손사법인이 붙은 건만 외부로 위임이 나간
+    # 건이다. 나머지는 자체 처리이므로 편중 계산의 분자·분모에서 갈라 써야 한다.
+    cases["위임여부"] = cases["법인_id"].notna()
     return cases
 
 

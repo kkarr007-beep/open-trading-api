@@ -21,10 +21,14 @@ import pandas as pd
 from . import analytics, config
 
 
-def write(path: str | Path, data: dict[str, pd.DataFrame]) -> Path:
+def write(
+    path: str | Path,
+    data: dict[str, pd.DataFrame],
+    raw: pd.DataFrame | None = None,
+) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = _payload(data)
+    payload = _payload(data, raw)
     blob = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
     html = _TEMPLATE.replace("__DATA__", blob).replace(
         "__STAMP__", datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -33,9 +37,12 @@ def write(path: str | Path, data: dict[str, pd.DataFrame]) -> Path:
     return path
 
 
-def _payload(data: dict[str, pd.DataFrame]) -> dict:
+def _payload(data: dict[str, pd.DataFrame], raw: pd.DataFrame | None = None) -> dict:
     cases = data["cases"]
     tables = analytics.build(data)
+    quality = analytics.data_quality(
+        raw if raw is not None else data["payments"], data
+    )
 
     handlers = tables["담당자"]
     approvers = tables["결재자"]
@@ -46,9 +53,13 @@ def _payload(data: dict[str, pd.DataFrame]) -> dict:
         return int(frame["법인편중"].isin(("고편중", "심각")).sum())
 
     amount = "지급보험금"
+    delegated = cases[cases["법인_id"].notna()] if "법인_id" in cases.columns else cases
     kpi = {
-        "총건수": int(len(cases)),
-        "총금액": int(cases[amount].sum()) if amount in cases.columns else 0,
+        "처리건수": quality["처리건수"],
+        "위임건수": quality["위임건수"],
+        "위임율": quality["위임율"],
+        "총건수": int(len(delegated)),
+        "총금액": int(delegated[amount].sum()) if amount in delegated.columns else 0,
         "법인수": int(cases["법인_id"].nunique()) if "법인_id" in cases.columns else 0,
         "조사자수": int(cases["조사자_id"].nunique()) if "조사자_id" in cases.columns else 0,
         "담당자수": int(cases["담당자_id"].nunique()) if "담당자_id" in cases.columns else 0,
@@ -72,6 +83,7 @@ def _payload(data: dict[str, pd.DataFrame]) -> dict:
     return {
         "stamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "kpi": kpi,
+        "quality": quality,
         "thresholds": {
             "hhi_high": config.HHI_HIGH,
             "hhi_severe": config.HHI_SEVERE,
@@ -255,14 +267,31 @@ function table(cols, rows, opts){
 
 /* ---- 화면 1: 요약 ---- */
 function pageSummary(){
-  const k=D.kpi;
+  const k=D.kpi, q=D.quality;
   const cards=[
-    ['총 건수',num(k.총건수)],['총 지급액',won(k.총금액)+'원'],
+    ['처리 건수 (전체)',num(k.처리건수)],
+    ['위임 건수 (손사법인 배정)',num(k.위임건수)],
+    ['위임율',k.위임율.toFixed(1)+'%'],
+    ['위임 지급액',won(k.총금액)+'원'],
     ['손사법인',num(k.법인수)+'곳'],['조사자',num(k.조사자수)+'명'],
     ['담당자',num(k.담당자수)+'명'],['차상위자',num(k.차상위자수)+'명'],
     ['편중 담당자',num(k.편중담당자수)+'명',true],['편중 차상위자',num(k.편중차상위자수)+'명',true],
   ];
   const kpis=cards.map(c=>`<div class="kpi ${c[2]?'flag':''}"><div class="n">${c[1]}</div><div class="l">${c[0]}</div></div>`).join('');
+
+  // 숫자가 예상과 다를 때 먼저 보는 표. 채움률이 낮은 컬럼이 범인이다.
+  const qrows=(q.컬럼||[]).map(f=>{
+    const low=f.채움률<90;
+    return `<tr><td>${esc(f.항목)}</td><td class="n">${f.채움률.toFixed(1)}%${low?' <span class="badge b-고편중">낮음</span>':''}</td><td class="n">${num(f.고유값)}</td></tr>`;
+  }).join('');
+  const qcard=`<details class="card"><summary style="cursor:pointer;font-weight:650">데이터 읽기 점검 — 숫자가 예상과 다르면 먼저 보세요</summary>
+    <p class="muted tiny" style="margin-top:10px">원본 ${num(q.원본행수)}행 · 지급 ${num(q.지급행수)}행 → 처리 ${num(q.처리건수)}건.
+      그중 손사법인이 붙어 외부로 나간 <b>위임 ${num(q.위임청구건수)}건</b>, 자체 처리 ${num(q.자체처리건수)}건
+      (위임율 ${q.위임율.toFixed(1)}%). 위임 배정은 청구건×손사법인 기준 ${num(q.위임건수)}건입니다.
+      편중은 위임 건 안에서만 따집니다.</p>
+    <table class="tbl"><thead><tr><th>식별 항목</th><th class="n">채움률</th><th class="n">고유값</th></tr></thead><tbody>${qrows}</tbody></table>
+    <p class="muted tiny" style="margin-top:8px">채움률이 낮은 항목은 그 항목으로 묶는 집계가 적게 잡힙니다.
+      사번이 비어 있으면 이름으로 대신 묶습니다.</p></details>`;
 
   const vs=D.vendor_shares.slice(0,15);
   const vbars=vs.map(v=>{
@@ -274,14 +303,16 @@ function pageSummary(){
   const cols=[
     {label:'담당자',cell:r=>esc(r.명),val:r=>r.명},
     {label:'부서·팀',cell:r=>esc((r.부서||'')+' · '+(r.팀||'')),val:r=>r.팀||''},
-    {label:'건수',n:1,cell:r=>num(r.총건수),val:r=>r.총건수},
+    {label:'처리',n:1,cell:r=>num(r.처리건수),val:r=>r.처리건수},
+    {label:'위임',n:1,cell:r=>num(r.총건수)+` <span class="muted tiny">${(r.위임율||0).toFixed(0)}%</span>`,val:r=>r.총건수},
     {label:'법인HHI',n:1,cell:r=>r.법인HHI.toFixed(3)+' '+grade(r.법인편중),val:r=>r.법인HHI},
     {label:'최다 법인',cell:r=>esc(r.최다법인),val:r=>r.최다법인},
     {label:'비율',n:1,cell:r=>r.최다법인비율.toFixed(1)+'%',val:r=>r.최다법인비율},
   ];
   return `<h2>요약</h2><p class="muted tiny">핵심 지표와 편중 상위 담당자입니다. 열 제목을 누르면 정렬됩니다.</p>
     <div class="grid kpis" style="margin:16px 0">${kpis}</div>
-    <div class="card"><h3 style="margin-top:0">손사법인별 배당 비율 (건수 기준 · ⚠ 평균의 ${T.vendor_ratio}배 이상)</h3>${vbars}</div>
+    ${qcard}
+    <div class="card"><h3 style="margin-top:0">손사법인별 배당 비율 (위임 건수 기준 · ⚠ 평균의 ${T.vendor_ratio}배 이상)</h3>${vbars}</div>
     <div class="card"><h3 style="margin-top:0">편중 담당자 Top 10</h3>${table(cols,susp)}</div>`;
 }
 
@@ -293,7 +324,8 @@ function pageOrg(){
     const rows=rowsFor(orgLevel);
     const cols=[
       {label:orgLevel,cell:r=>esc(r.조직),val:r=>r.조직},
-      {label:'건수',n:1,cell:r=>num(r.총건수),val:r=>r.총건수},
+      {label:'처리',n:1,cell:r=>num(r.처리건수),val:r=>r.처리건수},
+      {label:'위임',n:1,cell:r=>num(r.총건수)+` <span class="muted tiny">${(r.위임율||0).toFixed(0)}%</span>`,val:r=>r.총건수},
       {label:'인원',n:1,cell:r=>num(r.인원수),val:r=>r.인원수},
       {label:'법인HHI',n:1,cell:r=>r.법인HHI.toFixed(3)+' '+grade(r.법인편중),val:r=>r.법인HHI},
       {label:'최다 법인',cell:r=>esc(r.최다법인),val:r=>r.최다법인},
@@ -337,7 +369,9 @@ function personCard(r,roleName){
   return `<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div><h2 style="margin:0">${esc(r.명)}</h2>
-        <p class="muted" style="margin:2px 0 0">${roleName} · ${esc(r.부서||'')} ${esc(r.팀||'')} · 담당 ${num(r.총건수)}건 · 거래법인 ${num(r.거래법인수)}곳</p></div>
+        <p class="muted" style="margin:2px 0 0">${roleName} · ${esc(r.부서||'')} ${esc(r.팀||'')}</p>
+        <p class="muted" style="margin:2px 0 0">처리 ${num(r.처리건수)}건 중 <b>위임 ${num(r.총건수)}건</b>
+          (위임율 ${(r.위임율||0).toFixed(1)}%) · 거래법인 ${num(r.거래법인수)}곳</p></div>
       <div style="text-align:right"><div style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums">${r.법인HHI.toFixed(3)}</div>
         <div>${grade(r.법인편중)} <span class="muted tiny">법인 HHI</span></div></div>
     </div>
