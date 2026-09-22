@@ -143,8 +143,13 @@ h3{font-size:15px;font-weight:650;margin:22px 0 10px}
 .muted{color:var(--sub)}
 .tiny{font-size:12px}
 /* 세그먼트 탭 */
-.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
+.tabbar{display:flex;gap:10px;align-items:center;padding-bottom:12px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto}
 .tabs::-webkit-scrollbar{display:none}
+.printbtn{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  font:inherit;font-weight:600;padding:7px 14px;border-radius:980px;cursor:pointer;box-shadow:var(--shadow)}
+.printbtn:hover{background:var(--panel2)}
+.printhead{display:none}
 .tab{flex:0 0 auto;border:none;background:transparent;color:var(--sub);
   font:inherit;font-weight:600;padding:8px 14px;border-radius:980px;cursor:pointer;white-space:nowrap}
 .tab.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
@@ -203,6 +208,43 @@ label.chk{display:inline-flex;gap:6px;align-items:center;cursor:pointer;color:va
 .legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--sub);font-size:12px;margin:10px 0}
 .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
 footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);padding-top:16px;margin-top:24px}
+
+/* 인쇄 — 보고서 형태. 지금 보고 있는 탭만 한 부로 낸다. */
+@media print{
+  @page{size:A4;margin:14mm}
+  :root{--bg:#fff;--panel:#fff;--panel2:#fafafa;--line:#c7c7cc;--ink:#000;--sub:#4a4a4f;
+    --accent:#0057c8;--ok:#0057c8;--warn:#a85b00;--bad:#c1271c;
+    --okbg:#e8f0fe;--warnbg:#fdf0dc;--badbg:#fbe3e1;--shadow:none}
+  body{background:#fff;color:#000;font-size:10pt}
+  .wrap{max-width:none;padding:0}
+  header.top{position:static;background:none;border:none;margin:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+  header.top .wrap{padding:0}
+  .eyebrow,h1,.tabbar,.pick,.no-print,.printbtn,select,.seg,label.chk{display:none !important}
+  /* 인쇄용 표제. 화면에서는 감춰 둔다. */
+  .printhead{display:block;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px}
+  .printhead .t{font-size:17pt;font-weight:700;margin:0;letter-spacing:-.02em}
+  .printhead .s{font-size:10pt;color:#4a4a4f;margin:4px 0 0}
+  section.page{display:none !important}
+  section.page.on{display:block !important}
+  .card{border:1px solid #c7c7cc;border-radius:10px;padding:12px;margin-bottom:12px;
+    box-shadow:none;break-inside:avoid}
+  .kpi{border:1px solid #c7c7cc;border-radius:10px;padding:10px;break-inside:avoid}
+  .kpi .n{font-size:15pt}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  /* 화면에서는 표를 상자 안에서 굴리지만 인쇄면에서는 전부 펼쳐야 한다. */
+  .scroll{max-height:none;overflow:visible;border:1px solid #c7c7cc}
+  .tbl{font-size:9pt}
+  .tbl th{position:static;background:#f2f2f7;color:#000}
+  .tbl tbody tr{break-inside:avoid}
+  thead{display:table-header-group}
+  h2{font-size:13pt;break-after:avoid}
+  h3{font-size:10.5pt;break-after:avoid}
+  details{break-inside:avoid}
+  details>summary{list-style:none}
+  .bar,.bar>span,.badge,.heat td.cell,.kpi{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cmp{grid-template-columns:1fr 1fr}
+  footer{border-top:1px solid #c7c7cc;margin-top:14px;font-size:9pt}
+}
 </style>
 </head>
 <body>
@@ -210,10 +252,19 @@ footer{color:var(--sub);font-size:12px;border-top:1px solid var(--line);padding-
   <div class="wrap">
     <p class="eyebrow">보험금 심사 · 외부조사 배당 편중 점검</p>
     <h1>편중 대시보드</h1>
-    <div class="tabs" id="tabs"></div>
+    <div class="tabbar">
+      <div class="tabs" id="tabs"></div>
+      <button type="button" class="printbtn" id="printbtn" title="지금 보고 있는 탭을 보고서로 인쇄합니다">
+        인쇄 / PDF
+      </button>
+    </div>
   </div>
 </header>
 <div class="wrap">
+  <div class="printhead">
+    <p class="t">외부조사 배당 편중 분석 — <span id="ph-tab">요약</span></p>
+    <p class="s">보험금 심사 · 산출 __STAMP__ · <span id="ph-kpi"></span></p>
+  </div>
   <section class="page on" data-page="summary"></section>
   <section class="page" data-page="org"></section>
   <section class="page" data-page="person"></section>
@@ -309,7 +360,7 @@ function pageSummary(){
     {label:'최다 법인',cell:r=>esc(r.최다법인),val:r=>r.최다법인},
     {label:'비율',n:1,cell:r=>r.최다법인비율.toFixed(1)+'%',val:r=>r.최다법인비율},
   ];
-  return `<h2>요약</h2><p class="muted tiny">핵심 지표와 편중 상위 담당자입니다. 열 제목을 누르면 정렬됩니다.</p>
+  return `<h2>요약</h2><p class="muted tiny">핵심 지표와 편중 상위 담당자입니다.<span class="no-print"> 열 제목을 누르면 정렬됩니다.</span></p>
     <div class="grid kpis" style="margin:16px 0">${kpis}</div>
     ${qcard}
     <div class="card"><h3 style="margin-top:0">손사법인별 배당 비율 (위임 건수 기준 · ⚠ 평균의 ${T.vendor_ratio}배 이상)</h3>${vbars}</div>
@@ -386,7 +437,7 @@ function pagerPerson(which){
   if(!list.length){pageEl.innerHTML=`<h2>${which==='approver'?'차상위자별':'개인별'} 상세</h2><p class="muted">표본을 넘는 대상이 없습니다.</p>`;return;}
   const opts=list.map((r,i)=>`<option value="${i}">${esc(r.명)} · HHI ${r.법인HHI.toFixed(2)} · ${r.법인편중} · ${num(r.총건수)}건</option>`).join('');
   pageEl.innerHTML=`<h2>${which==='approver'?'차상위자별':'개인별'} 상세</h2>
-    <p class="muted tiny">HHI 높은 순으로 정렬돼 있습니다. 한 명을 고르면 법인·조사자 배당 비율이 나옵니다.</p>
+    <p class="muted tiny">HHI 높은 순으로 정렬돼 있습니다.<span class="no-print"> 한 명을 고르면 법인·조사자 배당 비율이 나옵니다.</span></p>
     <div class="pick"><select id="sel-${which}">${opts}</select></div>
     <div id="card-${which}"></div>`;
   const sel=document.getElementById('sel-'+which);
@@ -410,7 +461,7 @@ function pageMove(){
       {label:'편중유지',n:1,cell:r=>r.편중유지?'<span class="badge b-yes">유지</span>':'<span class="badge b-no">변경</span>',val:r=>r.편중유지?1:0},
     ];
     document.getElementById('move-body').innerHTML=
-      `<p class="muted tiny">전체 ${rows.length}건 중 편중 유지 <b style="color:var(--bad)">${kept}건</b>. 행을 누르면 이동 전후 법인 분포를 비교합니다.</p>`
+      `<p class="muted tiny">전체 ${rows.length}건 중 편중 유지 <b style="color:var(--bad)">${kept}건</b>.<span class="no-print"> 행을 누르면 이동 전후 법인 분포를 비교합니다.</span></p>`
       +table(cols,shown,{key:r=>r.id,click:showCmp})
       +`<div id="cmp" class="card" style="display:none"></div>`;
   }
@@ -448,9 +499,25 @@ PAGES.forEach(([id,label],i)=>{
   const b=document.createElement('button');b.className='tab'+(i===0?' on':'');b.textContent=label;
   b.onclick=()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    const pg=document.querySelector(`section[data-page="${id}"]`);pg.classList.add('on');};
+    const pg=document.querySelector(`section[data-page="${id}"]`);pg.classList.add('on');
+    // 인쇄 표제에도 지금 탭 이름이 찍혀야 한 부로 봤을 때 무슨 장인지 안다.
+    document.getElementById('ph-tab').textContent=label;};
   tabsEl.appendChild(b);
 });
+(function(){
+  const q=D.quality;
+  document.getElementById('ph-kpi').textContent=
+    `처리 ${num(q.처리건수)}건 · 위임 ${num(q.위임청구건수)}건 (위임율 ${q.위임율.toFixed(1)}%)`;
+  // 인쇄는 지금 보고 있는 탭만 나간다. 접힌 점검 패널은 펼쳐서 함께 낸다.
+  const btn=document.getElementById('printbtn');
+  btn.onclick=()=>{
+    const det=document.querySelector('section.page.on details');
+    const wasOpen=det?det.open:null;
+    if(det)det.open=true;
+    window.print();
+    if(det&&wasOpen!==null)setTimeout(()=>{det.open=wasOpen;},0);
+  };
+})();
 // 요약 외 페이지는 selectors가 innerHTML을 통째로 바꾸므로, 탭 전환 시가 아니라 최초에 한 번 그려둔다.
 document.querySelector('section[data-page="summary"]').innerHTML=pageSummary();
 pageOrg();pagerPerson('person');pagerPerson('approver');pageMove();
