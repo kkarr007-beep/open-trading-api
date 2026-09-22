@@ -150,7 +150,7 @@ def stacked_shares(
     note = f'<p class="note">{_escape(caption)}</p>' if caption else ""
     return f"""{note}{legend(order)}
 <div class="figure">
-<svg viewBox="0 0 {width} {height}" role="img" aria-label="구성비 누적 막대">
+<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="구성비 누적 막대">
 {body}
 </svg>
 </div>"""
@@ -205,7 +205,7 @@ def meters(rows: list[dict], caption: str = "") -> str:
     note = f'<p class="note">{_escape(caption)}</p>' if caption else ""
     return f"""{note}
 <div class="figure">
-<svg viewBox="0 0 {width} {height}" role="img" aria-label="담당자별 편중 업체 비율과 동료 기준선">
+<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="담당자별 편중 업체 비율과 동료 기준선">
 <text x="{LABEL_WIDTH}" y="10" class="axis-label">막대: 실제 위임 비율 · 세로선: 같은 점포 동료 기준</text>
 {body}
 </svg>
@@ -258,7 +258,7 @@ def heatmap(matrix: pd.DataFrame, caption: str = "") -> str:
     note = f'<p class="note">{_escape(caption)}</p>' if caption else ""
     return f"""{note}
 <div class="figure">
-<svg viewBox="0 0 {width} {height}" role="img" aria-label="업체별 연도별 위임율">
+<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="업체별 연도별 위임율">
 {body}
 </svg>
 </div>"""
@@ -306,7 +306,7 @@ def dumbbells(rows: list[dict], caption: str = "") -> str:
     note = f'<p class="note">{_escape(caption)}</p>' if caption else ""
     return f"""{note}
 <div class="figure">
-<svg viewBox="0 0 {width} {height}" role="img" aria-label="전환 전후 점유율 비교">
+<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="전환 전후 점유율 비교">
 {body}
 </svg>
 </div>"""
@@ -315,9 +315,10 @@ def dumbbells(rows: list[dict], caption: str = "") -> str:
 CSS = """
 .figure { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px 10px; overflow-x: auto; margin-bottom: 8px; max-width: 100%; }
-/* SVG 안의 글자는 접히지 않아 최소 너비가 필요하다. 다만 넘칠 때는 감싼 상자
-   안에서만 굴러야 한다. 좁은 화면에서 본문까지 밀려 나가면 읽을 수 없다. */
-.figure svg { width: 100%; height: auto; min-width: 520px; display: block; }
+/* SVG 에 고유 크기(width/height 속성)를 줘서 컨테이너에 맞춰 늘어나지 않게 한다.
+   늘어나면 그 안의 글자도 함께 커져 본문 글자 크기와 어긋난다. 화면보다 넓은
+   도해만 감싼 상자 안에서 가로로 굴린다. */
+.figure svg { max-width: 100%; height: auto; display: block; }
 .row-label { fill: var(--text); font-size: 12px; font-family: inherit; }
 .row-total { fill: var(--muted); font-size: 11px; font-family: inherit;
   font-variant-numeric: tabular-nums; }

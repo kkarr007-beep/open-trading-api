@@ -41,7 +41,7 @@ def run(data: dict[str, pd.DataFrame]) -> base.MetricResult:
     pairs = _attach_labels(pairs, cases)
     detail = pairs[
         [
-            "소속_명", "담당자_명", "법인_명", "배당건수", "행위자총건수",
+            "담당자_id", "소속_명", "담당자_명", "법인_명", "배당건수", "행위자총건수",
             "실제배당률", "기대배당률", "기대건수", "초과건수", "p값", "편중강도",
         ]
     ].rename(columns={"행위자총건수": "담당자총건수"})

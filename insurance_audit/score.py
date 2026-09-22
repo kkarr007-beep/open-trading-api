@@ -12,6 +12,12 @@ from . import config, stats
 from .metrics.base import MetricResult
 
 
+# 이 건수에 못 미치는 주체는 순위에서 아예 뺀다. 건수가 적으면 위임 비율이
+# 조금만 쏠려도 100%에 가까워져 상위로 튄다. 표본이 얇은 사람을 혐의자로
+# 올리면 안 된다.
+_MIN_VOLUME = {"담당자": config.MIN_CASES_PERSON, "결재자": config.MIN_CASES_PERSON, "법인": config.MIN_CASES_VENDOR}
+
+
 def build_rankings(
     results: list[MetricResult], data: dict[str, pd.DataFrame]
 ) -> dict[str, pd.DataFrame]:
@@ -28,7 +34,11 @@ def build_rankings(
                     scales[result.name] = result.scales[entity]
         if not frames:
             continue
-        rankings[entity] = _combine(entity, frames, scales, volumes.get(entity))
+        table = _combine(entity, frames, scales, volumes.get(entity))
+        floor = _MIN_VOLUME.get(entity)
+        if floor is not None and "담당건수" in table.columns:
+            table = table[table["담당건수"] >= floor].reset_index(drop=True)
+        rankings[entity] = table
 
     return rankings
 

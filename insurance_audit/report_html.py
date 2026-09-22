@@ -34,6 +34,7 @@ def write(
         _overview(data, rankings),
         _guide_section(),
         _person_section(rankings, results, views, data["cases"]),
+        _org_focus_section(views),
         _year_section(views),
         _org_section(views),
         _handler_section(rankings, results, views),
@@ -81,7 +82,7 @@ def _guide_section() -> str:
 같은 조건의 동료와 견줘 설명되지 않는 쏠림이 있는 대상을 추려, 소명을 받을 순서를 정하는 자료입니다.</p>
 
 <h3>혐의도</h3>
-<p>0~100 점입니다. 아래 10개 지표를 각각 채점한 뒤,
+<p>0~100 점입니다. 아래 9개 지표를 각각 채점한 뒤,
 <strong>여러 지표에 걸쳐 고르게 이상한 정도</strong>와
 <strong>한 지표에서 유난히 튄 정도</strong>를 6:4로 섞은 값입니다.
 한 지표만 크게 튀어도 점수가 오르도록 설계했습니다.</p>
@@ -95,7 +96,7 @@ def _guide_section() -> str:
 <tbody>{bands}</tbody>
 </table></div>
 
-<h3>지표 10종</h3>
+<h3>지표 9종</h3>
 <p class="note">가중치는 혐의도를 낼 때의 비중입니다. 결재 라인과 조사자 지정을 가장 무겁게 봅니다.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>지표</th><th>이름</th><th>비중</th><th>무엇을 보는가</th></tr></thead>
@@ -245,25 +246,40 @@ def _person_section(
         "결재자": views.get("차상위자별업체"),
     }
     org = _person_org(cases)
+    concentration = _concentration_lookup(results)
+    mobility = _mobility_lookup(results)
 
+    # 건수가 적어 표본이 얇은 사람은 순위에서 이미 빠졌지만, 명단에는 실제
+    # 신호가 있는 높음·중간만 올린다. 낮음까지 늘어놓으면 대상이 흐려진다.
     options: list[str] = []
     cards: list[str] = []
     for entity in ("담당자", "결재자"):
         frame = rankings.get(entity)
         if frame is None or frame.empty:
             continue
+        picked = frame[frame["등급"].isin(("높음", "중간"))]
+        if picked.empty:
+            continue
 
         group: list[str] = []
         mix = mixes.get(entity)
-        for _, row in frame.iterrows():
+        for _, row in picked.iterrows():
             pid = f"{entity}:{row['id']}"
             band = str(row.get("등급", ""))
+            volume = int(row["담당건수"]) if "담당건수" in row else 0
             group.append(
                 f'<option value="{html.escape(pid)}">'
-                f'{html.escape(str(row["명"]))} · {float(row["혐의도"]):.0f}점 · {html.escape(band)}'
+                f'{html.escape(str(row["명"]))} · {float(row["혐의도"]):.0f}점 · '
+                f'{html.escape(band)} · {volume:,}건'
                 f"</option>"
             )
-            cards.append(_person_card(entity, row, reasons, mix, org, pid))
+            cards.append(
+                _person_card(
+                    entity, row, reasons, mix, org, pid,
+                    concentration.get((entity, str(row["id"])), []),
+                    mobility.get((entity, str(row["id"])), []),
+                )
+            )
 
         if group:
             label = config.ROLE_TITLES.get(entity, entity)
@@ -278,7 +294,8 @@ def _person_section(
 
     return f"""<section id="people">
 <h2>인물별 상세</h2>
-<p class="note">이름을 고르면 그 사람의 지표별 점수와 위임 업체 내역이 모두 나옵니다.
+<p class="note">신호가 잡힌 높음·중간 대상만 명단에 있습니다.
+이름을 고르면 그 사람의 지표별 점수와 위임 업체 내역이 모두 나옵니다.
 혐의도가 높은 순으로 정렬돼 있습니다.</p>
 <div class="picker no-print">
   <label for="person-pick">대상 선택</label>
@@ -286,6 +303,72 @@ def _person_section(
 </div>
 {"".join(cards)}
 </section>"""
+
+
+def _concentration_lookup(
+    results: list[MetricResult],
+) -> dict[tuple[str, str], list[dict]]:
+    """(주체, id) -> 편중 업체별 실제·기대 배당률.
+
+    이전 버전에서 좋았던 '실제 대 동료 기대' 막대를 인물 카드에 되살리는 데 쓴다.
+    담당자는 A(배당 편중) 검정에서 실제·기대 배당률을 그대로 가져온다.
+    """
+    lookup: dict[tuple[str, str], list[dict]] = {}
+    a = _find(results, "A_배당편중")
+    if a is None or a.detail.empty or "담당자_id" not in a.detail.columns:
+        return lookup
+
+    strong = a.detail[a.detail["편중강도"] >= 2.0]
+    for pid, block in strong.groupby("담당자_id", sort=False):
+        # 소속을 옮긴 사람은 같은 업체가 소속마다 한 줄씩 잡힌다. 편중 업체
+        # 막대에는 업체를 한 번만 보여준다(가장 강한 소속 기준).
+        picked = (
+            block.sort_values("편중강도", ascending=False)
+            .drop_duplicates(subset=["법인_명"])
+            .head(4)
+        )
+        rows = [
+            {
+                "이름": str(r["법인_명"]),
+                "업체": "",
+                "실제": float(r["실제배당률"]),
+                "기대": float(r["기대배당률"]),
+                "건수": int(r["배당건수"]),
+            }
+            for _, r in picked.iterrows()
+        ]
+        if rows:
+            lookup[("담당자", str(pid))] = rows
+    return lookup
+
+
+def _mobility_lookup(
+    results: list[MetricResult],
+) -> dict[tuple[str, str], list[dict]]:
+    """(주체, id) -> 소속 이동 후에도 유지된 업체의 본인·소속 기대 배당률."""
+    lookup: dict[tuple[str, str], list[dict]] = {}
+    result = _find(results, "I_인물이동")
+    if result is None or result.detail.empty or "인물id" not in result.detail.columns:
+        return lookup
+
+    role_key = {"담당자": "담당자", "결재자": "결재자"}
+    for (role, pid), block in result.detail.groupby(["역할", "인물id"], sort=False):
+        entity = role_key.get(str(role))
+        if entity is None:
+            continue
+        rows = [
+            {
+                "이름": f"{r['법인_명']} · {r['소속']}",
+                "업체": "",
+                "실제": float(r["본인배당률"]),
+                "기대": float(r["소속기대율"]),
+                "건수": int(r["배당건수"]),
+            }
+            for _, r in block.sort_values("편중강도", ascending=False).head(6).iterrows()
+        ]
+        if rows:
+            lookup[(entity, str(pid))] = rows
+    return lookup
 
 
 def _person_org(cases: pd.DataFrame) -> dict[str, str]:
@@ -319,6 +402,8 @@ def _person_card(
     mix: object,
     org: dict[str, str],
     pid: str,
+    conc_rows: list[dict],
+    move_rows: list[dict],
 ) -> str:
     band = str(row.get("등급", ""))
     name = str(row["명"])
@@ -347,6 +432,26 @@ def _person_card(
         else "<p class='note'>채점된 지표가 없습니다.</p>"
     )
 
+    meter_block = ""
+    if conc_rows:
+        meter_block += (
+            "<h3>편중 업체 — 실제 대 동료 기대</h3>"
+            + charts.meters(
+                conc_rows,
+                caption="막대는 이 사람이 그 업체에 보낸 실제 비율, 세로선은 같은 팀 동료 평균입니다."
+                        " 막대가 세로선을 크게 넘으면 편중입니다.",
+            )
+        )
+    if move_rows:
+        meter_block += (
+            "<h3>소속을 옮긴 뒤에도 유지된 업체</h3>"
+            + charts.meters(
+                move_rows,
+                caption="부서·팀을 옮긴 뒤에도 같은 업체 편중이 남아 있는 경우입니다."
+                        " 세로선은 그 소속 동료 평균입니다.",
+            )
+        )
+
     return f"""<article class="person-card" data-pid="{html.escape(pid)}" hidden>
 <div class="person-head">
   <div>
@@ -361,6 +466,7 @@ def _person_card(
   </div>
 </div>
 <p class="person-reason">{html.escape(str(row.get("주요사유", "")) or "특이 신호 없음")}</p>
+{meter_block}
 <h3>지표별 점수</h3>
 {metric_table}
 {_vendor_table(mix, entity, str(row["id"]))}
@@ -401,6 +507,44 @@ def _share_bar(share: float) -> str:
         f'<span class="bar"><span class="bar-fill" style="width:{width:.0f}%"></span></span>'
         f'<span class="bar-value">{share:.1f}%</span>'
     )
+
+
+def _org_focus_section(views: dict[str, object]) -> str:
+    """부서·팀별로 어느 업체에 얼마나 집중했는지 한 표로 보여준다."""
+    blocks = []
+    for key, column in (("소속2별업체", "소속2"), ("소속3별업체", "소속3")):
+        frame = views.get(key)
+        if not isinstance(frame, pd.DataFrame) or frame.empty:
+            continue
+        if column not in frame.columns or "조직내순위" not in frame.columns:
+            continue
+        unit = config.ORG_TITLES.get(column, column)
+        top = frame[frame["조직내순위"] == 1].copy()
+        # 집중도가 높은 조직이 위로 오게 정렬한다.
+        top = top.sort_values("구성비", ascending=False)
+        rows = "".join(
+            f"<tr><td class='name'>{html.escape(str(r[column]))}</td>"
+            f"<td class='name'>{html.escape(str(r['법인_명']))}</td>"
+            f"<td class='num'>{int(r['위임건수']):,} / {int(r['조직총건수']):,}건</td>"
+            f"<td class='score'>{_share_bar(float(r['구성비']))}</td></tr>"
+            for _, r in top.iterrows()
+        )
+        blocks.append(
+            f"<h3>{html.escape(unit)}별 최다 위임 업체</h3>"
+            f"<p class='note'>구성비가 높을수록 그 {html.escape(unit)}의 위임이 한 업체에 쏠려 있습니다."
+            f" 전체 조합은 엑셀 보고서에 있습니다.</p>"
+            f"<div class='table-wrap'><table>"
+            f"<thead><tr><th>{html.escape(unit)}</th><th>최다 업체</th>"
+            f"<th>건수</th><th>구성비</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table></div>"
+        )
+
+    if not blocks:
+        return ""
+    return f"""<section id="org-focus">
+<h2>부서·팀별 업체 집중</h2>
+{"".join(blocks)}
+</section>"""
 
 
 def _mobility_section(results: list[MetricResult]) -> str:
@@ -629,7 +773,7 @@ def _network(rankings: dict[str, pd.DataFrame]) -> str:
 <h2>반복되는 위임 라인</h2>
 <p class="note">혐의도 상위 조합. 선이 진할수록 신호가 강합니다.</p>
 <div class="figure">
-<svg viewBox="0 0 860 {height}" role="img" aria-label="담당자-결재자-법인 3자 조합 도해">
+<svg viewBox="0 0 860 {height}" width="860" height="{height}" role="img" aria-label="담당자-결재자-법인 3자 조합 도해">
 <text x="150" y="20" class="axis-label" text-anchor="end">담당자</text>
 <text x="400" y="20" class="axis-label" text-anchor="middle">결재자</text>
 <text x="650" y="20" class="axis-label" text-anchor="start">손사법인</text>
@@ -729,8 +873,9 @@ tbody tr:last-child td { border-bottom: none; }
 .band-mid { background: var(--mid-bg); color: var(--mid); }
 .band-low, .band-none { background: var(--low-bg); color: var(--low); }
 .figure { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-x: auto; }
-/* min-width 를 두면 좁은 화면에서 본문이 통째로 밀려 나간다. 감싼 상자만 굴린다. */
-svg { width: 100%; height: auto; display: block; }
+/* SVG 는 고유 크기(width/height 속성)를 유지한다. 컨테이너에 맞춰 늘어나면
+   글자가 함께 커져 본문과 어긋난다. 넓은 도해만 상자 안에서 가로로 굴린다. */
+svg { max-width: 100%; height: auto; display: block; }
 .edge { stroke: var(--accent); stroke-width: 1.5; }
 .node { fill: var(--accent); }
 .node-text { fill: var(--text); font-size: 11px; font-family: inherit; }

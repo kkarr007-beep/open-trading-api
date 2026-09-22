@@ -41,6 +41,7 @@ def run(data: dict[str, pd.DataFrame]) -> base.MetricResult:
         if table.empty:
             continue
         table.insert(0, "역할", role)
+        table["인물id"] = table[id_column].astype(str)
         details.append(table)
         result.add_score(role, _scores(table, id_column, name_column), scale=SCALE)
 
@@ -49,7 +50,7 @@ def run(data: dict[str, pd.DataFrame]) -> base.MetricResult:
 
     combined = pd.concat(details, ignore_index=True)
     result.detail = combined[
-        ["역할", "인물", "법인_명", "유지소속수", "소속", "기간", "배당건수",
+        ["역할", "인물id", "인물", "법인_명", "유지소속수", "소속", "기간", "배당건수",
          "본인배당률", "소속기대율", "편중강도", "지속강도"]
     ]
     result.note = (
