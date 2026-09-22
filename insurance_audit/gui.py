@@ -188,10 +188,9 @@ class ColumnMapDialog(_BASE_WINDOW):
         canvas.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
-        canvas.bind_all(
-            "<MouseWheel>",
-            lambda e: canvas.yview_scroll(int(-e.delta / 120), "units"),
-        )
+        canvas.bind_all("<MouseWheel>", self._on_wheel)
+        canvas.bind_all("<Button-4>", self._on_wheel)
+        canvas.bind_all("<Button-5>", self._on_wheel)
         self._canvas = canvas
 
         choices = [_NONE_CHOICE] + self._raw_columns
@@ -231,17 +230,9 @@ class ColumnMapDialog(_BASE_WINDOW):
         self._rows[key] = row
 
         required = key in config.REQUIRED
-        state = self._state_of(key, column)
-        dot = {"필수미지정": "●", "확인": "●", "정확": "●"}.get(state, "○")
-        color = {
-            "필수미지정": _COLORS["risk_high"],
-            "확인": _COLORS["risk_mid"],
-            "정확": _COLORS["risk_low"],
-        }.get(state, _COLORS["text_sub"])
 
         mark = ttk.Label(
-            row, text=dot, foreground=color, background=_COLORS["card"],
-            font=("맑은 고딕", 9), width=2,
+            row, background=_COLORS["card"], font=("맑은 고딕", 9), width=2,
         )
         mark.pack(side="left")
         self._rows[key + "__mark"] = mark
@@ -260,14 +251,34 @@ class ColumnMapDialog(_BASE_WINDOW):
         )
         combo.pack(side="left", padx=(4, 8))
         combo.bind("<<ComboboxSelected>>", lambda e, k=key: self._on_pick(k))
+        # 위젯 자신에게 걸어야 콤보박스 클래스 기본 동작보다 먼저 잡아 막을 수 있다.
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            combo.bind(sequence, self._on_wheel)
 
         sample = ttk.Label(
-            row, text=self._sample_for(var.get()), width=24, anchor="w",
+            row, width=24, anchor="w",
             background=_COLORS["card"], foreground=_COLORS["text_sub"],
             font=("맑은 고딕", 9),
         )
         sample.pack(side="left")
         self._rows[key + "__sample"] = sample
+
+        self._refresh_row(key)
+
+    def _on_wheel(self, event) -> str:
+        """휠은 목록만 굴린다.
+
+        읽기 전용 콤보박스는 Tk 기본 동작으로 휠에 선택값이 바뀐다. 목록을
+        내리려고 굴리면 커서가 지나간 줄의 지정이 통째로 어긋난다.
+        """
+        if getattr(event, "num", None) == 4:
+            step = -1
+        elif getattr(event, "num", None) == 5:
+            step = 1
+        else:
+            step = -1 if event.delta > 0 else 1
+        self._canvas.yview_scroll(step, "units")
+        return "break"
 
     def _sample_for(self, column: str) -> str:
         if column == _NONE_CHOICE:
@@ -279,22 +290,34 @@ class ColumnMapDialog(_BASE_WINDOW):
             return "필수미지정" if key in config.REQUIRED else "없음"
         return self._confidence.get(key, "정확")
 
-    def _on_pick(self, key: str):
-        """사람이 고른 항목은 확인을 마친 것으로 본다."""
-        self._confidence[key] = "정확"
+    def _refresh_row(self, key: str):
+        """한 줄의 상태 점과 예시 값을 현재 지정에 맞춘다."""
         column = self._vars[key].get()
-        self._rows[key + "__sample"].config(text=self._sample_for(column))
-
         state = self._state_of(key, column)
-        mark = self._rows[key + "__mark"]
-        mark.config(
-            text="●" if state != "없음" else "○",
+        self._rows[key + "__sample"].config(text=self._sample_for(column))
+        self._rows[key + "__mark"].config(
+            text="○" if state == "없음" else "●",
             foreground={
                 "필수미지정": _COLORS["risk_high"],
                 "확인": _COLORS["risk_mid"],
                 "정확": _COLORS["risk_low"],
             }.get(state, _COLORS["text_sub"]),
         )
+
+    def _on_pick(self, key: str):
+        """사람이 고른 항목은 확인을 마친 것으로 본다."""
+        self._confidence[key] = "정확"
+        column = self._vars[key].get()
+
+        # 한 컬럼은 한 항목에만 붙는다. 다른 항목이 쓰고 있으면 그쪽을 비워
+        # 사용자가 충돌을 따로 찾아다니지 않게 한다.
+        if column != _NONE_CHOICE:
+            for other, var in self._vars.items():
+                if other != key and var.get() == column:
+                    var.set(_NONE_CHOICE)
+                    self._refresh_row(other)
+
+        self._refresh_row(key)
         self._refresh_summary()
 
     def _apply_filter(self):
@@ -314,16 +337,7 @@ class ColumnMapDialog(_BASE_WINDOW):
         for key, var in self._vars.items():
             column = current.get(key)
             var.set(str(column) if column is not None else _NONE_CHOICE)
-            self._rows[key + "__sample"].config(text=self._sample_for(var.get()))
-            state = self._state_of(key, column)
-            self._rows[key + "__mark"].config(
-                text="●" if state != "없음" else "○",
-                foreground={
-                    "필수미지정": _COLORS["risk_high"],
-                    "확인": _COLORS["risk_mid"],
-                    "정확": _COLORS["risk_low"],
-                }.get(state, _COLORS["text_sub"]),
-            )
+            self._refresh_row(key)
         self._refresh_summary()
         self._apply_filter()
 
@@ -356,16 +370,18 @@ class ColumnMapDialog(_BASE_WINDOW):
     def _accept(self):
         mapping = self._current_mapping()
 
-        duplicates = [
-            column
-            for column in set(mapping)
-            if sum(1 for v in self._vars.values() if v.get() == column) > 1
-        ]
-        if duplicates:
+        holders: dict[str, list[str]] = {}
+        for key, var in self._vars.items():
+            column = var.get()
+            if column and column != _NONE_CHOICE:
+                holders.setdefault(column, []).append(key)
+        clashes = {c: k for c, k in holders.items() if len(k) > 1}
+        if clashes:
             messagebox.showwarning(
                 "중복 지정",
-                "한 컬럼을 여러 항목에 지정했습니다:\n"
-                + ", ".join(str(d) for d in duplicates),
+                "한 컬럼을 여러 항목에 지정했습니다.\n"
+                "아래 항목 중 하나만 남기세요.\n\n"
+                + "\n".join(f"{c} → {', '.join(k)}" for c, k in clashes.items()),
                 parent=self,
             )
             return
