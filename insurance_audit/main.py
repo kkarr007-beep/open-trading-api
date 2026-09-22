@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import config, console, loader, prep, profile, report_html, report_xlsx, score, stats
+from . import config, console, loader, prep, profile, report_app, report_html, report_xlsx, score, stats
 from .metrics import MODULES
 
 
@@ -141,17 +141,24 @@ def run_pipeline(
         rankings, results, data, drill, column_check, views,
     )
     html_path = report_html.write(
-        outdir_path / f"{prefix}_{stamp}.html", rankings, results, data, views
+        outdir_path / f"{prefix}_상세_{stamp}.html", rankings, results, data, views
+    )
+    # 편중 대시보드 — 실무 판독용 메인 산출물. 애플 스타일 대화형 단일 파일.
+    dash_path = report_app.write(
+        outdir_path / f"{prefix}_대시보드_{stamp}.html", data
     )
 
     elapsed = time.time() - started
     print(f"\n완료 ({elapsed:.1f}초)")
+    print(f"  대시보드: {dash_path}")
+    print(f"  상세 HTML: {html_path}")
     print(f"  엑셀: {xlsx_path}")
-    print(f"  HTML: {html_path}")
     return 0, {
         "rankings": rankings,
         "xlsx_path": str(xlsx_path),
-        "html_path": str(html_path),
+        "html_path": str(dash_path),
+        "detail_html_path": str(html_path),
+        "dashboard_path": str(dash_path),
         "outdir": str(outdir_path.resolve()),
         "elapsed": elapsed,
         "cases_count": len(data["cases"]),

@@ -71,10 +71,10 @@ jobs:
             exit 1
           }
           Get-ChildItem 분석결과
-          $html = Get-ChildItem 분석결과 -Filter *.html
+          $dash = Get-ChildItem 분석결과 -Filter *대시보드*.html
           $xlsx = Get-ChildItem 분석결과 -Filter *.xlsx
-          if (-not $html -or -not $xlsx) {
-            Write-Error "보고서가 생성되지 않았습니다"
+          if (-not $dash -or -not $xlsx) {
+            Write-Error "대시보드 또는 엑셀 보고서가 생성되지 않았습니다"
             exit 1
           }
           Write-Host "동작 확인 완료"

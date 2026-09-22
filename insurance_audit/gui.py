@@ -851,11 +851,18 @@ class App:
         )
         self._open_xlsx_btn.pack(side="right", padx=(4, 0))
 
-        self._open_html_btn = ttk.Button(
-            control_bar, text="HTML 보고서",
-            command=lambda: _open_file_path(info.get("html_path")),
+        self._open_detail_btn = ttk.Button(
+            control_bar, text="상세 보고서",
+            command=lambda: _open_file_path(info.get("detail_html_path")),
         )
-        self._open_html_btn.pack(side="right", padx=(4, 0))
+        self._open_detail_btn.pack(side="right", padx=(4, 0))
+
+        # 대시보드가 메인 산출물이라 강조 스타일로 둔다.
+        self._open_dash_btn = ttk.Button(
+            control_bar, text="  편중 대시보드 열기  ", style="Accent.TButton",
+            command=lambda: _open_file_path(info.get("dashboard_path")),
+        )
+        self._open_dash_btn.pack(side="right", padx=(4, 0))
 
         self._open_folder_btn = ttk.Button(
             control_bar, text="결과 폴더",
@@ -1411,14 +1418,17 @@ class App:
         self._populate_results(info)
         self.notebook.select(self.tab_results)
 
-        outdir = info.get("outdir", "분석결과")
-        resolved = Path(outdir).resolve()
         ok = messagebox.askyesno(
             "완료",
-            f"분석이 완료되었습니다.\n\n결과 폴더를 열까요?\n{resolved}",
+            "분석이 완료되었습니다.\n\n편중 대시보드를 지금 열까요?\n"
+            "(담당자·차상위자 편중과 이동 후 유지 여부를 한 화면에서 봅니다)",
         )
         if ok:
-            _open_folder(resolved)
+            dash = info.get("dashboard_path")
+            if dash:
+                _open_file_path(dash)
+            else:
+                _open_folder(Path(info.get("outdir", "분석결과")).resolve())
 
     def _on_fail(self, reason: str = ""):
         body = "분석 중 오류가 발생했습니다.\n진행 상황 로그를 확인하세요."
