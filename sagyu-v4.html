@@ -456,7 +456,16 @@ body.fly-open::before{
   .flyout{left:0;right:0;bottom:var(--nav-bar-h);top:auto;width:auto;max-height:60vh;border-radius:12px 12px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.3)}
   body.fly-open::before{inset:0 0 var(--nav-bar-h) 0}
 }
-</style></head>
+</style>
+<style>
+/* ── 창 너비를 그대로 쓰기 (1120px 제한 해제) ───────────────── */
+main{max-width:none}
+@media (min-width:1500px){ main{padding:24px 40px} }
+@media (min-width:2200px){ main{padding:28px 56px} }
+/* 긴 글은 읽기 좋은 폭을 그대로 유지한다 */
+.rmain{max-width:78ch}
+</style>
+</head>
 <body>
 <div class="app">
  <header class="top">
