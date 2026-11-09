@@ -515,6 +515,126 @@ main{max-width:none}
 @media (max-width:900px){ .sub-tabs{display:none!important} }
 @media print{ .sub-tabs{display:none!important} }
 </style>
+<style>
+/* ── ⑦ 엔터 줄바꿈 살리기 ───────────────────────────── */
+.nl,.anote,.hn,.cki,.scard .small:not(.mut){white-space:pre-wrap}
+.ctbl td .nl{white-space:pre-wrap}
+
+/* ── ① 개정 전·후 견주기 ────────────────────────────── */
+.warnbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;
+  border-color:var(--warn);background:var(--warn-muted)}
+.para.dif{white-space:pre-wrap;line-height:1.75}
+.para.dif ins{text-decoration:none;color:var(--danger);font-weight:700;
+  background:var(--danger-muted);border-radius:3px;padding:0 2px}
+.para.dif del{color:var(--ink-tertiary);text-decoration:line-through;opacity:.8}
+.para.dnew{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.dtag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.7}
+.dtag.new{background:var(--ok-muted);color:var(--ok)}
+.dtag.chg{background:var(--danger-muted);color:var(--danger)}
+.dtag.del{background:var(--bg-sunken);color:var(--ink-tertiary)}
+.art.gone{opacity:.72}
+.art.gone h3{text-decoration:line-through}
+
+/* ── ② 전체 목차 ────────────────────────────────────── */
+.mibar{display:flex;align-items:center;gap:10px;margin:0 0 14px;position:sticky;
+  top:calc(var(--top-h) + var(--nav-tab-h));z-index:9;padding:8px 0;background:var(--bg)}
+.mibar input{flex:1;min-width:0}
+.migrp{margin-bottom:18px}
+.mih{margin:0 0 8px;font-size:12px;font-weight:800;color:var(--ink-tertiary);letter-spacing:.03em}
+.mireg{border:1px solid var(--line);border-radius:var(--r);background:var(--pane);margin-bottom:8px;overflow:hidden}
+.mireg>summary{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;cursor:pointer;
+  padding:10px 14px;list-style:none;font-size:14px}
+.mireg>summary::-webkit-details-marker{display:none}
+.mireg>summary:hover{background:var(--bg-sunken)}
+.mireg>summary:before{content:'▸';color:var(--ink-tertiary);font-size:11px;flex:0 0 auto}
+.mireg[open]>summary:before{content:'▾'}
+.mireg>summary small{font-weight:400}
+.mihit{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--accent)}
+.mil{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 14px;
+  padding:4px 14px 14px;border-top:1px solid var(--border-subtle)}
+.mil .mich{grid-column:1/-1;margin:10px 0 2px;font-size:11.5px;font-weight:800;color:var(--ink-tertiary)}
+.mia{display:flex;gap:6px;padding:4px 6px;border-radius:var(--radius-sm);
+  font-size:13px;color:var(--ink-secondary);text-decoration:none;min-width:0}
+.mia:hover{background:var(--accent-muted);color:var(--accent)}
+.mia b{flex:0 0 auto;font-weight:700;color:var(--ink)}
+.mia span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── ⑤ 감사점검 추출 카드 ───────────────────────────── */
+.asbar{display:flex;align-items:center;gap:12px;margin:0 0 12px;flex-wrap:wrap}
+.asbar input[type=text],.asbar #asF{flex:1;min-width:220px}
+.asall{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
+.ascards{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.ascard{display:flex;flex-direction:column;gap:8px;cursor:pointer}
+.ascard:hover{border-color:var(--accent)}
+.ascard:has(input:checked){border-color:var(--accent);background:var(--accent-muted)}
+.asrow{display:flex;align-items:center;gap:8px}
+.astag{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-muted);
+  padding:1px 8px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.astext{font-size:13.5px;line-height:1.6;word-break:keep-all}
+.assrc{display:flex;align-items:center;gap:5px;margin-top:auto;padding-top:8px;
+  border-top:1px solid var(--border-subtle);font-size:12px;color:var(--ink-tertiary);
+  text-decoration:none;min-width:0}
+.assrc span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5}
+.assrc:hover{color:var(--accent)}
+.assrc .ico{flex:0 0 auto}
+
+/* ── ⑥ 감사 보고서 ──────────────────────────────────── */
+.report{max-width:1000px;margin:0 auto;background:var(--pane);border:1px solid var(--line);
+  border-radius:var(--r);padding:34px 40px 40px}
+.rhd{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:20px}
+.rhd h1{margin:0 0 4px;font-size:24px;letter-spacing:-.01em}
+.rhd p{margin:0;font-size:13px}
+.rstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:26px}
+.rstat{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--bg-sunken)}
+.rstat b{display:block;font-size:19px;line-height:1.2}
+.rstat span{font-size:11.5px;color:var(--ink-tertiary)}
+.rsec{margin-bottom:26px}
+.rsec h3{margin:0 0 10px;padding-bottom:6px;font-size:14.5px;border-bottom:1px solid var(--line)}
+.rtbl{width:100%;font-size:13px}
+.rtbl th{background:var(--bg-sunken);font-weight:700;white-space:nowrap}
+.rtbl td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rtbl tr.over td{background:var(--danger-muted)}
+.rtbl td.nl{color:var(--ink-secondary);font-size:12.5px}
+.rpill{display:inline-block;min-width:34px;text-align:center;padding:1px 7px;border-radius:999px;font-weight:700}
+.rpill.lo{background:var(--ok-muted);color:var(--ok)}
+.rpill.mid{background:var(--warn-muted);color:var(--warn)}
+.rpill.hi{background:var(--danger-muted);color:var(--danger)}
+.rbar{display:block;height:7px;min-width:90px;border-radius:999px;background:var(--bg-sunken);overflow:hidden}
+.rbar i{display:block;height:100%;background:var(--accent)}
+.red{color:var(--danger)}
+@media print{.report{max-width:none;margin:0;border:0;padding:0}.rstat{break-inside:avoid}.rsec{break-inside:avoid}}
+
+/* ── ④ 좌우 바꾸기 · 너비 조절 ──────────────────────── */
+.reader{display:grid;grid-template-columns:minmax(0,1fr) 10px var(--tocw,230px);gap:0;align-items:start}
+.reader>.rmain{order:1;padding-right:10px}
+.reader>.rsplit{order:2}
+.reader>.toc{order:3}
+.reader[data-side=left]{grid-template-columns:var(--tocw,230px) 10px minmax(0,1fr)}
+.reader[data-side=left]>.toc{order:1}
+.reader[data-side=left]>.rmain{order:3;padding-right:0;padding-left:10px}
+.rsplit{position:sticky;top:calc(var(--top-h) + 12px);height:calc(100vh - var(--top-h) - 40px);
+  cursor:col-resize;display:flex;align-items:center;justify-content:center;touch-action:none}
+.rsplit:before{content:'';width:3px;height:46px;border-radius:999px;background:var(--line)}
+.rsplit:hover:before,.rsplit:focus-visible:before{background:var(--accent);height:80px}
+.rsplit:focus-visible{outline:none}
+body.rs-drag{cursor:col-resize;user-select:none}
+.toc .toch{display:flex;align-items:center;gap:8px}
+.toc .toch b{flex:1}
+.relp:not([hidden]){position:fixed;right:14px;top:calc(var(--top-h) + 56px);width:340px;left:auto;
+  max-height:calc(100vh - var(--top-h) - 90px);overflow:auto;z-index:30}
+@media (max-width:1100px){
+  .reader,.reader[data-side=left]{display:block}
+  .reader>.rmain{padding:0!important}
+  .rsplit{display:none}
+}
+@media print{.rsplit,.toc{display:none!important}.reader,.reader[data-side=left]{display:block}}
+
+/* ── ③ 본문 속 그림 ─────────────────────────────────── */
+.para.img figure{margin:12px 0}
+.para.img img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r);display:block}
+.para.img figcaption{margin-top:5px;font-size:12px;color:var(--ink-tertiary)}
+@media print{.para.img img{max-width:100%;break-inside:avoid}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -663,6 +783,7 @@ function parseRegulationText(text){text=normalizeText(text);const lines=text.spl
 /* 조 본문 → 항/호/목 구조 */
 function structure(content){const out=[];let p=0,h=0;String(content||'').split('\n').forEach(l=>{const t=l.trim();if(!t){return}
  let lvl='b',key=p?('p'+p+(h?'h'+h:'')):'';const c=t[0];
+ if(/^!\[[^\]]*\]\((data:image\/|blob:)/.test(t)){out.push({lvl:'img',key:key||('g'+out.length),text:t});return}
  if(isTblRow(t)){out.push({lvl:'t',key:key||('t'+out.length),text:t});return}
  if(CIRC.includes(c)){p=CIRC.indexOf(c)+1;h=0;lvl='p';key='p'+p}
  else if(/^\(\d+\)/.test(t)){p=+t.match(/^\((\d+)\)/)[1];lvl='p';key='p'+p}
@@ -1086,7 +1207,28 @@ function modal(title,body,buttons=[]){const md=$('#modal');md.innerHTML='<div cl
  const close=()=>{md.hidden=true;md.innerHTML=''};$('.x',md).onclick=close;md.onclick=e=>{if(e.target===md)close()};$$('.mf .btn',md).forEach(b=>b.onclick=()=>{const r=buttons[b.dataset.i].f&&buttons[b.dataset.i].f(md);if(r!==false)close()});const f=$('input,textarea,select',md);if(f)f.focus();return md}
 function promptM(title,fields,cb){modal(title,fields.map((f,i)=>'<label class="fl">'+esc(f.l)+(f.ta?'<textarea data-f="'+i+'" rows="'+(f.rows||4)+'">'+esc(f.v||'')+'</textarea>':f.opts?'<select data-f="'+i+'">'+f.opts.map(o=>'<option value="'+esc(o[0])+'"'+(o[0]==f.v?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>':'<input data-f="'+i+'" type="'+(f.type||'text')+'" value="'+esc(f.v||'')+'">')+'</label>').join(''),[{t:'취소'},{t:'저장',cls:'pri',f:md=>cb($$('[data-f]',md).map(x=>x.value))}])}
 /* ===== 사규 목록 ===== */
-ROUTES.regs=(m)=>{const s=S();m.innerHTML='<div class="rowh"><h2>사규 본문</h2><a class="btn pri" href="#/import">＋ 사규 등록</a></div>'+(s.regulations.length?s.categories.slice().sort((a,b)=>a.order-b.order).map(c=>{const rs=s.regulations.filter(r=>r.categoryId===c.id);return rs.length?'<h3>'+esc(c.name)+'</h3><div class="cards">'+rs.map(r=>'<a class="scard" href="'+link(r.id)+'"><div class="sch"><b>'+esc(r.title)+'</b> '+(r.status!=='active'?'<span class="tag">'+esc(r.status)+'</span>':'')+'</div><div class="mut small">'+arts(r).length+'개 조 · '+esc((curVer(r)||{}).label||'')+' · 시행 '+fmtDate((curVer(r)||{}).effectiveDate)+' · 버전 '+r.versions.length+'</div></a>').join('')+'</div>':''}).join('')+(()=>{const rs=s.regulations.filter(r=>!s.categories.some(c=>c.id===r.categoryId));return rs.length?'<h3>미분류</h3><div class="cards">'+rs.map(r=>'<a class="scard" href="'+link(r.id)+'"><b>'+esc(r.title)+'</b></a>').join('')+'</div>':''})():empty('등록된 사규가 없습니다.','<a class="btn pri" href="#/import">사규 등록</a>'))};
+function dupGroups(){const g={};S().regulations.forEach(r=>{const k=nk(r.title);(g[k]=g[k]||[]).push(r)});
+ return Object.keys(g).map(k=>g[k]).filter(a=>a.length>1)}
+function mergeDup(group){
+ const all=[];group.forEach(r=>r.versions.forEach(v=>all.push(v)));
+ all.sort((a,b)=>String(a.effectiveDate||'').localeCompare(String(b.effectiveDate||''))||0);
+ const keep=group[0];keep.versions=all;keep.currentVersionId=all[all.length-1].id;keep.updatedAt=nowISO();
+ const s=S();const gone=group.slice(1).map(r=>r.id);
+ s.regulations=s.regulations.filter(r=>!gone.includes(r.id));
+ /* 북마크·메모·컬렉션이 가리키던 사규를 남은 쪽으로 옮긴다 */
+ const fix=o=>{if(o&&gone.includes(o.regId))o.regId=keep.id};
+ s.bookmarkFolders.forEach(f=>f.bookmarks.forEach(fix));
+ s.collections.forEach(c=>c.items.forEach(fix));
+ s.checklists.forEach(c=>c.items.forEach(i=>(i.refs||[]).forEach(fix)));
+ const nn={};Object.keys(s.notes||{}).forEach(k=>{const[a,b]=k.split('::');nn[(gone.includes(a)?keep.id:a)+'::'+b]=s.notes[k]});s.notes=nn;
+ return keep}
+ROUTES.regs=(m)=>{const s=S();const dg=dupGroups();
+ const dupBar=dg.length?'<div class="card warnbar"><b>같은 이름으로 따로 등록된 사규가 '+dg.length+'건 있습니다.</b> <span class="mut small">'+esc(dg.map(a=>a[0].title).join(', '))+'</span> <button class="btn sm pri" id="dupFix">하나로 합치기</button></div>':'';
+ m.innerHTML='<div class="rowh"><h2>사규 본문</h2><a class="btn pri" href="#/import">＋ 사규 등록</a></div>'+dupBar+(s.regulations.length?s.categories.slice().sort((a,b)=>a.order-b.order).map(c=>{const rs=s.regulations.filter(r=>r.categoryId===c.id);return rs.length?'<h3>'+esc(c.name)+'</h3><div class="cards">'+rs.map(r=>'<a class="scard" href="'+link(r.id)+'"><div class="sch"><b>'+esc(r.title)+'</b> '+(r.status!=='active'?'<span class="tag">'+esc(r.status)+'</span>':'')+'</div><div class="mut small">'+arts(r).length+'개 조 · '+esc((curVer(r)||{}).label||'')+' · 시행 '+fmtDate((curVer(r)||{}).effectiveDate)+' · 버전 '+r.versions.length+'</div></a>').join('')+'</div>':''}).join('')+(()=>{const rs=s.regulations.filter(r=>!s.categories.some(c=>c.id===r.categoryId));return rs.length?'<h3>미분류</h3><div class="cards">'+rs.map(r=>'<a class="scard" href="'+link(r.id)+'"><b>'+esc(r.title)+'</b></a>').join('')+'</div>':''})():empty('등록된 사규가 없습니다.','<a class="btn pri" href="#/import">사규 등록</a>'));
+ const df=$('#dupFix');if(df)df.onclick=()=>modal('사규 합치기',
+  '<p>아래 사규를 각각 하나로 합칩니다. 버전은 시행일 순으로 이어 붙고, 북마크·메모·컬렉션도 함께 옮깁니다.</p><ul>'
+   +dg.map(a=>'<li><b>'+esc(a[0].title)+'</b> — '+a.length+'건, 버전 '+a.reduce((n,r)=>n+r.versions.length,0)+'개</li>').join('')+'</ul>',
+  [{t:'취소'},{t:'합치기',cls:'pri',f:async()=>{await Store.snapshot('사규 합치기 전');dg.forEach(mergeDup);save();rerender();toast('합쳤습니다','success')}}])};
 /* ===== 리더 ===== */
 let SPY=null;
 function renderContent(u,terms){if(!u||!u.a)return'<div class="para mut">(내용 없음)</div>';
@@ -1101,21 +1243,59 @@ function renderContent(u,terms){if(!u||!u.a)return'<div class="para mut">(내용
      +(head?'<thead>'+tr(rows[0],'th')+'</thead>':'')
      +'<tbody>'+rows.slice(head?1:0).map(r=>tr(r,'td')).join('')+'</tbody></table></div></div>';
    continue}
+  if(p.lvl==='img'){const mm=/^!\[([^\]]*)\]\(([^)]+)\)/.exec(p.text);
+   out+='<div class="para img" data-pk="'+p.key+'"><figure><img src="'+esc(mm?mm[2]:'')+'" alt="'+esc(mm?mm[1]:'')+'" loading="lazy">'
+     +(mm&&mm[1]?'<figcaption>'+esc(mm[1])+'</figcaption>':'')+'</figure></div>';i++;continue}
   out+='<div class="para '+p.lvl+'" data-pk="'+p.key+'">'+cell(p.text)+'</div>';i++}
  return out||'<div class="para mut">(내용 없음)</div>'}
 ROUTES.reg=(m,p)=>{const r=findReg(p.parts[0]);if(!r){m.innerHTML=empty('사규를 찾을 수 없습니다.');return}IX.build();const v=curVer(r);const as=v.articles;const terms=(p.params.q||'').split('|').filter(Boolean);
- const s=S();s.ui=s.ui||{};const rv=(s.ui.readView==='list')?'list':'card';const verSel=r.versions.length>1?'<select id="verSel" aria-label="버전">'+r.versions.map(x=>'<option value="'+x.id+'"'+(x.id===v.id?' selected':'')+'>'+esc(x.label+' ('+fmtDate(x.effectiveDate)+')')+'</option>').join('')+'</select>':'';
+ const s=S();s.ui=s.ui||{};const rv=(s.ui.readView==='list')?'list':'card';
+ const side=(s.ui.tocSide==='left')?'left':'right';
+ const tocw=Math.min(520,Math.max(150,+s.ui.tocW||230));
+ const vi=r.versions.indexOf(v), pv=vi>0?r.versions[vi-1]:null;
+ const dm=!!(pv&&s.ui.diffMode);
+ const prevOf=a=>pv?pv.articles.find(x=>x.number===a.number):null;
+ const gone=dm?pv.articles.filter(a=>!as.some(x=>x.number===a.number)):[];
+ const verSel=r.versions.length>1?'<select id="verSel" aria-label="버전">'+r.versions.map(x=>'<option value="'+x.id+'"'+(x.id===v.id?' selected':'')+'>'+esc(x.label+' ('+fmtDate(x.effectiveDate)+')')+'</option>').join('')+'</select>':'';
  let toc='',lastCh=null;as.forEach(a=>{if((a.chapter||'')!==lastCh){lastCh=a.chapter||'';if(lastCh)toc+='<div class="tch">'+esc(lastCh)+'</div>'}toc+='<a href="'+link(r.id,a.id)+'" data-toc="'+a.id+'">'+esc(a.number)+' <span>'+esc(a.title)+'</span></a>'});
  let body='',lc=null,ls=null;as.forEach(a=>{const u=IX.unit(r.id,a.id)||{r,a,key:r.id+'::'+a.id,text:a.content||''};if((a.chapter||'')!==lc){lc=a.chapter||'';ls=null;if(lc)body+='<h2 class="chap">'+esc(lc)+'</h2>'}if(a.section&&a.section!==ls){ls=a.section;body+='<h3 class="sec">'+esc(ls)+'</h3>'}
   const key=r.id+'::'+a.id;const bm=s.bookmarkFolders.some(f=>f.bookmarks.some(b=>b.regId===r.id&&b.articleId===a.id));const note=s.notes[key];const nref=(IX.refs.out.get(key)||[]).length+(IX.refs.back.get(key)||[]).length;
   body+='<article class="art'+(a.difficult?' diff':'')+'" id="art-'+a.id+'" data-aid="'+a.id+'"><header><h3><span class="no">'+esc(a.number)+'</span> '+esc(a.title)+'</h3><div class="acts">'+
   [['bm',ico('bookmark'),'북마크 (B)'],['note',ico('note'),'메모 (M)'],['rel',ico('link')+(nref?'<small>'+nref+'</small>':''),'연관 조항'],['col',ico('folder'),'컬렉션에 추가'],['dif',ico(a.difficult?'alert':'help'),'해석 어려움 표시'],['tts',ico('volume'),'읽어주기'],['copy',ico('copy'),'조문 복사'],['edit',ico('edit'),'조문 편집']].map(([k,i,t],ix)=>(ix===3?'<details class="more"><summary class="ib" title="더 보기" aria-label="더 보기">⋯</summary><div class="menu">':'')+'<button class="ib'+(k==='bm'&&bm?' on':'')+'" data-act="'+k+'" title="'+t+'" aria-label="'+t+'">'+i+(ix>=3?' <span>'+t+'</span>':'')+'</button>').join('')+'</div></details></div></header>'+
-  '<div class="abody">'+renderContent(u,terms)+'</div>'+(note?'<div class="anote">'+ico('note')+' '+esc(note)+'</div>':'')+(a.tags&&a.tags.length?'<div class="chips">'+a.tags.map(t=>'<span class="chip sm">#'+esc(t)+'</span>').join('')+'</div>':'')+'</article>'});
- m.innerHTML=`<div class="reader" data-rv="${rv}">
+  '<div class="abody">'+(function(){
+    if(!dm)return renderContent(u,terms);
+    const dtxt=t=>String(t||'').replace(/!\[([^\]]*)\]\((?:data:image\/|blob:)[^)]*\)/g,'[그림 $1]');
+    const o=prevOf(a);
+    if(!o)return '<div class="para dnew"><span class="dtag new">신설</span></div><div class="para dif">'+wdiff('',dtxt(a.content))+'</div>';
+    if((o.content||'')===(a.content||'')&&(o.title||'')===(a.title||''))return renderContent(u,terms);
+    return '<div class="para dnew"><span class="dtag chg">개정</span><span class="mut small">'+esc(pv.label)+' → '+esc(v.label)+'</span></div>'
+      +'<div class="para dif">'+wdiff((o.title?'('+o.title+') ':'')+dtxt(o.content),(a.title?'('+a.title+') ':'')+dtxt(a.content))+'</div>';
+  })()+'</div>'+(note?'<div class="anote">'+ico('note')+' '+esc(note)+'</div>':'')+(a.tags&&a.tags.length?'<div class="chips">'+a.tags.map(t=>'<span class="chip sm">#'+esc(t)+'</span>').join('')+'</div>':'')+'</article>'});
+ if(dm&&gone.length)body+='<h2 class="chap">이번 개정에서 삭제된 조</h2>'+gone.map(a=>'<article class="art gone"><header><h3><span class="no">'+esc(a.number)+'</span> '+esc(a.title)+'</h3><span class="dtag del">삭제</span></header><div class="abody"><div class="para dif"><del>'+esc(String(a.content||'').replace(/!\[([^\]]*)\]\((?:data:image\/|blob:)[^)]*\)/g,'[그림 $1]'))+'</del></div></div></article>').join('');
+ m.innerHTML=`<div class="reader" data-rv="${rv}" data-side="${side}" style="--tocw:${tocw}px"${dm?' data-dm="1"':''}>
  <div class="rmain"><div class="rtop"><div><h1>${esc(r.title)}</h1><div class="mut small">${esc(catName(r.categoryId))} · ${esc(v.label)} · 시행 ${fmtDate(v.effectiveDate)} ${v.reason?'· '+esc(v.reason):''}</div></div>
- <div class="rtools"><span class="seg" id="rvSeg"><button type="button" class="btn sm${rv==='card'?' pri':''}" data-rv="card" title="카드형">카드</button><button type="button" class="btn sm${rv==='list'?' pri':''}" data-rv="list" title="목록형">목록</button></span>${verSel}<input id="inF" placeholder="이 사규 내 찾기" value="${esc(terms.join(' '))}" aria-label="이 사규 내 찾기"><button class="btn sm" id="rRel">연관 패널</button><button class="btn sm" id="rDiff">비교</button><button class="btn sm" id="rPrint">${ico('printer')} 인쇄</button><button class="btn sm" id="rMore">⋯</button></div></div>${body}</div>
- <nav class="toc" aria-label="조문 목차"><div class="toch"><b>조문목록</b><input id="tocF" placeholder="목차 필터" aria-label="목차 필터"></div><div id="tocL">${toc}</div></nav>
+ <div class="rtools">${pv?'<button type="button" class="btn sm'+(dm?' pri':'')+'" id="dmBtn" title="바로 앞 버전과 견주어 바뀐 곳을 빨갛게 보여줍니다">개정 표시</button>':''}<span class="seg" id="rvSeg"><button type="button" class="btn sm${rv==='card'?' pri':''}" data-rv="card" title="카드형">카드</button><button type="button" class="btn sm${rv==='list'?' pri':''}" data-rv="list" title="목록형">목록</button></span>${verSel}<input id="inF" placeholder="이 사규 내 찾기" value="${esc(terms.join(' '))}" aria-label="이 사규 내 찾기"><button class="btn sm" id="rRel">연관 패널</button><button class="btn sm" id="rDiff">비교</button><button class="btn sm" id="rPrint">${ico('printer')} 인쇄</button><button class="btn sm" id="rMore">⋯</button></div></div>${body}</div>
+ <div class="rsplit" id="rSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="너비 조절 (좌우 화살표)" title="끌어서 너비 조절 · 두 번 누르면 기본값"></div>
+ <nav class="toc" aria-label="조문 목차"><div class="toch"><b>조문목록</b><button type="button" class="ib" id="tocSide" title="본문과 자리 바꾸기" aria-label="본문과 자리 바꾸기">${ico('compare',15)}</button></div><div class="toch"><input id="tocF" placeholder="목차 필터" aria-label="목차 필터"></div><div id="tocL">${toc}</div></nav>
  <aside class="relp" id="relp" hidden></aside></div>`;
+ const dmb=$('#dmBtn');if(dmb)dmb.onclick=()=>{s.ui.diffMode=!s.ui.diffMode;save();rerender()};
+ const sb=$('#tocSide');if(sb)sb.onclick=()=>{s.ui.tocSide=(s.ui.tocSide==='left')?'right':'left';save();
+  const rd=$('.reader');if(rd)rd.dataset.side=s.ui.tocSide};
+ (function(){const sp=$('#rSplit'),rd=$('.reader');if(!sp||!rd)return;
+  const set=w=>{const v=Math.min(520,Math.max(150,Math.round(w)));rd.style.setProperty('--tocw',v+'px');s.ui.tocW=v};
+  let drag=0;
+  const move=e=>{if(!drag)return;const b=rd.getBoundingClientRect();
+   set(rd.dataset.side==='left' ? (e.clientX-b.left) : (b.right-e.clientX));e.preventDefault()};
+  const end=()=>{if(!drag)return;drag=0;document.body.classList.remove('rs-drag');
+   window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);
+   window.removeEventListener('pointercancel',end);save()};
+  sp.addEventListener('pointerdown',e=>{drag=1;document.body.classList.add('rs-drag');
+   window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);
+   window.addEventListener('pointercancel',end);e.preventDefault()});
+  sp.addEventListener('dblclick',()=>{set(230);save()});
+  sp.addEventListener('keydown',e=>{const cur=parseInt(getComputedStyle(rd).getPropertyValue('--tocw'))||230;
+   if(e.key==='ArrowLeft'){e.preventDefault();set(rd.dataset.side==='left'?cur-20:cur+20);save()}
+   if(e.key==='ArrowRight'){e.preventDefault();set(rd.dataset.side==='left'?cur+20:cur-20);save()}})})();
  $$('#rvSeg [data-rv]').forEach(b=>b.onclick=()=>{const k=b.dataset.rv;s.ui.readView=k;save();
   const rd=$('.reader');if(rd)rd.dataset.rv=k;
   $$('#rvSeg [data-rv]').forEach(x=>x.classList.toggle('pri',x.dataset.rv===k))});
@@ -1150,6 +1330,42 @@ function miniGraph(u,out,back,sim){const nodes=[{id:u.key,label:u.a.number,num:u
  out.forEach(x=>add(x,'cite'));back.forEach(x=>add(x,'back'));sim.forEach(s=>add(s.u,'sim',Math.round(s.s*100)+'%'));
  if(nodes.length<2)return'<p class="mut small">연관 조항이 없습니다.</p>';
  return GraphView.html({W:340,H:300,maxLabel:8,ariaLabel:'연관 조항 그래프',nodes,edges,legend:[{kind:'cite',label:'인용(이 조 →)'},{kind:'back',label:'피인용(→ 이 조)'},{kind:'sim',label:'유사(유사도 ≥12%)'}]})}
+/* 그림을 줄여 본문에 끼워 넣는다 (파일 안에 담으므로 폭 1200px 로 줄인다) */
+function imgShrink(file,maxW){return new Promise((ok,no)=>{
+ const fr=new FileReader();
+ fr.onerror=()=>no(new Error('그림을 읽지 못했습니다.'));
+ fr.onload=()=>{const im=new Image();
+  im.onerror=()=>no(new Error('그림 형식을 알 수 없습니다.'));
+  im.onload=()=>{const sc=Math.min(1,(maxW||1200)/im.width);
+   const c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+   c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+   const png=/png|gif|webp/i.test(file.type);
+   ok(c.toDataURL(png?'image/png':'image/jpeg',png?undefined:0.82))};
+  im.src=fr.result};
+ fr.readAsDataURL(file)})}
+function editArt(r,a){
+ const md=modal('조문 편집 — '+esc(a.number),
+  '<div class="grid2"><label class="fl">조 번호<input id="eaN" value="'+esc(a.number)+'"></label>'
+  +'<label class="fl">제목<input id="eaT" value="'+esc(a.title||'')+'"></label></div>'
+  +'<label class="fl">내용<textarea id="eaC" rows="14">'+esc(a.content||'')+'</textarea></label>'
+  +'<div class="row"><label class="btn sm">'+ico('file')+' 그림 넣기<input type="file" id="eaI" accept="image/*" multiple hidden></label>'
+  +'<label class="btn sm">'+ico('grid')+' 표 넣기<input type="hidden"></label>'
+  +'<span class="mut small">그림은 파일 안에 함께 담깁니다. 폭 1200px 로 줄여 넣습니다.</span></div>'
+  +'<label class="fl">태그(쉼표)<input id="eaG" value="'+esc((a.tags||[]).join(', '))+'"></label>',
+  [{t:'취소'},{t:'저장',cls:'pri',f:()=>{
+    a.number=$('#eaN').value.trim()||a.number;a.title=$('#eaT').value.trim();
+    a.content=$('#eaC').value;a.tags=$('#eaG').value.split(',').map(x=>x.trim()).filter(Boolean);
+    r.updatedAt=nowISO();save();rerender();toast('고쳤습니다','success')}}]);
+ const ta=$('#eaC',md);
+ const put=t=>{const p=ta.selectionStart;ta.value=ta.value.slice(0,p)+t+ta.value.slice(ta.selectionEnd);
+   ta.selectionStart=ta.selectionEnd=p+t.length;ta.focus()};
+ $('#eaI',md).onchange=async e=>{const fs=[].slice.call(e.target.files||[]);if(!fs.length)return;
+  try{for(const f of fs){const d=await imgShrink(f,1200);put('\n!['+f.name.replace(/[\]\[]/g,'')+']('+d+')\n')}
+   toast(fs.length+'장 넣었습니다','success')}catch(x){toast(x.message,'error')}
+  e.target.value=''};
+ const tb=$$('.btn.sm',md).find(b=>/표 넣기/.test(b.textContent));
+ if(tb)tb.onclick=ev=>{ev.preventDefault();put('\n| 구분 | 내용 | 비고 |\n|  |  |  |\n|  |  |  |\n')};
+}
 function artAction(r,aid,act){const a=arts(r).find(x=>x.id===aid);const key=r.id+'::'+aid;const s=S();
  if(act==='bm'){const f=s.bookmarkFolders[0];const i=f.bookmarks.findIndex(b=>b.regId===r.id&&b.articleId===aid);const any=s.bookmarkFolders.find(ff=>ff.bookmarks.some(b=>b.regId===r.id&&b.articleId===aid));if(any){any.bookmarks=any.bookmarks.filter(b=>!(b.regId===r.id&&b.articleId===aid));toast('북마크 해제')}else{f.bookmarks.unshift({regId:r.id,articleId:aid,at:nowISO()});toast('북마크 추가','success')}save();refreshArt(r,aid)}
  else if(act==='note')promptM('메모 — '+artLabel(a),[{l:'해석 메모 (검색·솔루션에 반영)',ta:1,rows:6,v:s.notes[key]||''}],([v])=>{if(v.trim())s.notes[key]=v.trim();else delete s.notes[key];save();refreshArt(r,aid)});
@@ -1158,7 +1374,8 @@ function artAction(r,aid,act){const a=arts(r).find(x=>x.id===aid);const key=r.id
  else if(act==='dif'){a.difficult=!a.difficult;save();refreshArt(r,aid)}
  else if(act==='tts'){if(!window.speechSynthesis)return toast('이 브라우저는 읽어주기를 지원하지 않습니다','error');speechSynthesis.cancel();const ut=new SpeechSynthesisUtterance(a.number+' '+a.title+'. '+a.content);ut.lang='ko-KR';speechSynthesis.speak(ut);toast('읽는 중… (다시 누르면 처음부터)')}
  else if(act==='copy'){const t=r.title+' '+artLabel(a)+'\n'+a.content;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('복사했습니다','success')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사했습니다','success')})}
- else if(act==='edit')promptM('조문 편집',[{l:'조 번호',v:a.number},{l:'제목',v:a.title},{l:'내용',ta:1,rows:12,v:a.content},{l:'태그(쉼표)',v:(a.tags||[]).join(', ')}],([n,t,c,tg])=>{a.number=n.trim();a.title=t.trim();a.content=c;a.tags=tg.split(',').map(x=>x.trim()).filter(Boolean);r.updatedAt=nowISO();save();rerender()})}
+ else if(act==='edit')editArt(r,a);
+ else if(act==='__never')promptM('조문 편집',[{l:'조 번호',v:a.number},{l:'제목',v:a.title},{l:'내용',ta:1,rows:12,v:a.content},{l:'태그(쉼표)',v:(a.tags||[]).join(', ')}],([n,t,c,tg])=>{a.number=n.trim();a.title=t.trim();a.content=c;a.tags=tg.split(',').map(x=>x.trim()).filter(Boolean);r.updatedAt=nowISO();save();rerender()})}
 function refreshArt(r,aid){const y=window.scrollY;const h=location.hash;rerender();requestAnimationFrame(()=>window.scrollTo(0,y))}
 function regAction(r,k){const s=S();
  if(k==='meta')promptM('기본 정보',[{l:'사규명',v:r.title},{l:'카테고리',opts:s.categories.map(c=>[c.id,c.name]),v:r.categoryId},{l:'상태',opts:[['active','시행'],['draft','초안'],['abolished','폐지']],v:r.status}],([t,c,st])=>{r.title=t.trim()||r.title;r.categoryId=c;r.status=st;r.updatedAt=nowISO();save();rerender()});
@@ -1169,7 +1386,7 @@ function regAction(r,k){const s=S();
  else if(k==='del')modal('사규 삭제','<p><b>'+esc(r.title)+'</b>을(를) 삭제할까요? 삭제 직전 스냅샷이 저장되어 설정에서 되돌릴 수 있습니다.</p>',[{t:'취소'},{t:'삭제',cls:'danger',f:async()=>{await Store.snapshot('사규 삭제 전: '+r.title);s.regulations=s.regulations.filter(x=>x!==r);save();location.hash='#/regs'}}])}
 
 /* ===== 사규 등록·붙여넣기 ===== */
-let DRAFT=null;
+let DRAFT=null,IMPSEP=0;
 ROUTES.import=(m,p)=>{const s=S();const target=p.params.reg?findReg(p.params.reg):null;
  m.innerHTML=`<h2>${target?'새 개정 버전 추가 — '+esc(target.title):'사규 등록 · 붙여넣기 · 파일 가져오기'}</h2>
  <div class="card"><div class="grid2"><label class="fl">사규명<input id="imT" value="${esc(target?target.title:'')}" ${target?'disabled':''} placeholder="예) 취업규칙"></label><label class="fl">카테고리<select id="imC" ${target?'disabled':''}>${s.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')}</select></label>
@@ -1189,10 +1406,52 @@ function drawDraft(target){const P=$('#imPrev');if(!DRAFT)return;const nArt=DRAF
   else if(b.dataset.d==='up'&&i){[DRAFT[i-1],DRAFT[i]]=[DRAFT[i],DRAFT[i-1]]}else if(b.dataset.d==='del')DRAFT.splice(i,1);drawDraft(target);return}
   if(e.target.id==='imOK'){sync();const s=S();const ver={id:uid('v'),label:$('#imV').value||'제정',effectiveDate:$('#imD').value,reason:$('#imR').value,articles:DRAFT.map(a=>({id:a.id,number:a.number.trim(),title:a.title.trim(),content:a.content,chapter:a.chapter||'',section:a.section||'',tags:a.tags||[],difficult:false,crossRefs:[],supp:!!a.supp}))};
    let r=target;if(r){const old=arts(r);ver.articles.forEach(a=>{const o=old.find(x=>x.number===a.number);if(o){a.id=o.id;a.difficult=o.difficult;a.tags=o.tags}});r.versions.push(ver);r.currentVersionId=ver.id;r.updatedAt=nowISO()}
-   else{const t=$('#imT').value.trim();if(!t)return toast('사규명을 입력하세요','error');r={id:uid('r'),title:t,categoryId:$('#imC').value,departmentIds:[],status:'active',currentVersionId:ver.id,versions:[ver],relatedRegIds:[],createdAt:nowISO(),updatedAt:nowISO()};s.regulations.push(r)}
+   else{const t=$('#imT').value.trim();if(!t)return toast('사규명을 입력하세요','error');
+    const dup=s.regulations.find(x=>nk(x.title)===nk(t));
+    if(dup&&!IMPSEP){
+     modal('같은 이름의 사규가 있습니다',
+      '<p><b>'+esc(dup.title)+'</b> 이(가) 이미 등록돼 있습니다. (버전 '+dup.versions.length+'개 · 현재 '+esc((curVer(dup)||{}).label||'')+')</p>'
+      +'<p class="mut small">개정 버전으로 넣으시면 사규는 하나로 유지되고, 읽기 화면에서 개정 전·후를 견주어 볼 수 있습니다.</p>',
+      [{t:'취소'},
+       {t:'별도 사규로 등록',f:()=>{IMPSEP=1;setTimeout(()=>{const k=$('#imOK');if(k)k.click();IMPSEP=0},0)}},
+       {t:'개정 버전으로 추가',cls:'pri',f:()=>{
+         const old=arts(dup);ver.articles.forEach(a=>{const o=old.find(x=>x.number===a.number);if(o){a.id=o.id;a.difficult=o.difficult;a.tags=o.tags}});
+         dup.versions.push(ver);dup.currentVersionId=ver.id;dup.updatedAt=nowISO();
+         save();DRAFT=null;toast('개정 버전으로 넣었습니다 ('+ver.articles.length+'개 조)','success');location.hash=link(dup.id)}}]);
+     return}
+    r={id:uid('r'),title:t,categoryId:$('#imC').value,departmentIds:[],status:'active',currentVersionId:ver.id,versions:[ver],relatedRegIds:[],createdAt:nowISO(),updatedAt:nowISO()};s.regulations.push(r)}
    save();DRAFT=null;toast('저장했습니다 ('+ver.articles.length+'개 조)','success');location.hash=link(r.id)}}}
 /* ===== 전체 목차 ===== */
-ROUTES.masterIndex=(m)=>{m.innerHTML='<h2>전체 목차</h2><input id="miF" class="full" placeholder="조 제목 필터" aria-label="필터">'+S().regulations.map(r=>'<details class="card" open><summary><b>'+esc(r.title)+'</b> <span class="mut small">'+arts(r).length+'개 조</span></summary><div class="mil">'+arts(r).map(a=>'<a href="'+link(r.id,a.id)+'">'+esc(artLabel(a))+'</a>').join('')+'</div></details>').join('');$('#miF').oninput=e=>{const q=nk(e.target.value);$$('.mil a',m).forEach(a=>a.hidden=q&&!nk(a.textContent).includes(q))}};
+ROUTES.masterIndex=(m)=>{const s=S();const MIK=[];
+ const cats=s.categories.slice().sort((a,b)=>a.order-b.order);
+ const grp=cats.map(c=>({n:c.name,rs:s.regulations.filter(r=>r.categoryId===c.id)}))
+   .concat([{n:'미분류',rs:s.regulations.filter(r=>!s.categories.some(c=>c.id===r.categoryId))}])
+   .filter(g=>g.rs.length);
+ const tot=s.regulations.reduce((n,r)=>n+arts(r).length,0);
+ m.innerHTML='<div class="rowh"><h2>전체 목차</h2>'
+  +'<span class="row"><button class="btn sm" id="miOpen">모두 펴기</button><button class="btn sm" id="miShut">모두 접기</button></span></div>'
+  +'<div class="mibar"><input id="miF" placeholder="사규명 · 조 번호 · 조 제목 · 본문으로 찾기 (예: 징계, 5조, 음주)" aria-label="목차 찾기">'
+  +'<span class="mut small" id="miN">사규 '+s.regulations.length+' · 조 '+tot+'</span></div>'
+  +(s.regulations.length? grp.map(g=>'<div class="migrp" data-cat="'+esc(g.n)+'"><h3 class="mih">'+esc(g.n)+' <small class="mut">'+g.rs.length+'</small></h3>'
+    +g.rs.map(r=>{const as=arts(r);let last=null,inner='';
+      as.forEach(a=>{if((a.chapter||'')!==last){last=a.chapter||'';if(last)inner+='<div class="mich">'+esc(last)+'</div>'}
+        const ix=MIK.length;MIK.push(nk(a.number+' '+a.title+' '+(a.content||'')));
+        inner+='<a class="mia" href="'+link(r.id,a.id)+'" data-i="'+ix+'" data-k="'+esc(nk(a.number+' '+a.title))+'"><b>'+esc(a.number)+'</b> <span>'+esc(a.title)+'</span></a>'});
+      return '<details class="mireg" open data-k="'+esc(nk(r.title))+'"><summary><b>'+esc(r.title)+'</b>'
+       +'<small class="mut">'+as.length+'개 조 · '+esc((curVer(r)||{}).label||'')+' · 시행 '+fmtDate((curVer(r)||{}).effectiveDate)+'</small>'
+       +'<span class="mihit"></span></summary><div class="mil">'+inner+'</div></details>'}).join('')
+    +'</div>').join('') : empty('등록된 사규가 없습니다.','<a class="btn pri" href="#/import">사규 등록</a>'));
+ const all=()=>$$('.mireg',m);
+ $('#miOpen').onclick=()=>all().forEach(d=>d.open=true);
+ $('#miShut').onclick=()=>all().forEach(d=>d.open=false);
+ $('#miF').oninput=e=>{const q=nk(e.target.value);let n=0;
+  all().forEach(d=>{const regHit=!q||d.dataset.k.includes(q);let c=0;
+   $$('.mia',d).forEach(a=>{const hit=!q||regHit||a.dataset.k.includes(q)||(MIK[+a.dataset.i]||'').includes(q);a.hidden=!hit;if(hit)c++});
+   $$('.mich',d).forEach(h=>{h.hidden=!!q});
+   const show=!q||regHit||c>0;d.hidden=!show;if(show){n+=c;if(q)d.open=true}
+   $('.mihit',d).textContent=q&&show?c+'건':''});
+  $$('.migrp',m).forEach(g=>{g.hidden=!$$('.mireg',g).some(d=>!d.hidden)});
+  $('#miN').textContent=q?('찾은 조 '+n+'건'):('사규 '+S().regulations.length+' · 조 '+tot)}};
 /* ===== 용어 사전 ===== */
 ROUTES.glossary=(m)=>{const g=glossary();m.innerHTML='<div class="rowh"><h2>용어 사전</h2><button class="btn pri" id="gAdd">＋ 용어 추가</button></div><p class="mut small">조문의 “○○”이란 정의를 자동 추출하고, 직접 추가한 용어·별칭은 검색 확장에 사용됩니다.</p><table class="tbl"><thead><tr><th>용어</th><th>정의</th><th>출처</th><th></th></tr></thead><tbody>'+g.map((x,i)=>'<tr><td><b>'+esc(x.term)+'</b>'+(x.aliases&&x.aliases.length?'<div class="mut small">별칭: '+esc(x.aliases.join(', '))+'</div>':'')+'</td><td>'+esc(x.def)+'</td><td>'+(x.a?'<a href="'+link(x.r.id,x.a.id)+'">'+esc(x.r.title+' '+x.a.number)+'</a>':'직접 입력')+'</td><td>'+(x.custom?'<button class="btn sm danger" data-gi="'+i+'">삭제</button>':'')+'</td></tr>').join('')+'</tbody></table>'+(g.length?'':empty('용어가 없습니다.'));
  $('#gAdd').onclick=()=>promptM('용어 추가',[{l:'용어'},{l:'정의',ta:1},{l:'별칭(쉼표)'}],([t,d,a])=>{if(!t.trim())return;S().glossaryCustom.push({id:uid('g'),term:t.trim(),def:d.trim(),aliases:a.split(',').map(x=>x.trim()).filter(Boolean)});save();rerender()});
@@ -1258,7 +1517,20 @@ ROUTES.difficult=(m)=>{IX.build();const us=IX.units.filter(u=>u.a.difficult);m.i
 /* ===== 감사 ===== */
 const AUDIT_KW=['하여야 한다','아니 된다','금지','승인','보고','보관','점검','기록','통지','신고','이내'];
 ROUTES.auditScan=(m)=>{IX.build();const items=[];IX.units.forEach(u=>sentences(u.text).forEach(s=>{const k=AUDIT_KW.filter(w=>s.includes(w));if(k.length)items.push({u,s,k})}));
- m.innerHTML='<div class="rowh"><h2>감사점검 항목 추출</h2><button class="btn pri" id="asMk">'+ico('check')+' 선택 항목으로 체크리스트 생성</button></div><p class="mut small">의무(하여야 한다)·금지·기한 문장을 자동 추출합니다. '+items.length+'개.</p><table class="tbl"><tbody>'+items.map((x,i)=>'<tr><td><input type="checkbox" data-i="'+i+'" aria-label="선택"></td><td>'+hl(x.s,x.k)+'</td><td><a href="'+link(x.u.r.id,x.u.a.id)+'">'+esc(x.u.r.title+' '+x.u.a.number)+'</a></td></tr>').join('')+'</tbody></table>';
+ m.innerHTML='<div class="rowh"><h2>감사점검 항목 추출</h2><button class="btn pri" id="asMk">'+ico('check')+' 선택 항목으로 체크리스트 생성</button></div>'
+  +'<p class="mut small">의무(하여야 한다)·금지·기한 문장을 자동 추출합니다. '+items.length+'개.</p>'
+  +(items.length?'<div class="asbar"><label class="asall"><input type="checkbox" id="asAll"> 전체 선택</label>'
+    +'<input id="asF" placeholder="문장 · 사규명으로 추리기" aria-label="추리기"><span class="mut small" id="asN">'+items.length+'건</span></div>'
+   +'<div class="cards ascards">'+items.map((x,i)=>'<label class="scard ascard" data-k="'+esc(nk(x.s+' '+x.u.r.title+' '+x.u.a.number))+'">'
+     +'<div class="asrow"><input type="checkbox" data-i="'+i+'" aria-label="선택">'
+     +'<span class="astag">'+esc(x.k.slice(0,2).join(' · '))+'</span></div>'
+     +'<div class="astext">'+hl(x.s,x.k)+'</div>'
+     +'<a class="assrc" href="'+link(x.u.r.id,x.u.a.id)+'" title="'+esc(x.u.r.title+' '+x.u.a.number)+'">'+ico('book',14)+'<span>'+esc(x.u.r.title+' '+x.u.a.number)+'</span></a>'
+    +'</label>').join('')+'</div>' : empty('추출할 문장이 없습니다. 사규를 먼저 등록하세요.'));
+ const aa=$('#asAll');if(aa)aa.onchange=()=>$$('.ascard:not([hidden]) input[data-i]',m).forEach(c=>c.checked=aa.checked);
+ const af=$('#asF');if(af)af.oninput=e=>{const q=nk(e.target.value);let n=0;
+  $$('.ascard',m).forEach(c=>{const hit=!q||c.dataset.k.includes(q);c.hidden=!hit;if(hit)n++});
+  $('#asN').textContent=n+'건'};
  $('#asMk').onclick=()=>{const sel=$$('input[data-i]:checked',m).map(c=>items[c.dataset.i]);if(!sel.length)return toast('항목을 선택하세요','error');S().checklists.unshift({id:uid('cl'),title:'감사 점검 '+todayStr(),items:sel.map(x=>({id:uid('ci'),text:x.s,done:false,refs:[{regId:x.u.r.id,articleId:x.u.a.id}]}))});save();location.hash='#/checklists'}};
 ROUTES.checklists=(m)=>{const s=S();m.innerHTML='<div class="rowh"><h2>점검 체크리스트</h2><button class="btn pri" id="clAdd">＋ 체크리스트</button></div>'+(s.checklists.map((c,i)=>{const d=c.items.filter(x=>x.done).length;return'<div class="card"><div class="rowh"><h3>'+esc(c.title)+' <small class="mut">'+d+'/'+c.items.length+'</small></h3><span><button class="btn sm" data-ai="'+i+'">＋ 항목</button><button class="btn sm danger" data-dc="'+i+'">삭제</button></span></div><div class="bar"><i style="width:'+(c.items.length?d/c.items.length*100:0)+'%"></i></div>'+c.items.map((x,j)=>'<label class="cli"><input type="checkbox" data-t="'+i+':'+j+'" '+(x.done?'checked':'')+'> <span>'+esc(x.text)+'</span> '+refLinks(x.refs)+'</label>').join('')+'</div>'}).join('')||empty('체크리스트가 없습니다. 감사점검 추출에서 만들 수 있습니다.'));
  $('#clAdd').onclick=()=>promptM('체크리스트',[{l:'제목'}],([t])=>{s.checklists.unshift({id:uid('cl'),title:t||'점검',items:[]});save();rerender()});
@@ -1268,9 +1540,40 @@ ROUTES.riskMatrix=(m)=>{const s=S();const ra=r=>s.riskAssessments.find(x=>x.targ
  m.innerHTML='<h2>위험도 매트릭스</h2><div class="grid2"><div class="card"><table class="rm"><tbody>'+[5,4,3,2,1].map(l=>'<tr><th>'+l+'</th>'+[1,2,3,4,5].map(i=>{const sc=l*i;return'<td class="'+(sc>=15?'hi':sc>=8?'md':'lo')+'">'+cell(l,i).map(r=>'<a href="'+link(r.id)+'">'+esc(r.title)+'</a>').join('<br>')+'</td>'}).join('')+'</tr>').join('')+'<tr><th></th>'+[1,2,3,4,5].map(i=>'<th>'+i+'</th>').join('')+'</tr></tbody></table><p class="mut small">세로: 발생가능성 · 가로: 영향도</p></div><div class="card"><table class="tbl"><thead><tr><th>사규</th><th>가능성</th><th>영향</th><th>점수</th><th>다음 감사</th><th></th></tr></thead><tbody>'+s.regulations.map(r=>{const a=ra(r);return'<tr><td>'+esc(r.title)+'</td><td>'+(a?a.likelihood:'-')+'</td><td>'+(a?a.impact:'-')+'</td><td><b>'+(a?a.likelihood*a.impact:'-')+'</b></td><td>'+(a?fmtDate(a.nextAuditDate):'-')+'</td><td><button class="btn sm" data-r="'+r.id+'">평가</button></td></tr>'}).join('')+'</tbody></table></div></div>';
  m.onclick=e=>{const b=e.target.closest('[data-r]');if(!b)return;const r=findReg(b.dataset.r);let a=ra(r);const o=[1,2,3,4,5].map(x=>[x,x]);promptM('위험 평가 — '+r.title,[{l:'발생가능성(1~5)',opts:o,v:a?a.likelihood:3},{l:'영향도(1~5)',opts:o,v:a?a.impact:3},{l:'다음 감사일',type:'date',v:a?a.nextAuditDate:''},{l:'메모',ta:1,v:a?a.notes:''}],([l,i,d,n])=>{if(!a){a={id:uid('ra'),targetId:r.id,auditCycle:'annual',lastAuditDate:''};s.riskAssessments.push(a)}a.likelihood=+l;a.impact=+i;a.nextAuditDate=d;a.notes=n;a.updatedAt=nowISO();save();rerender()})}};
 ROUTES.violations=m=>crud(m,{title:'위반 사례 메모',key:'violationMemos',desc:'사례 내용은 상황 질의 검색에는 쓰이지 않으며 내부 기록용입니다.',fields:[{k:'title',l:'제목'},{k:'content',l:'내용',ta:1,rows:6}],row:x=>'<b>'+esc(x.title)+'</b> <small class="mut">'+fmtDate(x.createdAt)+'</small><div class="pre small">'+esc(x.content||'')+'</div>'+refLinks(x.refs)});
-ROUTES.corrective=m=>crud(m,{title:'시정조치',key:'correctiveActions',fields:[{k:'title',l:'제목'},{k:'description',l:'내용',ta:1},{k:'assignee',l:'담당자'},{k:'dueDate',l:'기한',type:'date'},{k:'status',l:'상태',opts:[['계획','계획'],['진행','진행'],['완료','완료']],v:'계획'}],row:x=>'<b>'+esc(x.title)+'</b> <span class="tag'+(x.status!=='완료'&&x.dueDate&&x.dueDate<todayStr()?' red':'')+'">'+esc(x.status||'')+'</span><div class="small mut">'+esc(x.assignee||'')+' · 기한 '+fmtDate(x.dueDate)+'</div><div class="small">'+esc(x.description||'')+'</div>'});
-ROUTES.auditHistory=m=>crud(m,{title:'감사 이력',key:'auditHistory',fields:[{k:'title',l:'감사명'},{k:'startDate',l:'시작',type:'date'},{k:'endDate',l:'종료',type:'date'},{k:'auditor',l:'감사인'},{k:'status',l:'상태',opts:[['planned','계획'],['ongoing','진행'],['done','완료']],v:'planned'},{k:'summary',l:'요약',ta:1}],row:x=>'<b>'+esc(x.title)+'</b> <small class="mut">'+fmtDate(x.startDate)+'~'+fmtDate(x.endDate)+' · '+esc(x.auditor||'')+'</small><div class="small">'+esc(x.summary||'')+'</div>'});
-ROUTES.auditReport=(m)=>{const s=S();const ca=s.correctiveActions;m.innerHTML='<div class="rowh noprint"><h2>감사 보고서</h2><button class="btn pri" onclick="print()">'+ico('printer')+' 인쇄 / PDF</button></div><div class="card report"><h1>사규 감사 보고서</h1><p class="mut">작성일 '+fmtDate(todayStr())+'</p><h3>1. 위험도</h3><table class="tbl"><tbody>'+s.riskAssessments.map(a=>{const r=findReg(a.targetId);return r?'<tr><td>'+esc(r.title)+'</td><td>'+a.likelihood*a.impact+'점</td><td>'+esc(a.notes||'')+'</td></tr>':''}).join('')+'</tbody></table><h3>2. 체크리스트</h3>'+s.checklists.map(c=>'<p>'+esc(c.title)+': '+c.items.filter(x=>x.done).length+'/'+c.items.length+' 완료</p>').join('')+'<h3>3. 시정조치</h3><table class="tbl"><tbody>'+ca.map(c=>'<tr><td>'+esc(c.title)+'</td><td>'+esc(c.status||'')+'</td><td>'+fmtDate(c.dueDate)+'</td></tr>').join('')+'</tbody></table><h3>4. 감사 이력</h3>'+s.auditHistory.map(h=>'<p>'+esc(h.title)+' ('+fmtDate(h.startDate)+') '+esc(h.summary||'')+'</p>').join('')+'<h3>5. 해석 어려운 조항</h3>'+(IX.build(),IX.units.filter(u=>u.a.difficult).map(u=>'<p>'+esc(u.r.title+' '+artLabel(u.a))+'</p>').join(''))+'</div>'};
+ROUTES.corrective=m=>crud(m,{title:'시정조치',key:'correctiveActions',fields:[{k:'title',l:'제목'},{k:'description',l:'내용',ta:1},{k:'assignee',l:'담당자'},{k:'dueDate',l:'기한',type:'date'},{k:'status',l:'상태',opts:[['계획','계획'],['진행','진행'],['완료','완료']],v:'계획'}],row:x=>'<b>'+esc(x.title)+'</b> <span class="tag'+(x.status!=='완료'&&x.dueDate&&x.dueDate<todayStr()?' red':'')+'">'+esc(x.status||'')+'</span><div class="small mut">'+esc(x.assignee||'')+' · 기한 '+fmtDate(x.dueDate)+'</div><div class="small nl">'+esc(x.description||'')+'</div>'});
+ROUTES.auditHistory=m=>crud(m,{title:'감사 이력',key:'auditHistory',fields:[{k:'title',l:'감사명'},{k:'startDate',l:'시작',type:'date'},{k:'endDate',l:'종료',type:'date'},{k:'auditor',l:'감사인'},{k:'status',l:'상태',opts:[['planned','계획'],['ongoing','진행'],['done','완료']],v:'planned'},{k:'summary',l:'요약',ta:1}],row:x=>'<b>'+esc(x.title)+'</b> <small class="mut">'+fmtDate(x.startDate)+'~'+fmtDate(x.endDate)+' · '+esc(x.auditor||'')+'</small><div class="small nl">'+esc(x.summary||'')+'</div>'});
+ROUTES.auditReport=(m)=>{const s=S();IX.build();
+ const ca=s.correctiveActions||[], ra=s.riskAssessments||[], cl=s.checklists||[], ah=s.auditHistory||[];
+ const dif=IX.units.filter(u=>u.a.difficult);
+ const late=ca.filter(c=>c.status!=='완료'&&c.dueDate&&c.dueDate<todayStr());
+ const done=ca.filter(c=>c.status==='완료').length;
+ const ckAll=cl.reduce((n,c)=>n+c.items.length,0), ckDone=cl.reduce((n,c)=>n+c.items.filter(x=>x.done).length,0);
+ const sec=(no,t,inner)=>'<section class="rsec"><h3>'+no+'. '+t+'</h3>'+inner+'</section>';
+ const tbl=(head,rows)=>rows.length
+   ? '<table class="tbl rtbl"><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>'
+   : '<p class="mut small">해당 사항 없음</p>';
+ m.innerHTML='<div class="rowh noprint"><h2>감사 보고서</h2><button class="btn pri" onclick="print()">'+ico('printer')+' 인쇄 / PDF</button></div>'
+ +'<div class="report">'
+ +'<header class="rhd"><h1>사규 감사 보고서</h1><p class="mut">작성일 '+fmtDate(todayStr())+' · 대상 사규 '+s.regulations.length+'건</p></header>'
+ +'<div class="rstats">'
+   +[['사규',s.regulations.length+'건'],['점검 항목',ckDone+' / '+ckAll],['시정조치',done+' / '+ca.length],
+     ['기한 지남',late.length+'건'],['해석 어려움',dif.length+'건']]
+     .map(([k,v])=>'<div class="rstat"><b>'+v+'</b><span>'+k+'</span></div>').join('')
+ +'</div>'
+ +sec(1,'위험도 평가', tbl(['대상 사규','가능성','영향','위험 점수','비고'], ra.map(a=>{const r=findReg(a.targetId);if(!r)return '';
+     const p=a.likelihood*a.impact;
+     return '<tr><td>'+esc(r.title)+'</td><td class="num">'+a.likelihood+'</td><td class="num">'+a.impact+'</td>'
+      +'<td class="num"><span class="rpill '+(p>=15?'hi':p>=8?'mid':'lo')+'">'+p+'</span></td><td class="nl">'+esc(a.notes||'')+'</td></tr>'}).filter(Boolean)))
+ +sec(2,'점검 체크리스트', tbl(['체크리스트','완료','진행률'], cl.map(c=>{const d=c.items.filter(x=>x.done).length,n=c.items.length||1;
+     return '<tr><td>'+esc(c.title)+'</td><td class="num">'+d+' / '+c.items.length+'</td>'
+      +'<td><span class="rbar"><i style="width:'+Math.round(d/n*100)+'%"></i></span></td></tr>'})))
+ +sec(3,'시정조치', tbl(['제목','담당','기한','상태','내용'], ca.map(c=>{const od=c.status!=='완료'&&c.dueDate&&c.dueDate<todayStr();
+     return '<tr'+(od?' class="over"':'')+'><td>'+esc(c.title)+'</td><td>'+esc(c.assignee||'')+'</td>'
+      +'<td class="num">'+fmtDate(c.dueDate)+'</td><td>'+esc(c.status||'')+(od?' <b class="red">지남</b>':'')+'</td>'
+      +'<td class="nl">'+esc(c.description||'')+'</td></tr>'})))
+ +sec(4,'감사 이력', tbl(['제목','시작일','요약'], ah.map(h=>'<tr><td>'+esc(h.title)+'</td><td class="num">'+fmtDate(h.startDate)+'</td><td class="nl">'+esc(h.summary||'')+'</td></tr>')))
+ +sec(5,'해석이 어려운 조항', tbl(['사규','조','메모'], dif.map(u=>'<tr><td>'+esc(u.r.title)+'</td><td>'+esc(artLabel(u.a))+'</td><td class="nl">'+esc(S().notes[u.key]||'')+'</td></tr>')))
+ +'</div>'};
 ROUTES.categories=(m)=>{const s=S();m.innerHTML='<div class="grid2"><div class="card"><div class="rowh"><h3>카테고리</h3><button class="btn sm pri" id="caA">＋</button></div>'+s.categories.slice().sort((a,b)=>a.order-b.order).map(c=>'<div class="li">'+esc(c.name)+' <small class="mut">'+s.regulations.filter(r=>r.categoryId===c.id).length+'</small> <button class="ib" data-ec="'+c.id+'">'+ico('edit')+'</button><button class="ib" data-dc="'+c.id+'">'+ico('x')+'</button></div>').join('')+'</div><div class="card"><div class="rowh"><h3>부서</h3><button class="btn sm pri" id="deA">＋</button></div>'+s.departments.map(d=>'<div class="li">'+esc(d.name)+' <button class="ib" data-dd="'+d.id+'">'+ico('x')+'</button></div>').join('')+'</div></div>';
  $('#caA').onclick=()=>promptM('카테고리',[{l:'이름'}],([n])=>{s.categories.push({id:uid('c'),name:n,order:s.categories.length+1});save();rerender()});$('#deA').onclick=()=>promptM('부서',[{l:'이름'}],([n])=>{s.departments.push({id:uid('d'),name:n});save();rerender()});
  m.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ec){const c=s.categories.find(x=>x.id===b.dataset.ec);promptM('카테고리',[{l:'이름',v:c.name}],([n])=>{c.name=n;save();rerender()})}if(b.dataset.dc){if(s.regulations.some(r=>r.categoryId===b.dataset.dc))return toast('사용 중인 카테고리입니다','error');s.categories=s.categories.filter(x=>x.id!==b.dataset.dc);save();rerender()}if(b.dataset.dd){s.departments=s.departments.filter(x=>x.id!==b.dataset.dd);save();rerender()}}};
