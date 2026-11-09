@@ -674,6 +674,15 @@ body.rs-drag{cursor:col-resize;user-select:none}
 .para.m{--pin:2.4rem}
 @media print{.para.al-c{text-align:center}.para.al-r{text-align:right}}
 </style>
+<style>
+/* ── 미리보기 칸을 조금 넓고 읽기 좋게 ─────────────────── */
+.soldash{grid-template-columns:minmax(0,1fr) 340px}
+.solrail .card{padding:14px 16px}
+.solrail li{margin:5px 0;line-height:1.6;word-break:keep-all}
+.hs{-webkit-line-clamp:3;line-height:1.55}
+.cards{grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr))}
+@media (max-width:1100px){ .soldash{grid-template-columns:minmax(0,1fr)} }
+</style>
 </head>
 <body>
 <div class="app">
@@ -1021,6 +1030,15 @@ function parseRegulationText(text){text=normalizeText(text);const lines=text.spl
 
   const h=att?null:headingInfo(pl,prevNo);
   if(h){
+   /* 머리글과 같은 줄에 붙은 본문은 원문에서 떼어내 꾸밈을 살린다 */
+   if(h.rest){
+    /* 머리글 자체가 굵을 때만 닫는 표시를 떼어낸다 (본문 첫 글자의 여는 표시를 먹지 않게) */
+    const em=/^[ \t]*(\*\*|__)/.test(tl);
+    const cut=new RegExp('^[ \\t]*(?:\\*\\*|__)*[ \\t]*제[ \\t]*\\d+[ \\t]*조(?:[ \\t]*의[ \\t]*\\d+)?[ \\t]*(?:[(（【\\[][^)）】\\]]{0,40}[)）】\\]])?[ \\t]*'
+      +(em?'(?:\\*\\*|__)*[ \\t]*':'')).exec(tl);
+    if(cut){const r0=tl.slice(cut[0].length);
+     if(mdStrip(r0).replace(/\s+/g,'')===String(h.rest).replace(/\s+/g,''))h.rest=r0}
+   }
    if(cur&&cur.supp&&!cur.lines.join('').trim()&&cur.number===sChap){cur=null}else push();
    prevNo=h.no;
    cur={id:uid('a'),number:(supp?'부칙 ':'')+h.number,title:h.title,lines:h.rest?[h.rest]:[],
@@ -1242,10 +1260,29 @@ function expand(terms){const out=new Map();terms.forEach(t=>{out.set(t,1);synGro
 function bigrams(s){s=nk(s);const b=[];for(let i=0;i<s.length-1;i++)b.push(s.slice(i,i+2));return b}
 function dice(a,b){const A=bigrams(a),B=bigrams(b);if(!A.length||!B.length)return 0;const m=new Map();A.forEach(x=>m.set(x,(m.get(x)||0)+1));let c=0;B.forEach(x=>{if(m.get(x)>0){c++;m.set(x,m.get(x)-1)}});return 2*c/(A.length+B.length)}
 /* ===== 색인 ===== */
-/* 검색용 글 — 그림은 설명만 남기고 자료 덩어리는 뺀다 */
-function srchText(c){return String(c||'')
- .replace(/!\[([^\]]*)\]\((?:data:|blob:)[^)]*\)/g,' $1 ')
- .replace(/[ \t]{2,}/g,' ')}
+/* 미리보기·검색용 맨글 —
+   그림은 설명만, 표는 '[표] 가 · 나 / 다 · 라' 한 줄로, 꾸밈 표시는 떼어낸다 */
+function mdPlain(c){
+ const L=String(c||'').split('\n'), out=[];
+ for(let i=0;i<L.length;i++){
+  let t=String(L[i]).trim();
+  if(isTblRow(t)){
+   const rows=[];
+   while(i<L.length&&isTblRow(String(L[i]).trim())){
+    const cs=tblCells(String(L[i]).trim())
+      .filter(x=>x&&x!==TBL_L&&x!==TBL_U)
+      .map(x=>mdStrip(x).split(TBL_BR).join(' ').trim())
+      .filter(Boolean);
+    if(cs.length)rows.push(cs.join(' · '));
+    i++}
+   i--;
+   if(rows.length)out.push('[표] '+rows.join(' / '));
+   continue}
+  t=t.replace(/!\[([^\]]*)\]\((?:data:|blob:)[^)]*\)/g,' $1 ');
+  t=mdStrip(t).split(TBL_BR).join(' ');
+  out.push(t)}
+ return out.join('\n').replace(/[ \t]{2,}/g,' ')}
+function srchText(c){return mdPlain(c)}
 const IX={dirty:true,units:[],vocab:new Set(),df:new Map(),build(){if(!this.dirty)return;this.units=[];this.vocab=new Set();this.df=new Map();
  S().regulations.forEach(r=>arts(r).forEach((a,i)=>{const u={r,a,i,key:r.id+'::'+a.id,text:srchText(a.content),nt:nk(srchText(a.content)),nh:nk(a.number+a.title),note:S().notes[r.id+'::'+a.id]||'',nr:nk(r.title)};
   u.paras=structure(a.content);(a.title+' '+srchText(a.content)).split(/[^가-힣A-Za-z0-9]+/).filter(w=>w.length>=2).forEach(w=>this.vocab.add(w.replace(/(으로|에서|에게|은|는|이|가|을|를|에|와|과|의|로)$/,'')));
@@ -1817,8 +1854,8 @@ function artAction(r,aid,act){const a=arts(r).find(x=>x.id===aid);const key=r.id
  else if(act==='rel')showRel(r,aid);
  else if(act==='col'){if(!s.collections.length)s.collections.push({id:uid('col'),name:'기본 컬렉션',items:[]});promptM('컬렉션에 추가',[{l:'컬렉션',opts:s.collections.map(c=>[c.id,c.name]),v:s.collections[0].id}],([cid])=>{const c=s.collections.find(x=>x.id===cid);if(!c.items.some(i=>i.regId===r.id&&i.articleId===aid))c.items.push({regId:r.id,articleId:aid});save();toast('추가했습니다','success')})}
  else if(act==='dif'){a.difficult=!a.difficult;save();refreshArt(r,aid)}
- else if(act==='tts'){if(!window.speechSynthesis)return toast('이 브라우저는 읽어주기를 지원하지 않습니다','error');speechSynthesis.cancel();const ut=new SpeechSynthesisUtterance(a.number+' '+a.title+'. '+a.content);ut.lang='ko-KR';speechSynthesis.speak(ut);toast('읽는 중… (다시 누르면 처음부터)')}
- else if(act==='copy'){const t=r.title+' '+artLabel(a)+'\n'+a.content;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('복사했습니다','success')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사했습니다','success')})}
+ else if(act==='tts'){if(!window.speechSynthesis)return toast('이 브라우저는 읽어주기를 지원하지 않습니다','error');speechSynthesis.cancel();const ut=new SpeechSynthesisUtterance(a.number+' '+a.title+'. '+mdPlain(a.content));ut.lang='ko-KR';speechSynthesis.speak(ut);toast('읽는 중… (다시 누르면 처음부터)')}
+ else if(act==='copy'){const t=r.title+' '+artLabel(a)+'\n'+mdPlain(a.content);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('복사했습니다','success')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사했습니다','success')})}
  else if(act==='edit')editArt(r,a);
  else if(act==='del')delArt(r,a);
  else if(act==='__never')promptM('조문 편집',[{l:'조 번호',v:a.number},{l:'제목',v:a.title},{l:'내용',ta:1,rows:12,v:a.content},{l:'태그(쉼표)',v:(a.tags||[]).join(', ')}],([n,t,c,tg])=>{a.number=n.trim();a.title=t.trim();a.content=c;a.tags=tg.split(',').map(x=>x.trim()).filter(Boolean);r.updatedAt=nowISO();save();rerender()})}
@@ -1826,7 +1863,7 @@ function refreshArt(r,aid){const y=window.scrollY;const h=location.hash;rerender
 function regAction(r,k){const s=S();
  if(k==='meta')promptM('기본 정보',[{l:'사규명',v:r.title},{l:'카테고리',opts:s.categories.map(c=>[c.id,c.name]),v:r.categoryId},{l:'상태',opts:[['active','시행'],['draft','초안'],['abolished','폐지']],v:r.status}],([t,c,st])=>{r.title=t.trim()||r.title;r.categoryId=c;r.status=st;r.updatedAt=nowISO();save();rerender()});
  else if(k==='ver')location.hash='#/import?reg='+r.id;
- else if(k==='csv'){const rows=[['사규','장','조','제목','내용']].concat(arts(r).map(a=>[r.title,a.chapter||'',a.number,a.title,a.content]));dl(r.title+'.csv',rows.map(x=>x.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n'),'text/csv')}
+ else if(k==='csv'){const rows=[['사규','장','조','제목','내용']].concat(arts(r).map(a=>[r.title,a.chapter||'',a.number,a.title,mdPlain(a.content)]));dl(r.title+'.csv',rows.map(x=>x.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n'),'text/csv')}
  else if(k==='json')dl(r.title+'.json',JSON.stringify(r,null,1),'application/json');
  else if(k==='addArt')promptM('조 추가',[{l:'조 번호',v:'제'+(arts(r).filter(a=>!a.supp).length+1)+'조'},{l:'제목'},{l:'내용',ta:1,rows:8}],([n,t,c])=>{arts(r).push({id:uid('a'),number:n,title:t,content:c,tags:[],difficult:false,crossRefs:[]});r.updatedAt=nowISO();save();rerender()});
  else if(k==='del')modal('사규 삭제','<p><b>'+esc(r.title)+'</b>을(를) 삭제할까요? 삭제 직전 스냅샷이 저장되어 설정에서 되돌릴 수 있습니다.</p>',[{t:'취소'},{t:'삭제',cls:'danger',f:async()=>{await Store.snapshot('사규 삭제 전: '+r.title);s.regulations=s.regulations.filter(x=>x!==r);save();location.hash='#/regs'}}])}
