@@ -768,6 +768,11 @@ function mdLines(root){
   let txt=mdInline(el).replace(/\u00a0/g,' ');
   txt=txt.split('\n').map(l=>l.replace(/[ \t]+/g,' ').trim()).join('\n');
   if(!txt.trim()){out.push('');return}
+  /* 문단 전체가 굵으면 표시를 떼고(제목 줄이 대부분이다), */
+  const whole=/^\*\*([^*][\s\S]*?)\*\*$/.exec(txt.trim());
+  if(whole&&whole[1].indexOf('**')<0)txt=whole[1];
+  /* 조·장·부칙·별첨 머리글에 걸린 표시도 뗀다 — 구조 분석을 막는다 */
+  txt=txt.replace(/^([ \t]*)(?:\*\*|__)+[ \t]*((?:제[ \t]*\d+[ \t]*(?:조|장|절|편|관)|부[ \t]*칙|별[ \t]*[첨표지]|붙[ \t]*임|서[ \t]*식)[^*_\n]{0,70}?)(?:\*\*|__)+/,'$1$2');
   const pad='  '.repeat(mdIndent(el)), al=mdAlign(el);
   txt.split('\n').forEach((l,i)=>out.push(l.trim()?pad+(i?'':al)+(i?'':(mark||''))+l.trim():''))};
  const walk=el=>{
@@ -905,6 +910,15 @@ const RE_ART=/^\s*제\s*(\d+)\s*조(?:\s*의\s*(\d+))?\s*(?:\(([^)]{0,40})\)|（
 const RE_DIV=/^\s*제\s*(\d+)\s*(편|장|절|관)\s*(.*)$/;
 const RE_SUPP=/^\s*부\s*칙\s*(?:[<(（〈][^>)）〉]*[>)）〉])?\s*(.*)$/;
 const REF_TAIL=/^(?:에|의|를|을|및|와|과|는|은|이|가|에서|부터|까지|또는|내지|·|,|，|ㆍ|제\s*\d+\s*[항호]|각\s*호|단서|본문|전단|후단|에\s*따|의\s*규정|에\s*의|에도|로|으로|중)/;
+/* 꾸밈 표시를 떼어낸 글 — 조·부칙·별첨 판정은 반드시 이것으로 한다 */
+function mdStrip(t){
+ return String(t||'')
+  .replace(/^[ \t]*>{2,3}[ \t]*/,'')
+  .replace(/\*\*([^*\n]{1,300})\*\*/g,'$1')
+  .replace(/__([^_\n]{1,300})__/g,'$1')
+  .replace(/~~([^~\n]{1,300})~~/g,'$1')
+  .replace(/==([^=\n]{1,300})==/g,'$1')
+  .replace(/[*_~=]{2,}/g,'')}
 function artNum(n,sub){return'제'+n+'조'+(sub?'의'+sub:'')}
 /* 부칙 줄에서 날짜·표시를 뽑는다: 부칙 <2012.11.01> → 2012.11.01 */
 function suppTag(line){
@@ -937,39 +951,42 @@ function headingInfo(line,prevNo){const m=line.match(RE_ART);if(!m)return null;
  return{number:artNum(m[1],m[2]),title,rest,no}}
 function normalizeText(t){return tsvToTbl(dropStyleJunk(String(t||'').replace(/\r\n?/g,'\n'))).replace(/\u00a0|\u3000/g,' ').replace(/\t/g,'  ').replace(/^([ ]*)(.*)$/gm,(m,a,b)=>a+b.replace(/[ ]{2,}/g,' '))
  /* 문장 끝 뒤 같은 줄에 '제N조(제목)'이 붙은 경우만 줄 분리 (괄호 제목이 있을 때만) */
- .replace(/([.다。])\s+(제\s*\d+\s*조(?:\s*의\s*\d+)?\s*[(（【\[][^)）】\]]{1,30}[)）】\]])/g,'$1\n$2')}
+ .replace(/([^\s\d][^\s][.다。])\s+(제\s*\d+\s*조(?:\s*의\s*\d+)?\s*[(（【\[][^)）】\]]{1,30}[)）】\]])/g,'$1\n$2')}
 function splitParas(content){ /* 항 기호가 문장 끝 뒤에 붙어 있으면 줄 나눔 */
- return content.replace(new RegExp('([.다:)])\\s*(['+CIRC+'])','g'),'$1\n$2').replace(/\n{3,}/g,'\n\n').trim()}
+ return content.replace(new RegExp('([.다:)])[ \\t]*(['+CIRC+'])','g'),'$1\n$2').replace(/\n{3,}/g,'\n\n').trim()}
 function parseRegulationText(text){text=normalizeText(text);const lines=text.split('\n');const arts=[];
  let cur=null,chapter='',section='',supp=false,prevNo=null,pre=[];
  let sIdx=0,sTag='',sChap='',att=false,attN=0;
  const push=()=>{if(cur){cur.content=splitParas(cur.lines.join('\n'));delete cur.lines;arts.push(cur)}};
- for(const raw of lines){const line=raw.trim();if(!line){if(cur)cur.lines.push('');continue}
+ for(const raw of lines){const line=String(raw).replace(/\s+$/,'');const tl=line.trim();
+  if(!tl){if(cur)cur.lines.push('');continue}
+
+  const pl=mdStrip(tl);
 
   /* 부칙 — 여러 번 나오면 각각 따로 묶는다 */
-  const sp=line.match(RE_SUPP);
-  if(sp&&line.length<60&&!/^부칙에/.test(line)){
-   push();supp=true;att=false;prevNo=null;sIdx++;sTag=suppTag(line);
+  const sp=pl.match(RE_SUPP);
+  if(sp&&pl.length<60&&!/^부칙에/.test(pl)){
+   push();supp=true;att=false;prevNo=null;sIdx++;sTag=suppTag(pl);
    sChap='부칙'+(sTag?' <'+sTag+'>':(sIdx>1?' '+sIdx:''));
    cur={id:uid('a'),number:sChap,title:(sp[1]||'').trim(),lines:[],chapter:sChap,
         tags:[],difficult:false,crossRefs:[],supp:true,sIdx:sIdx,sTag:sTag};
    continue}
 
   /* 별첨·별표·별지·서식 */
-  const at=attInfo(line,attN+1);
+  const at=attInfo(pl,attN+1);
   if(at&&(att||supp||arts.length)){
    push();att=true;supp=false;prevNo=null;attN=at.no;
    cur={id:uid('a'),number:at.number,title:at.title,lines:[],chapter:'별첨',
         tags:[],difficult:false,crossRefs:[],attach:true};
    continue}
 
-  const dv=line.match(RE_DIV);
+  const dv=pl.match(RE_DIV);
   if(!att&&dv&&dv[3].length<40&&!REF_TAIL.test(dv[3])&&!/[다.]$/.test(dv[3])){
    if(dv[2]==='장'||dv[2]==='편'){chapter=('제'+dv[1]+dv[2]+' '+dv[3]).trim();section=''}
    else section=('제'+dv[1]+dv[2]+' '+dv[3]).trim();
    continue}
 
-  const h=att?null:headingInfo(line,prevNo);
+  const h=att?null:headingInfo(pl,prevNo);
   if(h){
    if(cur&&cur.supp&&!cur.lines.join('').trim()&&cur.number===sChap){cur=null}else push();
    prevNo=h.no;
@@ -984,6 +1001,12 @@ function parseRegulationText(text){text=normalizeText(text);const lines=text.spl
  if(sIdx>1)arts.forEach(a=>{
   if(a.supp&&a.sIdx&&/^부칙 제/.test(a.number))
    a.number='부칙'+(a.sTag?'<'+a.sTag+'>':a.sIdx)+' '+a.number.slice(3);});
+ /* 조가 하나도 안 잡혔는데 본문에 '제N조'가 있으면 꾸밈을 떼고 다시 가른다 */
+ if(!arts.filter(a=>/^제\d+조/.test(a.number)).length){
+  const plainAll=text.split('\n').map(mdStrip).join('\n');
+  if(/^[ \t]*제[ \t]*\d+[ \t]*조/m.test(plainAll)&&plainAll!==text&&!parseRegulationText.__retry){
+   parseRegulationText.__retry=1;
+   try{return parseRegulationText(plainAll)}finally{parseRegulationText.__retry=0}}}
  if(!arts.length&&pre.length)arts.push({id:uid('a'),number:'본문',title:'',content:splitParas(pre.join('\n')),chapter:'',tags:[],difficult:false,crossRefs:[]});
  else if(pre.length&&pre.join('').trim().length>0)arts.unshift({id:uid('a'),number:'전문',title:'',content:pre.join('\n'),chapter:'',tags:[],difficult:false,crossRefs:[]});
  return arts}
@@ -994,13 +1017,14 @@ function structure(content){const out=[];let p=0,h=0;String(content||'').split('
  let t=l.trim();if(!t){return}
  let al='';
  const am=/^(>>>|>>)\s*/.exec(t);if(am){al=am[1]==='>>>'?'r':'c';t=t.slice(am[0].length)}
- let lvl='b',key=p?('p'+p+(h?'h'+h:'')):'';const c=t[0];
- if(/^!\[[^\]]*\]\((data:image\/|blob:)/.test(t)){out.push({lvl:'img',key:key||('g'+out.length),text:t,ind:ind,al:al});return}
- if(isTblRow(t)){out.push({lvl:'t',key:key||('t'+out.length),text:t,ind:ind,al:al});return}
+ const pt=mdStrip(t);
+ let lvl='b',key=p?('p'+p+(h?'h'+h:'')):'';const c=pt[0];
+ if(/^!\[[^\]]*\]\((data:image\/|blob:)/.test(pt)){out.push({lvl:'img',key:key||('g'+out.length),text:pt,ind:ind,al:al});return}
+ if(isTblRow(pt)){out.push({lvl:'t',key:key||('t'+out.length),text:t,ind:ind,al:al});return}
  if(CIRC.includes(c)){p=CIRC.indexOf(c)+1;h=0;lvl='p';key='p'+p}
- else if(/^\(\d+\)/.test(t)){p=+t.match(/^\((\d+)\)/)[1];lvl='p';key='p'+p}
- else if(/^\d+\.\s/.test(t)){h=+t.match(/^(\d+)/)[1];lvl='h';key='p'+p+'h'+h}
- else if(/^[가-하]\.\s/.test(t)){lvl='m';key='p'+p+'h'+h+'m'+t[0]}
+ else if(/^\(\d+\)/.test(pt)){p=+pt.match(/^\((\d+)\)/)[1];lvl='p';key='p'+p}
+ else if(/^\d+\.\s/.test(pt)){h=+pt.match(/^(\d+)/)[1];lvl='h';key='p'+p+'h'+h}
+ else if(/^[가-하]\.\s/.test(pt)){lvl='m';key='p'+p+'h'+h+'m'+pt[0]}
  out.push({lvl,key,text:t,ind:ind,al:al})});return out}
 /* ===== ZIP(docx/hwpx) 오프라인 읽기 ===== */
 async function readZipFile(buf){const dv=new DataView(buf);let e=buf.byteLength-22;while(e>0&&dv.getUint32(e,true)!==0x06054b50)e--;const n=dv.getUint16(e+10,true);let o=dv.getUint32(e+16,true);const files={};const td=new TextDecoder();
