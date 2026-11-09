@@ -701,6 +701,38 @@ const defaultState=()=>({schemaVersion:4,savedAt:null,rev:0,categories:[['인사
 /* ===== 표 ===== 칸 구분을 살린 한 줄 꼴로 보관한다: | 칸1 | 칸2 | 칸3 | */
 function tblRow(cells){return '| '+cells.map(c=>String(c==null?'':c).replace(/\s+/g,' ').replace(/\|/g,'/').trim()).join(' | ')+' |'}
 function isTblRow(t){return /^\|.*\|$/.test(String(t||'').trim())&&String(t).split('|').length>=4}
+/* 칸 기호: < 왼쪽과 합침, ^ 위와 합침, ⏎ 칸 안 줄바꿈 */
+const TBL_L='<', TBL_U='^', TBL_BR='\u23ce';
+/* 한 칸의 글 — 칸 안의 표는 ' / ' 와 ' ; ' 로 접어 넣는다 */
+function tblCellText(td){
+ const cl=td.cloneNode(true), subs=[];
+ Array.prototype.forEach.call(cl.querySelectorAll('table'),t=>{
+  if(!cl.contains(t))return;
+  const rs=[];
+  for(let r=0;r<t.rows.length;r++){const cs=[];
+   for(let k=0;k<t.rows[r].cells.length;k++)cs.push(mdInline(t.rows[r].cells[k]).replace(/\s+/g,' ').trim());
+   const ln=cs.filter(Boolean).join(' / ');if(ln)rs.push(ln)}
+  if(rs.length)subs.push(rs.join(' ; '));
+  t.remove()});
+ let t=mdInline(cl).replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ');
+ t=t.split('\n').map(x=>x.trim()).filter(Boolean).join(TBL_BR);
+ if(subs.length)t=(t?t+TBL_BR:'')+subs.join(TBL_BR);
+ return t.replace(/\|/g,'/').trim()}
+/* 표를 칸 자리까지 맞춘 격자로 편다 */
+function tblGrid(tb){
+ const g=[],set=(r,c,v)=>{(g[r]=g[r]||[])[c]=v},has=(r,c)=>g[r]&&g[r][c]!==undefined;
+ const R=tb.rows.length;
+ for(let r=0;r<R;r++){let c=0;const cells=tb.rows[r].cells;
+  for(let k=0;k<cells.length;k++){
+   while(has(r,c))c++;
+   const cell=cells[k];
+   const cs=Math.max(1,Math.min(30,cell.colSpan||1)), rs=Math.max(1,Math.min(60,cell.rowSpan||1));
+   set(r,c,tblCellText(cell));
+   for(let j=1;j<cs;j++)set(r,c+j,TBL_L);
+   for(let i=1;i<rs&&r+i<R;i++){set(r+i,c,TBL_U);for(let j=1;j<cs;j++)set(r+i,c+j,TBL_L)}
+   c+=cs}}
+ const w=g.reduce((m,x)=>Math.max(m,x?x.length:0),0);
+ return g.slice(0,R).map(row=>{const o=[];for(let i=0;i<w;i++)o.push((row&&row[i]!==undefined)?row[i]:'');return o})}
 function tblCells(t){return String(t||'').trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(x=>x.trim())}
 /* 탭으로 나뉜 줄(엑셀·한글에서 복사)도 표로 본다 */
 function tsvToTbl(t){return String(t||'').split('\n').map(l=>{
@@ -825,11 +857,12 @@ function htmlToText(h){if(h==null)return'';h=String(h);if(!/[<&]/.test(h))return
  const d=document.createElement('div');
  d.innerHTML=isHtml? h : h.replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|h\d)>/gi,'\n');
  try{Array.prototype.forEach.call(d.querySelectorAll('style,script,xml,head,title,meta,link,base,select,option,noscript'),x=>x.remove())}catch(e){}
- Array.prototype.forEach.call(d.querySelectorAll('table'),tb=>{const rows=[];
-  Array.prototype.forEach.call(tb.querySelectorAll('tr'),tr=>{
-   const cs=Array.prototype.filter.call(tr.children,x=>/^(TD|TH)$/.test(x.tagName))
-     .map(td=>mdInline(td).replace(/\s+/g,' ').trim());
-   if(cs.length>=2)rows.push(tblRow(cs)); else if(cs.length===1&&cs[0])rows.push(cs[0])});
+ Array.prototype.forEach.call(d.querySelectorAll('table'),tb=>{
+  if(!d.contains(tb))return;                                   /* 바깥 표와 함께 이미 빠진 것 */
+  if(tb.parentElement&&tb.parentElement.closest('table'))return; /* 칸 안의 표는 칸에서 처리 */
+  let rows=[];
+  try{rows=tblGrid(tb).map(r=>r.length>=2?tblRow(r):(r[0]||''))}catch(e){rows=[]}
+  rows=rows.filter(x=>String(x).replace(/[|<^\s]/g,'')!==''||/\|/.test(x));
   tb.replaceWith(document.createTextNode('\n'+rows.join('\n')+'\n'))});
  let t=isHtml? mdLines(d) : (d.textContent||'');
  t=t.replace(/[\u200b-\u200f\u2028\u2029\ufeff]/g,'').replace(/\u00a0/g,' ');
@@ -1209,9 +1242,13 @@ function expand(terms){const out=new Map();terms.forEach(t=>{out.set(t,1);synGro
 function bigrams(s){s=nk(s);const b=[];for(let i=0;i<s.length-1;i++)b.push(s.slice(i,i+2));return b}
 function dice(a,b){const A=bigrams(a),B=bigrams(b);if(!A.length||!B.length)return 0;const m=new Map();A.forEach(x=>m.set(x,(m.get(x)||0)+1));let c=0;B.forEach(x=>{if(m.get(x)>0){c++;m.set(x,m.get(x)-1)}});return 2*c/(A.length+B.length)}
 /* ===== 색인 ===== */
+/* 검색용 글 — 그림은 설명만 남기고 자료 덩어리는 뺀다 */
+function srchText(c){return String(c||'')
+ .replace(/!\[([^\]]*)\]\((?:data:|blob:)[^)]*\)/g,' $1 ')
+ .replace(/[ \t]{2,}/g,' ')}
 const IX={dirty:true,units:[],vocab:new Set(),df:new Map(),build(){if(!this.dirty)return;this.units=[];this.vocab=new Set();this.df=new Map();
- S().regulations.forEach(r=>arts(r).forEach((a,i)=>{const u={r,a,i,key:r.id+'::'+a.id,text:a.content||'',nt:nk(a.content),nh:nk(a.number+a.title),note:S().notes[r.id+'::'+a.id]||'',nr:nk(r.title)};
-  u.paras=structure(a.content);(a.title+' '+a.content).split(/[^가-힣A-Za-z0-9]+/).filter(w=>w.length>=2).forEach(w=>this.vocab.add(w.replace(/(으로|에서|에게|은|는|이|가|을|를|에|와|과|의|로)$/,'')));
+ S().regulations.forEach(r=>arts(r).forEach((a,i)=>{const u={r,a,i,key:r.id+'::'+a.id,text:srchText(a.content),nt:nk(srchText(a.content)),nh:nk(a.number+a.title),note:S().notes[r.id+'::'+a.id]||'',nr:nk(r.title)};
+  u.paras=structure(a.content);(a.title+' '+srchText(a.content)).split(/[^가-힣A-Za-z0-9]+/).filter(w=>w.length>=2).forEach(w=>this.vocab.add(w.replace(/(으로|에서|에게|은|는|이|가|을|를|에|와|과|의|로)$/,'')));
   const tf=new Map();bigrams(a.title+' '+a.title+' '+a.content).forEach(x=>tf.set(x,(tf.get(x)||0)+1));u.tf=tf;tf.forEach((_,k)=>this.df.set(k,(this.df.get(k)||0)+1));this.units.push(u)}));
  const N=this.units.length||1;this.units.forEach(u=>{let n=0;const v=new Map();u.tf.forEach((c,k)=>{const w=(1+Math.log(c))*Math.log(1+N/(this.df.get(k)));v.set(k,w);n+=w*w});u.norm=Math.sqrt(n)||1;u.v=v});
  this.dirty=false;this.refs=buildRefs();_gloss=null},
@@ -1244,7 +1281,7 @@ function search(q,opt={}){IX.build();q=String(q||'').trim();if(!q)return{hits:[]
  all.forEach(h=>{h.terms=[...new Set(h.terms)];if(!h.para)h.para=bestPara(h.u,h.terms)});
  const gl=glossary().filter(g=>terms.some(t=>t.length>=2&&(nk(g.term).includes(nk(t))||nk(t).includes(nk(g.term)))));
  return{hits:all,terms:[...ex.keys()],fuzzy,gloss:gl}}
-function bestPara(u,terms){let best='',bs=0;u.paras.forEach(p=>{const n=nk(p.text);let c=0;terms.forEach(t=>{if(n.includes(nk(t)))c++});if(c>bs){bs=c;best=p.key}});return best}
+function bestPara(u,terms){let best='',bs=0;u.paras.forEach(p=>{if(p.lvl==='img')return;const n=nk(p.text);let c=0;terms.forEach(t=>{if(n.includes(nk(t)))c++});if(c>bs){bs=c;best=p.key}});return best}
 function hl(text,terms){let h=esc(text);const ts=[...new Set(terms)].filter(t=>t&&t.length>=1).sort((a,b)=>b.length-a.length);if(!ts.length)return h;
  const re=new RegExp('('+ts.map(t=>esc(t).replace(/\s+/g,'').split('').map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s*')).join('|')+')','gi');return h.replace(re,'<mark>$1</mark>')}
 function snippet(u,terms,len=140){const t=(u.text||'').replace(/\s+/g,' ');let i=-1;for(const x of terms){const j=t.indexOf(x);if(j>=0&&(i<0||j<i))i=j}if(i<0)i=0;const st=Math.max(0,i-40);return(st?'…':'')+hl(t.slice(st,st+len),terms)+(st+len<t.length?'…':'')}
@@ -1314,6 +1351,40 @@ function bindPasteOnce(){if(bindPasteOnce.ok)return;bindPasteOnce.ok=1;
   const el=ev.target;if(!el||el.tagName!=='TEXTAREA')return;
   try{
    const dt=ev.clipboardData;if(!dt)return;
+
+   /* 클립보드에 그림이 있으면 바로 넣는다 (화면 캡처·복사한 그림) */
+   const imgs=[];
+   try{
+    Array.prototype.forEach.call(dt.files||[],f=>{if(/^image\//.test(f.type))imgs.push(f)});
+    if(!imgs.length&&dt.items)Array.prototype.forEach.call(dt.items,it=>{
+     if(it.kind==='file'&&/^image\//.test(it.type)){const f=it.getAsFile();if(f)imgs.push(f)}});
+   }catch(x){}
+   if(imgs.length){
+    const htm=dt.getData('text/html')||'';
+    const txt=(dt.getData('text/plain')||'').trim();
+    const htmGlyph=htm.replace(/<[^>]*>/g,'').replace(/&nbsp;|\s/g,'');
+    /* 글이 같이 왔으면 글을 우선한다 — 그림만 온 경우에만 그림으로 */
+    if(!txt&&!htmGlyph){
+     ev.preventDefault();
+     const at=el.selectionStart, to=el.selectionEnd;
+     toast(imgs.length+'장 넣는 중…');
+     (async()=>{
+      let ins='',bad=0;
+      for(const f of imgs){
+       try{const d=await imgShrink(f,1200);
+        const nm=String(f.name||'').replace(/\.[^.]+$/,'').replace(/[\[\]()]/g,'');
+        ins+='\n!['+(nm&&!/^image$/i.test(nm)?nm:'붙여넣은 그림')+']('+d+')\n'}
+       catch(x){bad++}}
+      if(!ins){toast('그림을 넣지 못했습니다.','error');return}
+      el.value=el.value.slice(0,at)+ins+el.value.slice(to);
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      imgPickCap(el,at,ins);
+      toast((imgs.length-bad)+'장 넣었습니다'+(bad?' ('+bad+'장은 형식을 읽지 못함)':''),
+        {description:'설명이 선택돼 있습니다. 바로 받아 적으시면 바뀝니다. 설명은 검색에 걸립니다.'});
+     })();
+     return}
+   }
+
    let t=dt.getData('text/html');
    if(t&&/<t(able|body|r)\b/i.test(t)) t=htmlToText(t);
    else{t=dt.getData('text/plain')||'';
@@ -1496,12 +1567,28 @@ function renderContent(u,terms){if(!u||!u.a)return'<div class="para mut">(내용
  let out='',i=0;
  while(i<ps.length){const p=ps[i];
   if(p.lvl==='t'){const rows=[];while(i<ps.length&&ps[i].lvl==='t'){rows.push(tblCells(ps[i].text));i++}
-   const w=Math.max.apply(null,rows.map(r=>r.length));
-   const head=rows.length>1&&rows[0].length===w&&rows[0].every(c=>c&&c.length<=26);
-   const tr=(r,tag)=>'<tr>'+r.concat(new Array(Math.max(0,w-r.length)).fill('')).map(c=>'<'+tag+'>'+cell(c)+'</'+tag+'>').join('')+'</tr>';
+   const w=rows.reduce((m,r)=>Math.max(m,r.length),0);
+   rows.forEach(r=>{while(r.length<w)r.push('')});
+   const head=rows.length>1&&rows[0].every(c=>c!==TBL_U)&&rows[0].some(Boolean)
+     &&rows[0].every(c=>c===TBL_L||(c&&c.length<=26));
+   const cv=rows.map(()=>new Array(w).fill(false));
+   const txt=v=>cell(v).split(TBL_BR).join('<br>');
+   const trs=[];
+   for(let r=0;r<rows.length;r++){let tds='';
+    for(let c=0;c<w;c++){
+     if(cv[r][c])continue;
+     const v=rows[r][c];
+     if(v===TBL_L||v===TBL_U){cv[r][c]=true;continue}
+     let cs=1;while(c+cs<w&&rows[r][c+cs]===TBL_L)cs++;
+     let rs=1;while(r+rs<rows.length&&rows[r+rs][c]===TBL_U)rs++;
+     for(let a=0;a<rs;a++)for(let b=0;b<cs;b++)cv[r+a][c+b]=true;
+     const tg=(head&&r===0)?'th':'td';
+     tds+='<'+tg+(cs>1?' colspan="'+cs+'"':'')+(rs>1?' rowspan="'+rs+'"':'')+'>'+txt(v)+'</'+tg+'>'}
+    trs.push('<tr>'+tds+'</tr>')}
    out+='<div '+paraAttr(Object.assign({},p,{lvl:'t'}))+'><div class="ctblw"><table class="ctbl">'
-     +(head?'<thead>'+tr(rows[0],'th')+'</thead>':'')
-     +'<tbody>'+rows.slice(head?1:0).map(r=>tr(r,'td')).join('')+'</tbody></table></div></div>';
+     +(head?'<thead>'+trs[0]+'</thead><tbody>'+trs.slice(1).join('')+'</tbody>'
+           :'<tbody>'+trs.join('')+'</tbody>')
+     +'</table></div></div>';
    continue}
   if(p.lvl==='img'){const mm=/^!\[([^\]]*)\]\(([^)]+)\)/.exec(p.text);
    out+='<div '+paraAttr(Object.assign({},p,{lvl:'img'}))+'><figure><img src="'+esc(mm?mm[2]:'')+'" alt="'+esc(mm?mm[1]:'')+'" loading="lazy">'
@@ -1591,6 +1678,14 @@ function miniGraph(u,out,back,sim){const nodes=[{id:u.key,label:u.a.number,num:u
  if(nodes.length<2)return'<p class="mut small">연관 조항이 없습니다.</p>';
  return GraphView.html({W:340,H:300,maxLabel:8,ariaLabel:'연관 조항 그래프',nodes,edges,legend:[{kind:'cite',label:'인용(이 조 →)'},{kind:'back',label:'피인용(→ 이 조)'},{kind:'sim',label:'유사(유사도 ≥12%)'}]})}
 /* 그림을 줄여 본문에 끼워 넣는다 (파일 안에 담으므로 폭 1200px 로 줄인다) */
+/* 그림을 넣은 뒤 설명만 골라 둔다. 바로 입력하면 설명이 바뀐다 (검색에 걸린다) */
+function imgPickCap(el,insertedAt,text){
+ const m=/!\[([^\]]*)\]/.exec(text);
+ if(!m){el.selectionStart=el.selectionEnd=insertedAt+text.length;return}
+ const a=insertedAt+m.index+2;
+ el.selectionStart=a; el.selectionEnd=a+m[1].length;
+ el.focus();
+}
 function imgShrink(file,maxW){return new Promise((ok,no)=>{
  const fr=new FileReader();
  fr.onerror=()=>no(new Error('그림을 읽지 못했습니다.'));
@@ -1658,8 +1753,18 @@ function editArt(r,a){
  const put=t=>{const p=ta.selectionStart;ta.value=ta.value.slice(0,p)+t+ta.value.slice(ta.selectionEnd);
    ta.selectionStart=ta.selectionEnd=p+t.length;ta.focus()};
  $('#eaI',md).onchange=async e=>{const fs=[].slice.call(e.target.files||[]);if(!fs.length)return;
-  try{for(const f of fs){const d=await imgShrink(f,1200);put('\n!['+f.name.replace(/[\]\[]/g,'')+']('+d+')\n')}
-   toast(fs.length+'장 넣었습니다','success')}catch(x){toast(x.message,'error')}
+  const at=ta.selectionStart;let ins='',bad=[];
+  for(const f of fs){
+   try{const d=await imgShrink(f,1200);
+    const nm=String(f.name||'').replace(/\.[^.]+$/,'').replace(/[\[\]()]/g,'');
+    ins+='\n!['+(nm||'그림')+']('+d+')\n'}
+   catch(x){bad.push(f.name)}}
+  if(ins){const to=ta.selectionEnd;
+   ta.value=ta.value.slice(0,at)+ins+ta.value.slice(to);
+   ta.dispatchEvent(new Event('input',{bubbles:true}));
+   imgPickCap(ta,at,ins)}
+  if(bad.length)toast(bad.length+'장은 넣지 못했습니다. (브라우저가 못 읽는 형식)','error');
+  else toast(fs.length+'장 넣었습니다','success');
   e.target.value=''};
  $('#eaTb',md).onclick=ev=>{ev.preventDefault();put('\n| 구분 | 내용 | 비고 |\n|  |  |  |\n|  |  |  |\n')};
  /* 글자 크기 */
