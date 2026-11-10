@@ -1,0 +1,119 @@
+@page "/dashboard"
+@model AuditRecord.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "현황판 · 감사기록";
+    ViewData["Crumb"] = "현황판";
+    var d = Model.Data;
+}
+<div class="page-head">
+    <h1>현황판</h1>
+    <p class="hint">감사파트 전체 건 기준 집계입니다. 본문 내용은 집계에 사용하지 않습니다.</p>
+</div>
+@if (!string.IsNullOrEmpty(Model.Flash))
+{
+    <p class="banner info" role="status">@Model.Flash</p>
+}
+
+<div class="stat-grid">
+    <a class="stat" href="/cases">
+        <span class="stat-label">전체 건</span>
+        <span class="stat-value">@d.TotalCases</span>
+        <span class="stat-sub">올해 등재 @d.ThisYearRegistered 건</span>
+    </a>
+    <a class="stat" href="/cases">
+        <span class="stat-label">진행 중</span>
+        <span class="stat-value">@(d.DraftCount + d.ConfirmedCount + d.InActionCount)</span>
+        <span class="stat-sub">초안 @d.DraftCount · 확정 @d.ConfirmedCount · 조치중 @d.InActionCount</span>
+    </a>
+    <a class="stat @(d.OverdueActions > 0 ? "alert" : null)" href="/todo">
+        <span class="stat-label">회신기한 초과</span>
+        <span class="stat-value">@d.OverdueActions</span>
+        <span class="stat-sub">미완료 조치요구 @d.OpenActions 건 중</span>
+    </a>
+    <a class="stat @(d.ExpiringSoon + d.DeletionDelayed > 0 ? "notice" : null)" href="/todo">
+        <span class="stat-label">30일 안 삭제 예정</span>
+        <span class="stat-value">@d.ExpiringSoon</span>
+        <span class="stat-sub">삭제 지연 @d.DeletionDelayed · 보류 @d.HoldCount</span>
+    </a>
+    <a class="stat" href="/cases">
+        <span class="stat-label">종결·자료삭제</span>
+        <span class="stat-value">@(d.ClosedCount + d.PurgedCount)</span>
+        <span class="stat-sub">종결 @d.ClosedCount · 자료삭제됨 @d.PurgedCount</span>
+    </a>
+</div>
+
+<div id="dashboard-data" data-charts="@Model.ChartsJson" hidden></div>
+
+<div class="chart-grid">
+    <div class="chart-card">
+        <h2>연도별 등재 건수</h2>
+        @if (d.ByYear.Count == 0)
+        { <p class="chart-empty">아직 등록된 건이 없습니다.</p> }
+        else
+        { <div class="chart-box"><canvas id="chart-years" role="img" aria-label="연도별 등재 건수 막대 그래프"></canvas></div> }
+    </div>
+    <div class="chart-card">
+        <h2>기록 상태 분포</h2>
+        @if (d.TotalCases == 0)
+        { <p class="chart-empty">아직 등록된 건이 없습니다.</p> }
+        else
+        { <div class="chart-box"><canvas id="chart-phase" role="img" aria-label="기록 상태 분포 도넛 그래프"></canvas></div> }
+    </div>
+    <div class="chart-card">
+        <h2>구분별 건수</h2>
+        @if (d.TotalCases == 0)
+        { <p class="chart-empty">아직 등록된 건이 없습니다.</p> }
+        else
+        { <div class="chart-box"><canvas id="chart-category" role="img" aria-label="구분별 건수 도넛 그래프"></canvas></div> }
+    </div>
+    <div class="chart-card">
+        <h2>조치요구 진행</h2>
+        @if (d.OpenActions + d.DoneActions == 0)
+        { <p class="chart-empty">아직 조치요구가 없습니다.</p> }
+        else
+        { <div class="chart-box"><canvas id="chart-actions" role="img" aria-label="조치요구 상태 막대 그래프"></canvas></div> }
+    </div>
+</div>
+
+<div class="dash-columns">
+    <section class="card" aria-labelledby="recent-title">
+        <h2 id="recent-title">최근 이력</h2>
+        @if (d.Recent.Count == 0)
+        {
+            <p class="hint">아직 이력이 없습니다.</p>
+        }
+        else
+        {
+            <ol class="feed">
+            @foreach (var row in d.Recent)
+            {
+                <li>
+                    <time>@row.AtDisplay</time>
+                    <span class="feed-act">@row.Action · @row.ActorName</span>
+                    <span class="feed-sum">
+                        @if (!string.IsNullOrEmpty(row.TargetId))
+                        { <a href="/cases/@row.TargetId">@row.Summary</a> }
+                        else
+                        { @row.Summary }
+                    </span>
+                </li>
+            }
+            </ol>
+        }
+    </section>
+    <section class="card" aria-labelledby="shortcut-title">
+        <h2 id="shortcut-title">바로 가기</h2>
+        <div class="form-grid">
+            <a class="btn btn-primary" href="/cases/new">건 등록</a>
+            <a class="btn" href="/register">등록대장 열기</a>
+            <a class="btn" href="/register?handler=Csv">등록대장 CSV 내려받기</a>
+            <a class="btn" href="/todo">할 일 보기</a>
+        </div>
+        <p class="hint">그래프는 목록 수준 항목만 집계하며, 외부로 데이터를 보내지 않습니다.</p>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.umd.js" asp-append-version="true" defer></script>
+    <script src="~/js/charts.js" asp-append-version="true" defer></script>
+}

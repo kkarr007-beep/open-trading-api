@@ -3,6 +3,8 @@
     var path = Context.Request.Path.Value ?? "";
     var actor = Context.Items["actor"] as Actor;
     var state = actor is null ? null : Audit.GetState();
+    static string Current(string path, string prefix) =>
+        path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? "page" : "false";
 }
 <!DOCTYPE html>
 <html lang="ko">
@@ -13,92 +15,136 @@
     <title>@ViewData["Title"]</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="icon" href="~/favicon.ico" />
+    <script src="~/js/theme.js" asp-append-version="true"></script>
 </head>
 <body class="@(state is { IntegrityOk: false } ? "frozen-integrity" : null) @(state is { RestoreLocked: true } ? "frozen-restore" : null)">
     <a class="skip" href="#main">본문으로 건너뛰기</a>
-    <header class="top">
-        <a class="brand" href="@(actor is null ? "/account/login" : "/todo")">감사기록</a>
-        @if (actor is not null)
-        {
-            <nav aria-label="업무 화면">
-                @if (path.StartsWith("/todo", StringComparison.OrdinalIgnoreCase))
-                {
-                    <a asp-page="/Todo/Index" aria-current="page">할 일</a>
-                }
-                else
-                {
-                    <a asp-page="/Todo/Index">할 일</a>
-                }
-                @if (path.StartsWith("/cases", StringComparison.OrdinalIgnoreCase))
-                {
-                    <a asp-page="/Cases/Index" aria-current="page">건 목록</a>
-                }
-                else
-                {
-                    <a asp-page="/Cases/Index">건 목록</a>
-                }
+    @if (actor is not null)
+    {
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="sidebar-head">
+                <a class="brand" href="/dashboard">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </span>
+                    감사기록
+                </a>
+            </div>
+            <nav class="side-nav" aria-label="업무 화면">
+                <a href="/dashboard" aria-current="@Current(path, "/dashboard")">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    현황판
+                </a>
+                <a href="/todo" aria-current="@Current(path, "/todo")">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+                    할 일
+                </a>
+                <a href="/cases" aria-current="@Current(path, "/cases")">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                    건 목록
+                </a>
+                <a href="/register" aria-current="@Current(path, "/register")">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                    등록대장
+                </a>
                 @if (actor.IsAdmin)
                 {
-                    @if (path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <a asp-page="/Admin/Index" aria-current="page">관리</a>
-                    }
-                    else
-                    {
-                        <a asp-page="/Admin/Index">관리</a>
-                    }
+                    <a href="/admin" aria-current="@Current(path, "/admin")">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        관리
+                    </a>
                 }
             </nav>
-            <p class="who">
-                <span class="net">@(state?.Demo == true ? "예시" : "내부망")</span>
-                <span>@actor.DisplayName · @actor.Role</span>
+            <p class="side-section">빠른 작업</p>
+            <div class="sidebar-actions">
+                <a class="btn btn-primary" href="/cases/new">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    건 등록
+                </a>
+            </div>
+            <div class="sidebar-foot">
+                <div class="user-card">
+                    <span class="user-avatar" aria-hidden="true">@(actor.DisplayName.Length > 0 ? actor.DisplayName[..1] : "?")</span>
+                    <span class="user-meta">
+                        <strong>@actor.DisplayName</strong>
+                        <span>@actor.Role</span>
+                    </span>
+                </div>
+                <div class="sidebar-actions">
+                    <button type="button" class="btn btn-quiet" data-theme-toggle aria-pressed="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                        <span class="theme-label">어둡게</span>
+                    </button>
+                    <button type="button" class="btn btn-quiet" data-dialog="password-dialog">비밀번호</button>
+                    <form method="post" asp-page="/Account/Logout" data-allow="logout">
+                        <button type="submit" class="btn btn-quiet">나가기</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+        <div class="content">
+            <header class="topbar">
+                <span class="page-crumb">@(ViewData["Crumb"] ?? "")</span>
+                <div class="topbar-actions">
+                    <span class="net @(state?.Demo == true ? "demo" : null)">@(state?.Demo == true ? "예시 모드" : "내부망")</span>
+                </div>
+            </header>
+            <main id="main">
+            <div class="global-banners">
+                @if (state is { IntegrityOk: false })
+                {
+                    <div class="banner danger" role="alert">
+                        <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
+                        변경 입력은 숨겼습니다. 고친 뒤에도 조사 확인 전에는 읽기 전용입니다. 503으로 보내지 않습니다.
+                    </div>
+                    @if (actor is { IsAdmin: true })
+                    {
+                        <form method="post" asp-page="/Admin/Index" asp-page-handler="ClearIntegrity" class="inline-form" data-write="ack">
+                            <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                            <label class="field">조사 사유<input name="reason" required maxlength="240" /></label>
+                            <button type="submit" class="btn">조사 후 읽기 전용 해제</button>
+                        </form>
+                    }
+                }
+                @if (state is { RestoreLocked: true })
+                {
+                    <div class="banner danger" role="alert">
+                        <strong>복구 대조 전</strong>
+                        @(string.IsNullOrEmpty(state.RestoreMessage) ? "최신 삭제·보류 기록을 확인하기 전에는 일반 사용을 열지 않습니다." : state.RestoreMessage)
+                    </div>
+                }
+                @if (state?.Demo == true)
+                {
+                    <div class="banner warn">예시 모드입니다. 가짜 기록만 있으며 운영 자료가 아닙니다. 예시 계정은 운영 모드에 만들어지지 않습니다.</div>
+                }
+                else if (state is { PolicyAcknowledged: false })
+                {
+                    <div class="banner warn">자동 보존 삭제는 관리자가 관리 화면에서 정책을 확인하기 전에는 실행되지 않습니다.</div>
+                }
+            </div>
+                @RenderBody()
+            </main>
+            <footer class="foot">
+                <p>서버 시각 @AuditRecord.Domain.Kst.Display(DateTimeOffset.UtcNow) KST. 화면 시각은 이 페이지를 연 시점입니다.</p>
+            </footer>
+        </div>
+    </div>
+    }
+    else
+    {
+    <div class="auth-body">
+        <main id="main" class="auth-card">
+            <p class="auth-brand">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span>
+                감사기록 <span class="net">내부망</span>
             </p>
-            <button type="button" class="btn btn-quiet" data-dialog="password-dialog">비밀번호</button>
-            <form method="post" asp-page="/Account/Logout" data-allow="logout">
-                <button type="submit" class="btn btn-quiet">나가기</button>
-            </form>
-        }
-        else
-        {
-            <p class="who"><span class="net">내부망</span></p>
-        }
-    </header>
-    <main id="main">
-        @if (state is { IntegrityOk: false })
-        {
-            <div class="banner danger" role="alert">
-                <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
-                변경 입력은 숨겼습니다. 고친 뒤에도 조사 확인 전에는 읽기 전용입니다. 503으로 보내지 않습니다.
-            </div>
-            @if (actor is { IsAdmin: true })
-            {
-                <form method="post" asp-page="/Admin/Index" asp-page-handler="ClearIntegrity" class="inline-form" data-write="ack">
-                    <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
-                    <label class="field">조사 사유<input name="reason" required maxlength="240" /></label>
-                    <button type="submit" class="btn">조사 후 읽기 전용 해제</button>
-                </form>
-            }
-        }
-        @if (state is { RestoreLocked: true })
-        {
-            <div class="banner danger" role="alert">
-                <strong>복구 대조 전</strong>
-                @(string.IsNullOrEmpty(state.RestoreMessage) ? "최신 삭제·보류 기록을 확인하기 전에는 일반 사용을 열지 않습니다." : state.RestoreMessage)
-            </div>
-        }
-        @if (state?.Demo == true)
-        {
-            <div class="banner warn">예시 모드입니다. 가짜 기록만 있으며 운영 자료가 아닙니다. 예시 계정은 운영 모드에 만들어지지 않습니다.</div>
-        }
-        else if (state is { PolicyAcknowledged: false })
-        {
-            <div class="banner warn">자동 보존 삭제는 관리자가 관리 화면에서 정책을 확인하기 전에는 실행되지 않습니다.</div>
-        }
-        @RenderBody()
-    </main>
-    <footer class="foot">
-        <p>서버 시각 @AuditRecord.Domain.Kst.Display(DateTimeOffset.UtcNow) KST. 화면 시각은 이 페이지를 연 시점입니다.</p>
-    </footer>
+            @RenderBody()
+        </main>
+    </div>
+    }
     @if (actor is not null)
     {
         <dialog id="password-dialog" aria-labelledby="password-title">
@@ -119,5 +165,6 @@
         </dialog>
     }
     <script src="~/js/site.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

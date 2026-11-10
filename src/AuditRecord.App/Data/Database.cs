@@ -60,7 +60,7 @@ public sealed class Database
                     INSERT INTO SystemMeta(
                       Id, SchemaVersion, ChainTailSeq, ChainTailHash, ChainRowCount, IntegrityState,
                       PolicyAcknowledged, BackupRetentionDays, BackupRetentionGenerations, Mode, SetupComplete)
-                    VALUES (1, 1, 0, $hash, 0, 'ok', 0, 7, 7, $mode, 0);
+                    VALUES (1, 2, 0, $hash, 0, 'ok', 0, 7, 7, $mode, 0);
                     """;
                 meta.Parameters.Add("$hash", SqliteType.Blob).Value = HashChain.Genesis();
                 meta.Parameters.AddWithValue("$mode", mode);
@@ -78,7 +78,12 @@ public sealed class Database
             schema = reader.GetInt32(0);
             storedMode = reader.GetString(1);
         }
-        if (schema != 1)
+        if (schema == 1)
+        {
+            MigrateToV2(conn);
+            schema = 2;
+        }
+        if (schema != 2)
             throw new InvalidOperationException("unsupported schema");
         using (var index = conn.CreateCommand())
         {
@@ -105,6 +110,90 @@ public sealed class Database
         if (!string.Equals(storedMode, mode, StringComparison.Ordinal))
             throw new StartupFailure("데이터베이스 모드가 이 프로세스와 다릅니다. Production과 Demo를 같은 데이터 폴더에서 바꾸지 마세요.");
         _ = created;
+    }
+
+    /// <summary>
+    /// v1 → v2: Cases.RecordNo (등록번호). 기존 건은 연도별 CreatedAt 순으로 소급 채번한다.
+    /// 등록번호는 이후 바뀌지 않는다. 연도 수정은 번호를 다시 매기지 않는다.
+    /// </summary>
+    static void MigrateToV2(SqliteConnection conn)
+    {
+        using (var begin = conn.CreateCommand())
+        {
+            begin.CommandText = "BEGIN IMMEDIATE;";
+            begin.ExecuteNonQuery();
+        }
+        try
+        {
+            MigrateToV2Body(conn);
+            using var commit = conn.CreateCommand();
+            commit.CommandText = "COMMIT;";
+            commit.ExecuteNonQuery();
+        }
+        catch
+        {
+            try
+            {
+                using var rollback = conn.CreateCommand();
+                rollback.CommandText = "ROLLBACK;";
+                rollback.ExecuteNonQuery();
+            }
+            catch (SqliteException) { }
+            throw;
+        }
+    }
+
+    static void MigrateToV2Body(SqliteConnection conn)
+    {
+        bool hasColumn;
+        using (var probe = conn.CreateCommand())
+        {
+            probe.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Cases') WHERE name='RecordNo';";
+            hasColumn = Convert.ToInt32(probe.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) > 0;
+        }
+        if (!hasColumn)
+        {
+            using var alter = conn.CreateCommand();
+            alter.CommandText = "ALTER TABLE Cases ADD COLUMN RecordNo TEXT NOT NULL DEFAULT '';";
+            alter.ExecuteNonQuery();
+        }
+        var rows = new List<(string Id, int Year)>();
+        using (var read = conn.CreateCommand())
+        {
+            read.CommandText = "SELECT CaseId, Year FROM Cases WHERE RecordNo='' ORDER BY Year, CreatedAt, CaseId;";
+            using var reader = read.ExecuteReader();
+            while (reader.Read())
+                rows.Add((reader.GetString(0), reader.GetInt32(1)));
+        }
+        foreach (var (id, year) in rows)
+        {
+            using var update = Cmd(conn, "UPDATE Cases SET RecordNo=$no WHERE CaseId=$id;",
+                ("$no", NextRecordNo(conn, year)), ("$id", id));
+            update.ExecuteNonQuery();
+        }
+        using (var bump = conn.CreateCommand())
+        {
+            bump.CommandText = "UPDATE SystemMeta SET SchemaVersion=2 WHERE Id=1;";
+            bump.ExecuteNonQuery();
+        }
+    }
+
+    public static string FormatRecordNo(int year, int sequence) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{year}-{sequence:000}");
+
+    /// <summary>
+    /// 같은 등재 연도의 다음 등록번호. BEGIN IMMEDIATE 트랜잭션 안에서 호출한다.
+    /// 번호는 등록번호 자체의 연도 접두어로만 세므로, 나중에 건의 연도를 고쳐도 번호를 다시 쓰지 않는다.
+    /// 건 행은 지워지지 않으므로 MAX가 안전하다.
+    /// </summary>
+    public static string NextRecordNo(SqliteConnection conn, int year)
+    {
+        using var cmd = Cmd(conn, """
+            SELECT IFNULL(MAX(CAST(substr(RecordNo, instr(RecordNo,'-')+1) AS INTEGER)), 0)
+            FROM Cases WHERE RecordNo LIKE ($year || '-%');
+            """, ("$year", year));
+        var max = Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+        return FormatRecordNo(year, max + 1);
     }
 
     public void Checkpoint(bool vacuum)
@@ -158,6 +247,7 @@ public sealed class Database
           Category TEXT NOT NULL CHECK (Category IN ('업무진단','준법감사')),
           Title TEXT NOT NULL,
           Target TEXT NOT NULL,
+          RecordNo TEXT NOT NULL DEFAULT '',
           OwnerUserId TEXT NOT NULL REFERENCES Users(UserId),
           Shelf TEXT NOT NULL DEFAULT '',
           BinderNo TEXT NOT NULL DEFAULT '',

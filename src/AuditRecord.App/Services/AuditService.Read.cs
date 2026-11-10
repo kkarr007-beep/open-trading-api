@@ -69,6 +69,7 @@ public sealed partial class AuditService
         return new CaseDetail
         {
             CaseId = row.Id,
+            RecordNo = row.RecordNo,
             Year = row.Year,
             Category = row.Category,
             Title = row.Title,
@@ -124,7 +125,8 @@ public sealed partial class AuditService
                    c.Phase, c.PurgedAt, c.Hold, c.RetentionYears, c.FirstConfirmedOn,
                    c.Shelf, c.BinderNo, r.DocumentNo, c.PurgeIncomplete, c.Version,
                    (SELECT MIN(a.ReplyDueOn) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료'),
-                   (SELECT COUNT(*) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료')
+                   (SELECT COUNT(*) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료'),
+                   c.RecordNo, r.SummaryLine, c.CreatedAt
             FROM Cases c
             JOIN Users u ON u.UserId=c.OwnerUserId
             JOIN Results r ON r.CaseId=c.CaseId
@@ -150,7 +152,7 @@ public sealed partial class AuditService
         }
         if (!string.IsNullOrWhiteSpace(query.Text))
         {
-            sql += " AND (c.Title LIKE $q ESCAPE '\\' OR c.Target LIKE $q ESCAPE '\\' OR r.DocumentNo LIKE $q ESCAPE '\\' OR c.BinderNo LIKE $q ESCAPE '\\')";
+            sql += " AND (c.Title LIKE $q ESCAPE '\\' OR c.Target LIKE $q ESCAPE '\\' OR r.DocumentNo LIKE $q ESCAPE '\\' OR c.BinderNo LIKE $q ESCAPE '\\' OR c.RecordNo LIKE $q ESCAPE '\\' OR r.SummaryLine LIKE $q ESCAPE '\\')";
             args.Add(("$q", Text.LikeContains(query.Text.Trim())));
         }
         using var cmd = Database.Cmd(conn, sql, args.ToArray());
@@ -202,7 +204,10 @@ public sealed partial class AuditService
                     BinderNo = reader.GetString(12),
                     OpenActions = open,
                     PurgeIncomplete = reader.GetInt32(14) == 1,
-                    Version = reader.GetInt32(15)
+                    Version = reader.GetInt32(15),
+                    RecordNo = reader.GetString(18),
+                    SummaryLine = reader.GetString(19),
+                    CreatedDate = DisplayDateOnly(reader.GetString(20))
                 });
             }
         }
@@ -512,4 +517,6 @@ public sealed partial class AuditService
 
     static string? DisplayMaybe(string? canon) =>
         string.IsNullOrEmpty(canon) ? null : DisplayStamp(canon);
+
+    static string DisplayDateOnly(string canon) => canon.Length >= 10 ? canon[..10] : canon;
 }

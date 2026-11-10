@@ -2,6 +2,7 @@
 @model AuditRecord.Pages.Todo.IndexModel
 @{
     ViewData["Title"] = "할 일 · 감사기록";
+    ViewData["Crumb"] = "할 일";
 }
 <div class="page-head">
     <h1>할 일</h1>
@@ -43,8 +44,8 @@
                         <td>@row.Target</td>
                         <td>@row.OwnerName</td>
                         <td class="num">@row.ReplyDueOn</td>
-                        <td class="num">@(row.DaysOver)일</td>
-                        <td>@row.State</td>
+                        <td class="num"><span class="cell-danger">@(row.DaysOver)일</span></td>
+                        <td><span class="@Ui.BadgeClass(row.State)">@row.State</span></td>
                     </tr>
                 }
                 </tbody>
@@ -85,7 +86,7 @@
                             <td>@row.Target</td>
                             <td>@row.OwnerName</td>
                             <td class="num">@(row.RetentionYears?.ToString() ?? "없음")년</td>
-                            <td>@row.DisplayState</td>
+                            <td><span class="@Ui.BadgeClass(row.DisplayState)">@row.DisplayState</span></td>
                         </tr>
                     }
                     </tbody>

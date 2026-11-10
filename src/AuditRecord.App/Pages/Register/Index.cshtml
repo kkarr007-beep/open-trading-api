@@ -1,0 +1,110 @@
+@page "/register"
+@model AuditRecord.Pages.Register.IndexModel
+@{
+    ViewData["Title"] = "등록대장 · 감사기록";
+    ViewData["Crumb"] = "기록물 등록대장";
+    var query = new List<string>();
+    if (Model.Year is int qy) { query.Add("year=" + qy); }
+    if (!string.IsNullOrEmpty(Model.Category)) { query.Add("category=" + Uri.EscapeDataString(Model.Category)); }
+    var suffix = query.Count > 0 ? "&" + string.Join("&", query) : "";
+}
+<div class="page-head">
+    <h1>기록물 등록대장</h1>
+    <p class="row-actions no-print">
+        <a class="btn" href="/register?handler=Csv@(suffix)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            CSV 내려받기
+        </a>
+        <button type="button" class="btn" data-print>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+            인쇄
+        </button>
+    </p>
+    <p class="hint">등록번호는 건 등록 시 연도별로 자동 채번되며 이후 바뀌지 않습니다. 연한이 지나 본문과 파일이 삭제된 건도 대장 줄은 남습니다.</p>
+</div>
+<form method="get" class="filters no-print">
+    <label class="field">연도
+        <select name="year">
+            <option value="">전체</option>
+            @foreach (var year in Model.Years)
+            {
+                <option value="@year" selected="@(Model.Year == year)">@year</option>
+            }
+        </select>
+    </label>
+    <label class="field">구분
+        <select name="category">
+            <option value="">전체</option>
+            <option selected="@(Model.Category == "업무진단")">업무진단</option>
+            <option selected="@(Model.Category == "준법감사")">준법감사</option>
+        </select>
+    </label>
+    <button type="submit" class="btn btn-primary">적용</button>
+    @if (Model.Year is not null || Model.Category is not null)
+    {
+        <a class="btn" href="/register">조건 지우기</a>
+    }
+</form>
+<p class="count-line" role="status">총 @Model.Rows.Count 건</p>
+<span class="print-title">기록물 등록대장 · @(Model.Year?.ToString() ?? "전체 연도") @(Model.Category ?? "전체 구분") · 출력 @Model.PrintedAt KST</span>
+@if (Model.Rows.Count == 0)
+{
+    <p>조건에 맞는 등재 기록이 없습니다. <a href="/cases/new">건 등록</a></p>
+}
+else
+{
+    <div class="table-wrap" tabindex="0" aria-label="등록대장 표 가로 이동">
+        <table class="data">
+            <caption>기록물 등록대장 @(Model.Rows.Count)건</caption>
+            <thead>
+                <tr>
+                    <th scope="col">등록번호</th>
+                    <th scope="col">구분</th>
+                    <th scope="col">제목</th>
+                    <th scope="col">대상</th>
+                    <th scope="col">담당</th>
+                    <th scope="col">등재일</th>
+                    <th scope="col">결과확정일</th>
+                    <th scope="col">보존연한</th>
+                    <th scope="col">만료예정일</th>
+                    <th scope="col">상태</th>
+                    <th scope="col">문서번호</th>
+                    <th scope="col">서가·철번호</th>
+                    <th scope="col">자료</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="num"><a href="/cases/@row.CaseId">@row.RecordNo</a></td>
+                    <td>@row.Category</td>
+                    <th scope="row">
+                        @row.Title
+                        @if (!string.IsNullOrEmpty(row.SummaryLine))
+                        { <span class="cell-note">@row.SummaryLine</span> }
+                    </th>
+                    <td>@row.Target</td>
+                    <td>@row.OwnerName</td>
+                    <td class="num">@row.CreatedDate</td>
+                    <td class="num">@(row.FirstConfirmedOn ?? "—")</td>
+                    <td class="num">@(row.RetentionYears is null ? "—" : row.RetentionYears + "년")</td>
+                    <td class="num">@(row.ExpiryDate ?? "—")</td>
+                    <td>
+                        <span class="@Ui.BadgeClass(row.DisplayState)">@row.DisplayState</span>
+                        @if (row.Hold)
+                        { <span class="badge badge-hold">보류</span> }
+                    </td>
+                    <td>@row.DocumentNo</td>
+                    <td>@row.Shelf @row.BinderNo</td>
+                    <td class="num">
+                        @row.AttachmentCount
+                        @if (row.DeletedAttachmentCount > 0)
+                        { <span class="cell-note">삭제 @row.DeletedAttachmentCount</span> }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

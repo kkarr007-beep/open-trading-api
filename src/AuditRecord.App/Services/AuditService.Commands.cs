@@ -27,14 +27,15 @@ public sealed partial class AuditService
                 return OpResult.Fail(422, "BAD_INPUT", "담당을 확인하세요.");
             var id = Text.NewId();
             var at = Kst.Canon(now);
+            var recordNo = Database.NextRecordNo(conn, input.Year);
             using (var insert = Database.Cmd(conn, """
                 INSERT INTO Cases(
-                  CaseId, Year, Category, Title, Target, OwnerUserId, Shelf, BinderNo, RetentionYears,
+                  CaseId, Year, Category, Title, Target, RecordNo, OwnerUserId, Shelf, BinderNo, RetentionYears,
                   EverConfirmed, Hold, Phase, PurgeIncomplete, Version, CreatedAt)
-                VALUES ($id,$year,$cat,$title,$target,$owner,$shelf,$binder,$ret,0,0,'초안',0,1,$at);
+                VALUES ($id,$year,$cat,$title,$target,$no,$owner,$shelf,$binder,$ret,0,0,'초안',0,1,$at);
                 """,
                 ("$id", id), ("$year", input.Year), ("$cat", input.Category), ("$title", input.Title),
-                ("$target", input.Target), ("$owner", input.OwnerId), ("$shelf", input.Shelf),
+                ("$target", input.Target), ("$no", recordNo), ("$owner", input.OwnerId), ("$shelf", input.Shelf),
                 ("$binder", input.Binder), ("$ret", input.Retention), ("$at", at)))
                 insert.ExecuteNonQuery();
             using (var resultInsert = Database.Cmd(conn, """
@@ -42,7 +43,7 @@ public sealed partial class AuditService
                 """,
                 ("$id", id), ("$doc", input.Doc), ("$sum", input.Summary), ("$body", input.Body)))
                 resultInsert.ExecuteNonQuery();
-            AppendHistory(conn, id, now, actor.UserId, "등록", "건", id, "건 등록", null);
+            AppendHistory(conn, id, now, actor.UserId, "등록", "건", id, "건 등록 · 등록번호 " + recordNo, null);
             var done = OpResult.Success(Msg.Saved, id, 1);
             StoreReceipt(conn, actor, requestId!, "register", null, null, done, now);
             return done;
@@ -592,7 +593,7 @@ public sealed partial class AuditService
             SELECT c.CaseId, c.Year, c.Category, c.Title, c.Target, c.OwnerUserId, c.Shelf, c.BinderNo,
                    c.RetentionYears, c.FirstConfirmedOn, c.ConfirmedOn, c.EverConfirmed, c.Hold, c.HoldReason,
                    c.HoldSetAt, c.HoldReleasedAt, c.Phase, c.PurgedAt, c.BodiesClearedAt, c.PurgeIncomplete, c.Version,
-                   r.DocumentNo, r.SummaryLine, r.Body, r.ConfirmerUserId
+                   r.DocumentNo, r.SummaryLine, r.Body, r.ConfirmerUserId, c.RecordNo
             FROM Cases c JOIN Results r ON r.CaseId=c.CaseId
             WHERE c.CaseId=$id;
             """, ("$id", caseId));
@@ -624,7 +625,8 @@ public sealed partial class AuditService
             Doc = reader.GetString(21),
             Summary = reader.GetString(22),
             Body = reader.IsDBNull(23) ? null : reader.GetString(23),
-            ConfirmerId = reader.IsDBNull(24) ? null : reader.GetString(24)
+            ConfirmerId = reader.IsDBNull(24) ? null : reader.GetString(24),
+            RecordNo = reader.GetString(25)
         };
     }
 
@@ -702,5 +704,6 @@ public sealed partial class AuditService
         public string Summary { get; init; } = "";
         public string? Body { get; init; }
         public string? ConfirmerId { get; init; }
+        public string RecordNo { get; init; } = "";
     }
 }

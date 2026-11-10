@@ -226,6 +226,7 @@ public sealed class HistoryRow
 public sealed class CaseDetail
 {
     public string CaseId { get; init; } = "";
+    public string RecordNo { get; init; } = "";
     public int Year { get; init; }
     public string Category { get; init; } = "";
     public string Title { get; init; } = "";
@@ -274,6 +275,9 @@ public sealed class CaseDetail
 public sealed class CaseListItem
 {
     public string CaseId { get; init; } = "";
+    public string RecordNo { get; init; } = "";
+    public string SummaryLine { get; init; } = "";
+    public string CreatedDate { get; init; } = "";
     public int Year { get; init; }
     public string Category { get; init; } = "";
     public string Title { get; init; } = "";
@@ -363,6 +367,53 @@ public sealed class TodoPage
     public List<TodoAction> Overdue { get; init; } = [];
     public List<TodoDraft> WaitingConfirm { get; init; } = [];
     public List<TodoExpiry> Expiring { get; init; } = [];
+}
+
+public sealed class DashboardData
+{
+    public int TotalCases { get; init; }
+    public int DraftCount { get; init; }
+    public int ConfirmedCount { get; init; }
+    public int InActionCount { get; init; }
+    public int ClosedCount { get; init; }
+    public int PurgedCount { get; init; }
+    public int OverdueActions { get; init; }
+    public int OpenActions { get; init; }
+    public int DoneActions { get; init; }
+    public int ExpiringSoon { get; init; }
+    public int DeletionDelayed { get; init; }
+    public int HoldCount { get; init; }
+    public int ThisYearRegistered { get; init; }
+    public List<LabelCount> ByYear { get; init; } = [];
+    public List<LabelCount> ByCategory { get; init; } = [];
+    public List<LabelCount> ByPhase { get; init; } = [];
+    public List<LabelCount> ByActionState { get; init; } = [];
+    public List<HistoryRow> Recent { get; init; } = [];
+}
+
+public sealed record LabelCount(string Label, int Count);
+
+public sealed class RegisterRow
+{
+    public string CaseId { get; init; } = "";
+    public string RecordNo { get; init; } = "";
+    public int Year { get; init; }
+    public string Category { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Target { get; init; } = "";
+    public string OwnerName { get; init; } = "";
+    public string CreatedDate { get; init; } = "";
+    public string? FirstConfirmedOn { get; init; }
+    public int? RetentionYears { get; init; }
+    public string? ExpiryDate { get; init; }
+    public string DisplayState { get; init; } = "";
+    public string DocumentNo { get; init; } = "";
+    public string Shelf { get; init; } = "";
+    public string BinderNo { get; init; } = "";
+    public string SummaryLine { get; init; } = "";
+    public bool Hold { get; init; }
+    public int AttachmentCount { get; init; }
+    public int DeletedAttachmentCount { get; init; }
 }
 
 public sealed class SystemState

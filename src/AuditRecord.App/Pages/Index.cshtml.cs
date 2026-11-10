@@ -12,6 +12,6 @@ public class IndexModel : PageModel
     {
         if (!_audit.AnyUsers()) return RedirectToPage("/Account/Setup");
         if (User.Identity?.IsAuthenticated != true) return RedirectToPage("/Account/Login");
-        return RedirectToPage("/Todo/Index");
+        return RedirectToPage("/Dashboard/Index");
     }
 }
