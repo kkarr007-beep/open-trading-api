@@ -1,0 +1,164 @@
+@page "/cases"
+@model AuditRecord.Pages.Cases.IndexModel
+@{
+    ViewData["Title"] = "건 목록 · 감사기록";
+}
+<div class="page-head">
+    <h1>건 목록</h1>
+    <a class="btn btn-primary" href="/cases/new">건 등록</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Flash))
+{
+    <p class="banner info" role="status">@Model.Flash</p>
+}
+<form method="post" asp-page-handler="Apply" class="filters">
+    <label class="field">연도
+        <select name="year">
+            <option value="">전체</option>
+            @foreach (var year in Model.Years)
+            {
+                <option value="@year" selected="@(Model.Query.Year == year)">@year</option>
+            }
+        </select>
+    </label>
+    <label class="field">구분
+        <select name="category">
+            <option value="">전체</option>
+            <option selected="@("업무진단" == Model.Query.Category)">업무진단</option>
+            <option selected="@("준법감사" == Model.Query.Category)">준법감사</option>
+        </select>
+    </label>
+    <label class="field">상태
+        <select name="status">
+            <option value="">전체</option>
+            @foreach (var status in new[] { "초안", "확정", "조치중", "종결", "자료삭제됨" })
+            {
+                <option selected="@(Model.Query.Status == status)">@status</option>
+            }
+        </select>
+    </label>
+    <label class="check"><input type="checkbox" name="overdue" value="true" checked="@Model.Query.Overdue" /> 기한초과</label>
+    <label class="check"><input type="checkbox" name="dueSoon" value="true" checked="@Model.Query.DueSoon" /> 삭제임박</label>
+    <label class="field grow">제목·대상·문서번호·철번호
+        <input name="text" value="@Model.Query.Text" autocomplete="off" spellcheck="false" maxlength="120" />
+    </label>
+    <label class="field">페이지 크기
+        <select name="pageSize">
+            @foreach (var size in new[] { 25, 50, 100 })
+            {
+                <option value="@size" selected="@(Model.Query.PageSize == size)">@size</option>
+            }
+        </select>
+    </label>
+    <button type="submit" class="btn btn-primary">적용</button>
+</form>
+<div class="chips" aria-label="적용 중인 필터">
+    @if (Model.Query.Year is int y)
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="year" /><button type="submit" class="chip">연도 @y 필터 제거</button></form>
+    }
+    @if (!string.IsNullOrEmpty(Model.Query.Category))
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="category" /><button type="submit" class="chip">@Model.Query.Category 필터 제거</button></form>
+    }
+    @if (!string.IsNullOrEmpty(Model.Query.Status))
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="status" /><button type="submit" class="chip">@Model.Query.Status 필터 제거</button></form>
+    }
+    @if (Model.Query.Overdue)
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="overdue" /><button type="submit" class="chip">기한초과 필터 제거</button></form>
+    }
+    @if (Model.Query.DueSoon)
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="soon" /><button type="submit" class="chip">삭제임박 필터 제거</button></form>
+    }
+    @if (Model.Searched)
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="text" /><button type="submit" class="chip">검색 조건 적용됨, 제거</button></form>
+    }
+    <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="all" /><button type="submit" class="chip">모두 지우기</button></form>
+</div>
+<p class="count-line" role="status">검색 결과 @Model.Result.Total 건</p>
+@if (Model.Result.Total == 0)
+{
+    <p>@(Model.Years.Count == 0 && !Model.Searched && Model.Query.Year is null ? "등록된 건이 없습니다." : "조건에 맞는 건이 없습니다.")
+        @if (Model.Years.Count == 0)
+        {
+            <a href="/cases/new">건 등록</a>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Clear" class="inline"><input type="hidden" name="key" value="all" /><button type="submit" class="btn">조건 지우기</button></form>
+        }
+    </p>
+}
+else
+{
+    <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+        <table class="data">
+            <caption>감사 건 @(Model.Result.Total)건 중 @Model.Result.Page 쪽</caption>
+            <thead>
+                <tr>
+                    <th scope="col" aria-sort="@Model.AriaSort("year")">
+                        <form method="post" asp-page-handler="Sort"><input type="hidden" name="sort" value="year" /><button type="submit">연도 <span class="sr">@Model.SortLabel("year")</span></button></form>
+                    </th>
+                    <th scope="col">구분</th>
+                    <th scope="col" aria-sort="@Model.AriaSort("title")">
+                        <form method="post" asp-page-handler="Sort"><input type="hidden" name="sort" value="title" /><button type="submit">제목 <span class="sr">@Model.SortLabel("title")</span></button></form>
+                    </th>
+                    <th scope="col">대상</th>
+                    <th scope="col">담당</th>
+                    <th scope="col">상태</th>
+                    <th scope="col" aria-sort="@Model.AriaSort("due")">
+                        <form method="post" asp-page-handler="Sort"><input type="hidden" name="sort" value="due" /><button type="submit">회신기한 <span class="sr">@Model.SortLabel("due")</span></button></form>
+                    </th>
+                    <th scope="col">보존연한</th>
+                    <th scope="col" aria-sort="@Model.AriaSort("expiry")">
+                        <form method="post" asp-page-handler="Sort"><input type="hidden" name="sort" value="expiry" /><button type="submit">만료·보류 <span class="sr">@Model.SortLabel("expiry")</span></button></form>
+                    </th>
+                    <th scope="col">문서번호</th>
+                    <th scope="col">서가·철번호</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Result.Items)
+            {
+                <tr>
+                    <td class="num">@row.Year</td>
+                    <td>@row.Category</td>
+                    <th scope="row"><a href="/cases/@row.CaseId">@row.Title</a></th>
+                    <td>@row.Target</td>
+                    <td>@row.OwnerName</td>
+                    <td>
+                        @row.DisplayState
+                        @if (row.PurgeIncomplete)
+                        { <span> 삭제 미완료</span> }
+                    </td>
+                    <td class="num">@(row.NextDue ?? "없음")@if (row.Overdue) { <span> 회신기한 초과</span> }</td>
+                    <td class="num">@(row.RetentionYears is null ? "없음" : row.RetentionYears + "년")</td>
+                    <td class="num">
+                        @(row.ExpiryDate ?? "없음")
+                        @if (row.Hold) { <span> 삭제 보류</span> }
+                        @if (row.DeletionDelayed) { <span> 삭제 지연</span> }
+                        else if (row.DueSoon) { <span> 30일 안에 삭제 예정</span> }
+                    </td>
+                    <td>@row.DocumentNo</td>
+                    <td>@row.Shelf @row.BinderNo</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <nav class="pager" aria-label="쪽">
+        <form method="post" asp-page-handler="Page">
+            <input type="hidden" name="page" value="@(Model.Result.Page - 1)" />
+            <button type="submit" class="btn" disabled="@(Model.Result.Page <= 1)">이전</button>
+        </form>
+        <p>@Model.Result.Page / @Model.Result.Pages 쪽, 총 @(Model.Result.Total)건</p>
+        <form method="post" asp-page-handler="Page">
+            <input type="hidden" name="page" value="@(Model.Result.Page + 1)" />
+            <button type="submit" class="btn" disabled="@(Model.Result.Page >= Model.Result.Pages)">다음</button>
+        </form>
+    </nav>
+}

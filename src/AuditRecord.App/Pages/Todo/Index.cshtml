@@ -1,0 +1,135 @@
+@page "/todo"
+@model AuditRecord.Pages.Todo.IndexModel
+@{
+    ViewData["Title"] = "할 일 · 감사기록";
+}
+<div class="page-head">
+    <h1>할 일</h1>
+    <p class="hint">감사파트 전체 건 기준입니다. 자기 건만 나누어 보지 않습니다.</p>
+    <p class="row-actions"><a class="btn" href="/cases">건 목록</a> <a class="btn btn-primary" href="/cases/new">건 등록</a></p>
+</div>
+@if (!string.IsNullOrEmpty(Model.Flash))
+{
+    <p class="banner info" role="status">@Model.Flash</p>
+}
+<section aria-labelledby="overdue-title">
+    <h2 id="overdue-title">회신기한 초과 <span class="count">@Model.Data.Overdue.Count</span></h2>
+    @if (Model.Data.Overdue.Count == 0)
+    {
+        <p>회신기한이 지난 조치요구가 없습니다.</p>
+    }
+    else
+    {
+        <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+            <table class="data">
+                <caption>회신기한이 지난 조치요구 @(Model.Data.Overdue.Count)건</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">건 제목</th>
+                        <th scope="col">조치</th>
+                        <th scope="col">대상</th>
+                        <th scope="col">담당</th>
+                        <th scope="col">회신기한</th>
+                        <th scope="col">초과</th>
+                        <th scope="col">상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Data.Overdue)
+                {
+                    <tr>
+                        <th scope="row"><a href="/cases/@row.CaseId#action-@row.ActionId">@row.CaseTitle</a></th>
+                        <td>@row.Sequence. @row.Title</td>
+                        <td>@row.Target</td>
+                        <td>@row.OwnerName</td>
+                        <td class="num">@row.ReplyDueOn</td>
+                        <td class="num">@(row.DaysOver)일</td>
+                        <td>@row.State</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+@if (Model.Data.ManagerView)
+{
+    <section aria-labelledby="wait-title">
+        <h2 id="wait-title">확정 대기 <span class="count">@Model.Data.WaitingConfirm.Count</span></h2>
+        <p class="hint">보존연한과 결과 한 줄이 있는 초안입니다. 결재 요청 상태는 아닙니다.</p>
+        @if (Model.Data.WaitingConfirm.Count == 0)
+        {
+            <p>확정 대기 건이 없습니다.</p>
+        }
+        else
+        {
+            <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+                <table class="data">
+                    <caption>확정 대기 @(Model.Data.WaitingConfirm.Count)건</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">연도/구분</th>
+                            <th scope="col">제목</th>
+                            <th scope="col">대상</th>
+                            <th scope="col">담당</th>
+                            <th scope="col">연한</th>
+                            <th scope="col">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in Model.Data.WaitingConfirm)
+                    {
+                        <tr>
+                            <td class="num">@row.Year @row.Category</td>
+                            <th scope="row"><a href="/cases/@row.CaseId#result">@row.Title</a></th>
+                            <td>@row.Target</td>
+                            <td>@row.OwnerName</td>
+                            <td class="num">@(row.RetentionYears?.ToString() ?? "없음")년</td>
+                            <td>@row.DisplayState</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+    <section aria-labelledby="expire-title">
+        <h2 id="expire-title">30일 안 삭제 예정 <span class="count">@Model.Data.Expiring.Count</span></h2>
+        <p class="hint">만료 시각은 최초 확정일에 보존연한을 더한 날 00:00 KST입니다. 보류 중이면 자동 삭제하지 않습니다.</p>
+        @if (Model.Data.Expiring.Count == 0)
+        {
+            <p>30일 안에 삭제 예정이거나 삭제가 지연된 건이 없습니다.</p>
+        }
+        else
+        {
+            <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+                <table class="data">
+                    <caption>삭제 예정과 삭제 지연</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">제목</th>
+                            <th scope="col">기산일</th>
+                            <th scope="col">만료 예정</th>
+                            <th scope="col">남은 일수</th>
+                            <th scope="col">미완료 조치</th>
+                            <th scope="col">보류</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in Model.Data.Expiring)
+                    {
+                        <tr>
+                            <th scope="row"><a href="/cases/@row.CaseId#retention">@row.Title</a></th>
+                            <td class="num">@row.ConfirmedOn</td>
+                            <td class="num">@row.ExpiryDate</td>
+                            <td class="num">@(row.Delayed ? "삭제 지연" : row.DaysLeft + "일")</td>
+                            <td class="num">@row.OpenActions</td>
+                            <td>@(row.Hold ? "삭제 보류—자동삭제 안함" : "보류 아님")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}

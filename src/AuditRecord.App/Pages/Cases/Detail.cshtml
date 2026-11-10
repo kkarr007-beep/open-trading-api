@@ -1,0 +1,372 @@
+@page "/cases/{id}"
+@model AuditRecord.Pages.Cases.DetailModel
+@{
+    ViewData["Title"] = "건 상세 · 감사기록";
+    var item = Model.Detail;
+    var token = Guid.NewGuid().ToString("N");
+}
+<p class="back"><a href="/cases">목록으로</a></p>
+@if (item is null)
+{
+    <h1>건을 찾을 수 없음</h1>
+    <p><a href="/cases">목록으로</a></p>
+}
+else
+{
+    <div class="page-head">
+        <p class="kicker">건 상세</p>
+        <h1>@item.Title</h1>
+        @if (item.DeletionQueued)
+        {
+            <p class="banner warn"><strong>삭제 대기</strong> 시도 @(item.DeletionAttempts)회@(string.IsNullOrEmpty(item.DeletionError) ? "" : " · " + item.DeletionError)</p>
+        }
+        <p class="meta">@item.Year · @item.Category · 담당 @item.OwnerName</p>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Flash))
+    {
+        <p class="banner info" role="status">@Model.Flash</p>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="error-summary" role="alert" tabindex="-1"><p>@Model.Error</p></div>
+    }
+    <ul class="summary" id="retention">
+        <li><span>기록 상태</span><strong>@item.DisplayState</strong></li>
+        <li><span>조치 진행</span><strong>@item.ActionCount 개 중 @item.DoneActions 개 완료</strong></li>
+        <li><span>최초 확정일</span><strong>@(item.FirstConfirmedOn ?? "없음")</strong></li>
+        <li><span>현재 확정</span><strong>@(item.ConfirmedOn ?? "확정 아님")</strong></li>
+        <li><span>연한·만료</span><strong>@(item.RetentionYears is null ? "연한 없음" : item.RetentionYears + "년") @(item.ExpiryDisplay ?? "")</strong></li>
+        <li><span>보류</span><strong>@(item.Hold ? "삭제 보류" : "보류 아님")</strong></li>
+        <li><span>삭제 현황</span><strong>@(string.IsNullOrEmpty(item.PurgeNote) ? "삭제 전" : item.PurgeNote)</strong></li>
+    </ul>
+    <p class="hint">보존 기산일은 최초 결과 확정일이며 취소나 재확정으로 바뀌지 않습니다. 만료 시각은 그 날짜에 보존연한(달력 연)을 더한 날 00:00 KST입니다. 2월 29일이 없는 해는 그달 말로 맞춥니다. 이 계산은 회사의 법정 보존연한이 아닙니다.</p>
+    <div class="detail-layout">
+        <div class="stack">
+            <section id="case" aria-labelledby="case-title">
+                <h2 id="case-title">건</h2>
+                @if (item.Caps.EditList)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="SaveCase" data-track>
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@token" />
+                        <div class="form-grid">
+                            <label class="field">연도<input name="year" type="number" min="1990" max="2100" value="@item.Year" required /></label>
+                            <label class="field">구분
+                                <select name="category">
+                                    <option selected="@(item.Category == "업무진단")">업무진단</option>
+                                    <option selected="@(item.Category == "준법감사")">준법감사</option>
+                                </select>
+                            </label>
+                            <label class="field grow">제목<input name="title" maxlength="120" required value="@item.Title" /></label>
+                            <label class="field">대상<input name="target" maxlength="120" required value="@item.Target" /></label>
+                            <label class="field">담당
+                                <select name="ownerId">
+                                    @foreach (var user in Model.Users.Where(u => u.Enabled || u.UserId == item.OwnerUserId))
+                                    {
+                                        <option value="@user.UserId" selected="@(user.UserId == item.OwnerUserId)">@user.DisplayName</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">서가<input name="shelf" maxlength="80" value="@item.Shelf" /></label>
+                            <label class="field">철번호<input name="binder" maxlength="80" value="@item.BinderNo" /></label>
+                        </div>
+                        <p class="hint">연한 후에도 남습니다. 개인식별정보·진술·민감한 상세내용을 적지 마세요. 종이 철함은 프로그램이 폐기하지 않습니다.</p>
+                        <button type="submit" class="btn btn-primary">저장</button>
+                    </form>
+                }
+                else
+                {
+                    <dl class="facts">
+                        <dt>서가</dt><dd>@(string.IsNullOrEmpty(item.Shelf) ? "없음" : item.Shelf)</dd>
+                        <dt>철번호</dt><dd>@(string.IsNullOrEmpty(item.BinderNo) ? "없음" : item.BinderNo)</dd>
+                    </dl>
+                }
+            </section>
+            <section id="result" aria-labelledby="result-title">
+                <h2 id="result-title">결과</h2>
+                <p class="hint">초안 저장은 결과 확정이 아닙니다. 결과 확정은 징계 확정·전자결재가 아닙니다.</p>
+                @if (item.Caps.EditResult)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="SaveResult" data-track>
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <div class="form-grid">
+                            <label class="field">문서번호<input name="documentNo" maxlength="80" value="@item.DocumentNo" /></label>
+                            <label class="field grow">결과 한 줄<input name="summary" maxlength="160" value="@item.Summary" /></label>
+                            <label class="field grow">결과 본문
+                                <textarea name="body" maxlength="20000" rows="6">@item.Body</textarea>
+                            </label>
+                        </div>
+                        <p class="hint">결과 한 줄은 연한 후에도 남습니다. 본문은 만료 후 비워집니다.</p>
+                        <button type="submit" class="btn btn-primary">결과 저장</button>
+                    </form>
+                }
+                else
+                {
+                    <dl class="facts">
+                        <dt>문서번호</dt><dd>@(string.IsNullOrEmpty(item.DocumentNo) ? "없음" : item.DocumentNo)</dd>
+                        <dt>결과 한 줄</dt><dd>@(string.IsNullOrEmpty(item.Summary) ? "없음" : item.Summary)</dd>
+                        <dt>확정자</dt><dd>@(item.ConfirmerName ?? "없음")</dd>
+                        <dt>결과 본문</dt>
+                        <dd>
+                            @if (item.BodiesHidden)
+                            { <text>복구 대조 전 — 본문을 표시하지 않습니다.</text> }
+                            else if (item.BodiesCleared)
+                            { <text>보존 만료로 본문 삭제</text> }
+                            else if (string.IsNullOrEmpty(item.Body))
+                            { <text>아직 작성된 본문 없음</text> }
+                            else
+                            { <pre class="body">@item.Body</pre> }
+                        </dd>
+                    </dl>
+                }
+            </section>
+            <section id="actions" aria-labelledby="actions-title">
+                <h2 id="actions-title">조치요구·이행</h2>
+                <p class="hint">회신 기록은 피감부서에서 받아 감사파트가 입력합니다. 회신 수신은 이행 완료가 아니고, 이행 확인은 진술 확인서가 아닙니다.</p>
+                @if (item.Actions.Count == 0)
+                {
+                    <p>아직 조치요구가 없습니다.</p>
+                }
+                @foreach (var action in item.Actions)
+                {
+                    <details id="action-@action.ActionId" class="action" open>
+                        <summary>@action.Sequence. @action.Title · @action.State@(action.Overdue ? " · 회신기한 초과" : "")</summary>
+                        <dl class="facts">
+                            <dt>유형</dt><dd>@action.Type</dd>
+                            <dt>대상 부서</dt><dd>@action.TargetDept</dd>
+                            <dt>요구일</dt><dd>@action.RequestedOn</dd>
+                            <dt>회신기한</dt><dd>@action.ReplyDueOn</dd>
+                            <dt>내용</dt>
+                            <dd>
+                                @if (item.BodiesHidden) { <text>복구 대조 전 — 내용을 표시하지 않습니다.</text> }
+                                else if (action.ContentCleared) { <text>보존 만료로 본문 삭제</text> }
+                                else if (string.IsNullOrEmpty(action.Content)) { <text>아직 작성된 본문 없음</text> }
+                                else { <pre class="body">@action.Content</pre> }
+                            </dd>
+                        </dl>
+                        @if (action.Entries.Count == 0)
+                        {
+                            <p>아직 회신 기록 없음</p>
+                        }
+                        else
+                        {
+                            <ol class="entries">
+                            @foreach (var entry in action.Entries)
+                            {
+                                <li>
+                                    <p>@entry.AtDisplay · @entry.Kind · @entry.FromState → @entry.ToState · @entry.ActorName</p>
+                                    @if (item.BodiesHidden)
+                                    { <p>복구 대조 전 — 내용을 표시하지 않습니다.</p> }
+                                    else if (entry.BodiesCleared && string.IsNullOrEmpty(entry.ReplyBody) && string.IsNullOrEmpty(entry.CheckBody))
+                                    { <p>보존 만료로 본문 삭제</p> }
+                                    else
+                                    {
+                                        @if (!string.IsNullOrEmpty(entry.ReplyBody)) { <p>회신 본문</p><pre class="body">@entry.ReplyBody</pre> }
+                                        @if (!string.IsNullOrEmpty(entry.CheckBody)) { <p>확인 본문</p><pre class="body">@entry.CheckBody</pre> }
+                                    }
+                                </li>
+                            }
+                            </ol>
+                        }
+                        @if (item.Caps.Reply && action.State != "이행완료")
+                        {
+                            <form method="post" data-write="1"  asp-page-handler="Reply">
+                                <input type="hidden" name="version" value="@item.Version" />
+                                <input type="hidden" name="actionId" value="@action.ActionId" />
+                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                <label class="field">회신 본문<textarea name="reply" required maxlength="20000" rows="3"></textarea></label>
+                                <button type="submit" class="btn">회신 기록</button>
+                            </form>
+                        }
+                        @if (item.Caps.Verify && action.State != "이행완료")
+                        {
+                            <form method="post" data-write="1"  asp-page-handler="Verify">
+                                <input type="hidden" name="version" value="@item.Version" />
+                                <input type="hidden" name="actionId" value="@action.ActionId" />
+                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                <label class="field">이행 확인 본문<textarea name="check" required maxlength="20000" rows="3"></textarea></label>
+                                <button type="submit" class="btn">이행 확인</button>
+                            </form>
+                        }
+                    </details>
+                }
+                @if (item.Caps.AddAction)
+                {
+                    <h3>조치요구 추가</h3>
+                    <form method="post" data-write="1"  asp-page-handler="AddAction" data-track>
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <div class="form-grid">
+                            <label class="field">제목<input name="title" required maxlength="120" /></label>
+                            <label class="field">유형
+                                <select name="type"><option>지적</option><option>개선요구</option><option>권고</option></select>
+                            </label>
+                            <label class="field">대상 부서<input name="dept" required maxlength="120" /></label>
+                            <label class="field">요구일<input name="requestedOn" type="date" required /></label>
+                            <label class="field">회신기한<input name="dueOn" type="date" required /></label>
+                            <label class="field grow">내용<textarea name="content" maxlength="20000" rows="3"></textarea></label>
+                        </div>
+                        <p class="hint">제목과 대상은 연한 후에도 남습니다. 내용은 만료 후 비워집니다.</p>
+                        <button type="submit" class="btn">조치요구 추가</button>
+                    </form>
+                }
+            </section>
+            <section id="files" aria-labelledby="files-title">
+                <h2 id="files-title">자료</h2>
+                <p>이 위치의 파일은 사용자 컴퓨터의 나스카로 연다.</p>
+                <p class="hint">프로그램은 파일을 열거나 풀지 않습니다. 표시 이름만 남기고, 저장 키는 서버가 만듭니다.</p>
+                @if (item.Files.Count == 0)
+                {
+                    <p>등록된 자료 없음</p>
+                }
+                else
+                {
+                    <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+                        <table class="data">
+                            <caption>자료 @(item.Files.Count)건</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">종류</th>
+                                    <th scope="col">표시 이름</th>
+                                    <th scope="col">위치</th>
+                                    <th scope="col">등록</th>
+                                    <th scope="col">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var file in item.Files)
+                            {
+                                <tr>
+                                    <td>@file.Kind</td>
+                                    <th scope="row">@file.DisplayName</th>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(file.DisplayLocation))
+                                        {
+                                            <span class="path">@file.DisplayLocation</span>
+                                            <button type="button" class="btn btn-quiet" data-copy="@file.DisplayLocation">위치 복사</button>
+                                        }
+                                        else
+                                        {
+                                            <span>@(file.State == "Deleted" ? "삭제됨" : file.LocationNote)</span>
+                                        }
+                                        @if (file.State == "Deleted")
+                                        { <span>삭제됨—복구되지 않음</span> }
+                                    </td>
+                                    <td>@file.RegisteredAtDisplay · @file.RegisteredBy</td>
+                                    <td>
+                                        @(file.DeletedAtDisplay ?? (file.State == "Missing" ? "파일 없음—확인 필요" : "삭제 전"))
+                                        @if (item.Caps.RemoveDraftFile && file.State == "Present")
+                                        {
+                                            <form method="post" data-write="1"  asp-page-handler="Remove">
+                                                <input type="hidden" name="version" value="@item.Version" />
+                                                <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
+                                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                                <button type="submit" class="btn">첨부 빼기</button>
+                                            </form>
+                                        }
+                                        @if (item.Caps.EarlyDelete && file.State == "Present")
+                                        {
+                                            <form method="post" data-write="1"  asp-page-handler="Early">
+                                                <input type="hidden" name="version" value="@item.Version" />
+                                                <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
+                                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                                <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                                                <button type="submit" class="btn btn-danger" id="btn-early-delete-@file.AttachmentId">파일 삭제</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                @if (item.Caps.AddFile)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="Upload" enctype="multipart/form-data">
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <div class="form-grid">
+                            <label class="field">종류
+                                <select name="kind"><option>결과원문</option><option>증빙</option><option>회신첨부</option></select>
+                            </label>
+                            <label class="field">표시 이름<input name="displayName" required maxlength="120" /></label>
+                            <label class="field">파일<input type="file" name="upload" required /></label>
+                        </div>
+                        <p class="hint">표시 이름은 연한 후에도 남습니다. 파일 내용으로 쓰지 마세요.</p>
+                        <button type="submit" class="btn">자료 추가</button>
+                    </form>
+                }
+            </section>
+            <section class="danger-zone" aria-labelledby="danger-title">
+                <h2 id="danger-title">확정·종결·연한</h2>
+                <p class="hint">@item.PermissionNote 저장 버튼과 떨어져 있습니다. 종결은 자료 삭제가 아닙니다.</p>
+                @if (item.Caps.SetRetention)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="Retention" class="inline-form">
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <label class="field">보존연한(년)<input name="years" type="number" min="1" max="100" required value="@item.RetentionYears" /></label>
+                        @if (item.Caps.RetentionNeedsReason)
+                        {
+                            <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                        }
+                        <button type="submit" class="btn">연한 저장</button>
+                        <p class="hint">확정 뒤 연한 변경은 사유가 필요하며 이력에 앞뒤 연수와 사유가 남습니다. 이미 지운 자료는 늘려도 돌아오지 않습니다.</p>
+                    </form>
+                }
+                @if (item.Caps.Confirm)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="Confirm">
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <p>연한이 있어야 확정됩니다. 기산일은 최초 확정일입니다.</p>
+                        <button type="submit" class="btn btn-danger" id="btn-confirm">결과 확정</button>
+                    </form>
+                }
+                @if (item.Caps.Cancel)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="Cancel">
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <label class="field">확정 취소 사유<input name="reason" required maxlength="240" /></label>
+                        <p class="hint">기존 조치와 이력은 유지됩니다. 이미 지운 파일과 본문은 복구되지 않습니다. 취소해도 담당자의 연한 변경·첨부 빼기 권한은 되살아나지 않습니다.</p>
+                        <button type="submit" class="btn btn-danger" id="btn-cancel">확정 취소</button>
+                    </form>
+                }
+                @if (item.Caps.Close)
+                {
+                    <form method="post" data-write="1"  asp-page-handler="Close">
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        @if (item.ActionCount == 0)
+                        {
+                            <label class="check"><input type="checkbox" name="noActionConfirmed" value="true" /> 조치요구 없음 확인</label>
+                        }
+                        <p class="hint">미완료 조치가 있으면 종결되지 않습니다. 종결 후에도 파일과 본문은 연한까지 남습니다.</p>
+                        <button type="submit" class="btn btn-danger" id="btn-close">종결</button>
+                    </form>
+                }
+            </section>
+        </div>
+        <aside class="history" aria-label="시간순 이력">
+            <h2>시간순 이력</h2>
+            <p class="hint">단순 행 변경을 확인하는 해시 체인입니다. 꼬리와 기준값을 함께 바꾸거나 전체를 다시 계산하면 탐지하지 못합니다. 이력은 고치거나 지울 수 없습니다.</p>
+            <ol class="timeline">
+            @foreach (var row in item.History)
+            {
+                <li id="h-@row.Seq">
+                    <time>@row.AtDisplay</time>
+                    <strong>@row.Action</strong>
+                    @if (row.ActionSequence is int n)
+                    { <span>조치 @n</span> }
+                    <span>@row.Summary</span>
+                    <span>@row.ActorName</span>
+                </li>
+            }
+            </ol>
+            <p><a href="#h-@(item.History.LastOrDefault()?.Seq ?? 0)">마지막으로</a></p>
+        </aside>
+    </div>
+}

@@ -1,0 +1,16 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+artifacts/
+src/AuditRecord.App/var/
+**/demo-access.local
+**/*.db
+**/*.db-*
+appsettings.Production.json
+*.pfx
+.dotnet/
+tools/
+

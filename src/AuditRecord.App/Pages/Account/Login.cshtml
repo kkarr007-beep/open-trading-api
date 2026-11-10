@@ -1,0 +1,28 @@
+@page "/account/login"
+@model AuditRecord.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "로그인 · 감사기록";
+}
+<section class="narrow">
+    <h1>로그인</h1>
+    <p class="hint">감사파트 계정만 사용합니다. 사내 포털이나 SSO와 연결하지 않습니다.</p>
+    @if (!string.IsNullOrEmpty(Model.Notice))
+    {
+        <p class="banner info" role="status">@Model.Notice</p>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="error-summary" role="alert" tabindex="-1">
+            <p>@Model.Error</p>
+        </div>
+    }
+    <form method="post">
+        <label class="field" for="login">로그인 이름
+            <input id="login" name="login" autocomplete="username" required maxlength="40" />
+        </label>
+        <label class="field" for="password">비밀번호
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary">들어가기</button>
+    </form>
+</section>

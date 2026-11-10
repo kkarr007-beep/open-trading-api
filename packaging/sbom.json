@@ -1,0 +1,3 @@
+{
+  "note": "Do not copy this file into a package. packaging/assemble_run3.py writes licenses/sbom.json from that RID's AuditRecord.App.deps.json. A Linux package must not reuse a win-x64 inventory."
+}

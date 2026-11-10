@@ -1,0 +1,123 @@
+﻿@inject AuditService Audit
+@{
+    var path = Context.Request.Path.Value ?? "";
+    var actor = Context.Items["actor"] as Actor;
+    var state = actor is null ? null : Audit.GetState();
+}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="icon" href="~/favicon.ico" />
+</head>
+<body class="@(state is { IntegrityOk: false } ? "frozen-integrity" : null) @(state is { RestoreLocked: true } ? "frozen-restore" : null)">
+    <a class="skip" href="#main">본문으로 건너뛰기</a>
+    <header class="top">
+        <a class="brand" href="@(actor is null ? "/account/login" : "/todo")">감사기록</a>
+        @if (actor is not null)
+        {
+            <nav aria-label="업무 화면">
+                @if (path.StartsWith("/todo", StringComparison.OrdinalIgnoreCase))
+                {
+                    <a asp-page="/Todo/Index" aria-current="page">할 일</a>
+                }
+                else
+                {
+                    <a asp-page="/Todo/Index">할 일</a>
+                }
+                @if (path.StartsWith("/cases", StringComparison.OrdinalIgnoreCase))
+                {
+                    <a asp-page="/Cases/Index" aria-current="page">건 목록</a>
+                }
+                else
+                {
+                    <a asp-page="/Cases/Index">건 목록</a>
+                }
+                @if (actor.IsAdmin)
+                {
+                    @if (path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a asp-page="/Admin/Index" aria-current="page">관리</a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Admin/Index">관리</a>
+                    }
+                }
+            </nav>
+            <p class="who">
+                <span class="net">@(state?.Demo == true ? "예시" : "내부망")</span>
+                <span>@actor.DisplayName · @actor.Role</span>
+            </p>
+            <button type="button" class="btn btn-quiet" data-dialog="password-dialog">비밀번호</button>
+            <form method="post" asp-page="/Account/Logout" data-allow="logout">
+                <button type="submit" class="btn btn-quiet">나가기</button>
+            </form>
+        }
+        else
+        {
+            <p class="who"><span class="net">내부망</span></p>
+        }
+    </header>
+    <main id="main">
+        @if (state is { IntegrityOk: false })
+        {
+            <div class="banner danger" role="alert">
+                <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
+                변경 입력은 숨겼습니다. 고친 뒤에도 조사 확인 전에는 읽기 전용입니다. 503으로 보내지 않습니다.
+            </div>
+            @if (actor is { IsAdmin: true })
+            {
+                <form method="post" asp-page="/Admin/Index" asp-page-handler="ClearIntegrity" class="inline-form" data-write="ack">
+                    <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                    <label class="field">조사 사유<input name="reason" required maxlength="240" /></label>
+                    <button type="submit" class="btn">조사 후 읽기 전용 해제</button>
+                </form>
+            }
+        }
+        @if (state is { RestoreLocked: true })
+        {
+            <div class="banner danger" role="alert">
+                <strong>복구 대조 전</strong>
+                @(string.IsNullOrEmpty(state.RestoreMessage) ? "최신 삭제·보류 기록을 확인하기 전에는 일반 사용을 열지 않습니다." : state.RestoreMessage)
+            </div>
+        }
+        @if (state?.Demo == true)
+        {
+            <div class="banner warn">예시 모드입니다. 가짜 기록만 있으며 운영 자료가 아닙니다. 예시 계정은 운영 모드에 만들어지지 않습니다.</div>
+        }
+        else if (state is { PolicyAcknowledged: false })
+        {
+            <div class="banner warn">자동 보존 삭제는 관리자가 관리 화면에서 정책을 확인하기 전에는 실행되지 않습니다.</div>
+        }
+        @RenderBody()
+    </main>
+    <footer class="foot">
+        <p>서버 시각 @AuditRecord.Domain.Kst.Display(DateTimeOffset.UtcNow) KST. 화면 시각은 이 페이지를 연 시점입니다.</p>
+    </footer>
+    @if (actor is not null)
+    {
+        <dialog id="password-dialog" aria-labelledby="password-title">
+            <form method="post" asp-page="/Account/Password" data-write="1">
+                <h2 id="password-title">비밀번호 변경</h2>
+                <p class="hint">현재 비밀번호를 확인한 뒤 바꿉니다. 바꾸면 이 계정의 세션은 모두 끝나며 다시 로그인합니다.</p>
+                <label class="field">현재 비밀번호
+                    <input name="currentPassword" type="password" autocomplete="current-password" required minlength="12" />
+                </label>
+                <label class="field">새 비밀번호
+                    <input name="newPassword" type="password" autocomplete="new-password" required minlength="12" />
+                </label>
+                <div class="row-actions">
+                    <button type="button" class="btn" data-close autofocus>닫기</button>
+                    <button type="submit" class="btn btn-primary">변경</button>
+                </div>
+            </form>
+        </dialog>
+    }
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+</body>
+</html>
