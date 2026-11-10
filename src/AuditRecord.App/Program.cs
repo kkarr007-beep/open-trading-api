@@ -202,6 +202,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSession();
 app.UseMiddleware<StampMiddleware>();
+app.MapGet("/cases/{id}/files/{attachmentId}", (string id, string attachmentId, string? dl, HttpContext http, AuditService audit) =>
+{
+    var actor = http.Items["actor"] as Actor;
+    if (actor is null) return Results.Redirect("/account/login");
+    var result = audit.OpenAttachment(actor, id, attachmentId, dl == "1", out var opened);
+    if (!result.Ok || opened is null)
+        return Results.Text(result.Message, "text/plain", System.Text.Encoding.UTF8, result.Status == 0 ? 400 : result.Status);
+    http.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    http.Response.Headers["Content-Security-Policy"] =
+        "sandbox; default-src 'none'; script-src 'none'; style-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+    http.Response.Headers["Cache-Control"] = "no-store";
+    var kind = opened.Inline ? "inline" : "attachment";
+    http.Response.Headers.ContentDisposition = $"{kind}; filename=\"file\"; filename*=UTF-8''{Uri.EscapeDataString(opened.DownloadName)}";
+    return Results.Stream(opened.Content, opened.ContentType);
+});
 app.MapRazorPages();
 app.Run();
 }

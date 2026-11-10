@@ -1,8 +1,10 @@
-// 화면 모드(밝게·어둡게)를 그리기 전에 적용한다. localStorage에만 저장하며 서버로 보내지 않는다.
 (function () {
-  var saved = null;
-  try { saved = localStorage.getItem("audit-theme"); } catch (e) { }
-  if (saved === "dark" || saved === "light") {
-    document.documentElement.setAttribute("data-theme", saved);
+  try {
+    var choice = localStorage.getItem("audit-theme") || "system";
+    var dark = choice === "dark" || (choice !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme-choice", choice);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "light");
   }
 })();

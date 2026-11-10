@@ -2,22 +2,44 @@
 @model AuditRecord.Pages.Todo.IndexModel
 @{
     ViewData["Title"] = "할 일 · 감사기록";
-    ViewData["Crumb"] = "할 일";
 }
 <div class="page-head">
-    <h1>할 일</h1>
-    <p class="hint">감사파트 전체 건 기준입니다. 자기 건만 나누어 보지 않습니다.</p>
+    <div>
+        <p class="kicker">오늘</p>
+        <h1>할 일</h1>
+        <p class="hint">감사파트 전체 건 기준입니다. 자기 건만 나누어 보지 않습니다.</p>
+    </div>
     <p class="row-actions"><a class="btn" href="/cases">건 목록</a> <a class="btn btn-primary" href="/cases/new">건 등록</a></p>
 </div>
 @if (!string.IsNullOrEmpty(Model.Flash))
 {
     <p class="banner info" role="status">@Model.Flash</p>
 }
+<ul class="metrics">
+    <li class="@(Model.Data.Overdue.Count > 0 ? "metric-bad" : "metric-ok")">
+        <a href="#overdue-title">
+            <span class="metric-top"><span class="metric-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>회신기한 초과</span>
+            <strong>@(Model.Data.Overdue.Count)</strong>
+        </a>
+    </li>
+    <li class="@(Model.Data.WaitingConfirm.Count > 0 ? "metric-warn" : "metric-ok")">
+        <a href="@(Model.Data.ManagerView ? "#wait-title" : "/cases")">
+            <span class="metric-top"><span class="metric-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5h12v15H6z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 9h6M9 13h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>확정 대기</span>
+            <strong>@(Model.Data.WaitingConfirm.Count)</strong>
+        </a>
+    </li>
+    <li class="@(Model.Data.Expiring.Count > 0 ? "metric-warn" : "metric-ok")">
+        <a href="@(Model.Data.ManagerView ? "#expire-title" : "/cases")">
+            <span class="metric-top"><span class="metric-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.5 4.5 19.5h15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>삭제 임박·지연</span>
+            <strong>@(Model.Data.Expiring.Count)</strong>
+        </a>
+    </li>
+</ul>
 <section aria-labelledby="overdue-title">
     <h2 id="overdue-title">회신기한 초과 <span class="count">@Model.Data.Overdue.Count</span></h2>
     @if (Model.Data.Overdue.Count == 0)
     {
-        <p>회신기한이 지난 조치요구가 없습니다.</p>
+        <p class="empty"><span class="empty-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>회신기한이 지난 조치요구가 없습니다.</p>
     }
     else
     {
@@ -44,8 +66,8 @@
                         <td>@row.Target</td>
                         <td>@row.OwnerName</td>
                         <td class="num">@row.ReplyDueOn</td>
-                        <td class="num"><span class="cell-danger">@(row.DaysOver)일</span></td>
-                        <td><span class="@Ui.BadgeClass(row.State)">@row.State</span></td>
+                        <td class="num">@(row.DaysOver)일</td>
+                        <td><span class="badge" data-state="회신기한 초과"><span class="dot" aria-hidden="true"></span>@row.State</span></td>
                     </tr>
                 }
                 </tbody>
@@ -60,7 +82,7 @@
         <p class="hint">보존연한과 결과 한 줄이 있는 초안입니다. 결재 요청 상태는 아닙니다.</p>
         @if (Model.Data.WaitingConfirm.Count == 0)
         {
-            <p>확정 대기 건이 없습니다.</p>
+            <p class="empty"><span class="empty-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>확정 대기 건이 없습니다.</p>
         }
         else
         {
@@ -86,7 +108,7 @@
                             <td>@row.Target</td>
                             <td>@row.OwnerName</td>
                             <td class="num">@(row.RetentionYears?.ToString() ?? "없음")년</td>
-                            <td><span class="@Ui.BadgeClass(row.DisplayState)">@row.DisplayState</span></td>
+                            <td><span class="badge" data-state="@row.DisplayState"><span class="dot" aria-hidden="true"></span>@row.DisplayState</span></td>
                         </tr>
                     }
                     </tbody>
@@ -99,7 +121,7 @@
         <p class="hint">만료 시각은 최초 확정일에 보존연한을 더한 날 00:00 KST입니다. 보류 중이면 자동 삭제하지 않습니다.</p>
         @if (Model.Data.Expiring.Count == 0)
         {
-            <p>30일 안에 삭제 예정이거나 삭제가 지연된 건이 없습니다.</p>
+            <p class="empty"><span class="empty-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>30일 안에 삭제 예정이거나 삭제가 지연된 건이 없습니다.</p>
         }
         else
         {

@@ -1,0 +1,117 @@
+@page "/settings"
+@model AuditRecord.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "설정 · 감사기록";
+}
+<div class="page-head">
+    <div>
+        <h1>설정</h1>
+        <p class="hint">이 프로그램이 어떻게 저장하고, 누가 무엇을 하는지 적습니다. 설치 폴더를 바꾸는 화면은 아닙니다.</p>
+    </div>
+</div>
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="error-summary" role="alert"><p>@Model.Error</p></div>
+}
+@if (!string.IsNullOrEmpty(Model.Flash))
+{
+    <p class="banner info" role="status">@Model.Flash</p>
+}
+<section>
+    <h2>시스템</h2>
+    <dl class="facts">
+        <dt>버전</dt><dd>@Model.Version · 로컬 빌드</dd>
+        <dt>언어와 화면</dt><dd>.NET 10, C#, ASP.NET Core Razor Pages. 화면 자산은 이 서버에만 있습니다.</dd>
+        <dt>데이터베이스</dt><dd>SQLite 한 파일. WAL, 한 번에 한 작성자(BEGIN IMMEDIATE).</dd>
+        <dt>파일</dt><dd>본문과 따로 저장합니다. 저장 키는 건 번호와 자료 번호로 서버가 만듭니다. 나스카 암호문은 풀지 않습니다.</dd>
+        <dt>이력</dt><dd>SHA-256으로 이어 붙이는 추가 전용 체인입니다. 고치거나 지우지 않습니다.</dd>
+        <dt>보존</dt><dd>삭제 원장은 데이터베이스 밖의 기록입니다. 백업은 파일 해시 매니페스트를 남깁니다.</dd>
+        <dt>접속</dt><dd>HTTPS는 PFX 인증서를 씁니다. 계정은 담당, 파트장, 관리자입니다.</dd>
+        <dt>문서번호</dt><dd>연도-구분코드-순번. 업무진단 01, 준법감사 02. 이미 저장된 번호는 바꾸지 않고, 빈 번호도 소급해서 채우지 않습니다. 지워진 순번은 다시 쓰지 않습니다.</dd>
+    </dl>
+</section>
+<section>
+    <h2>구성</h2>
+    <svg class="arch" viewBox="0 0 760 220" role="img" aria-label="브라우저, 앱, SQLite, 파일, 백업의 구성">
+        <rect x="8" y="70" width="120" height="64" rx="10" class="arch-box"/>
+        <text x="68" y="106" text-anchor="middle">브라우저</text>
+        <rect x="176" y="40" width="150" height="124" rx="10" class="arch-box"/>
+        <text x="251" y="96" text-anchor="middle">감사기록 앱</text>
+        <text x="251" y="118" text-anchor="middle">Razor Pages</text>
+        <rect x="374" y="24" width="150" height="56" rx="10" class="arch-box"/>
+        <text x="449" y="56" text-anchor="middle">SQLite</text>
+        <rect x="374" y="100" width="150" height="56" rx="10" class="arch-box"/>
+        <text x="449" y="132" text-anchor="middle">파일 폴더</text>
+        <rect x="572" y="70" width="150" height="64" rx="10" class="arch-box"/>
+        <text x="647" y="106" text-anchor="middle">백업·원장</text>
+        <path d="M128 102h48M326 78h48M326 128h48M524 52h48M524 128h48" class="arch-line"/>
+    </svg>
+    <p class="hint">다른 PC는 브라우저만 씁니다. 데이터베이스와 파일과 백업은 이 서버 디스크에 있습니다.</p>
+</section>
+<section>
+    <h2>데이터</h2>
+    <ul>
+        <li>건: 연도, 구분, 제목, 대상, 담당, 서가, 철번호, 보존연한, 상태.</li>
+        <li>결과: 문서번호, 결과 한 줄, 결과 본문.</li>
+        <li>조치요구: 유형, 부서, 기한, 회신, 이행 확인.</li>
+        <li>자료: 표시 이름, 저장 키, SHA-256, 상태.</li>
+        <li>징계기록: 누가, 언제, 어디서, 무엇을, 어떻게, 왜, 처분. 감사 건과 연결할 수 있습니다.</li>
+        <li>이력: 모든 변경과 열람 중 남길 것을 한 체인에 추가합니다.</li>
+    </ul>
+</section>
+<section>
+    <h2>사용 방법</h2>
+    <h3>담당</h3>
+    <ol>
+        <li>건을 등록합니다. 문서번호는 자동으로 붙습니다.</li>
+        <li>결과 초안과 조치요구, 자료를 넣습니다.</li>
+        <li>회신이 오면 회신 기록을 남깁니다. 확정과 종결과 삭제는 하지 않습니다.</li>
+    </ol>
+    <h3>파트장</h3>
+    <ol>
+        <li>보존연한과 결과 한 줄이 있는 초안을 확정합니다. 확정은 징계 확정이나 전자결재가 아닙니다.</li>
+        <li>이행을 확인하고, 끝나면 종결합니다.</li>
+        <li>징계기록은 파트장과 관리자만 봅니다. 목록의 이름은 가리고, 상세를 열면 이력에 남습니다.</li>
+    </ol>
+    <h3>관리자</h3>
+    <ol>
+        <li>계정, 보존 정책, 백업, 삭제 보류, 만료 삭제를 다룹니다.</li>
+        <li>백업 확인은 파일을 되돌리지 않습니다. 원장과 다르면 읽기 전용이 되고, 다시 적용은 따로 합니다.</li>
+        <li>구분코드는 번호를 발급하기 전에만 바꿉니다.</li>
+    </ol>
+</section>
+@if (Model.Admin)
+{
+    <section>
+        <h2>이 서버의 위치</h2>
+        <p class="hint">이 경로는 관리자만 봅니다.</p>
+        <dl class="facts">
+            <dt>데이터</dt><dd class="path">@Model.Paths.DataDir</dd>
+            <dt>데이터베이스</dt><dd class="path">@Model.Paths.DatabasePath</dd>
+            <dt>파일</dt><dd class="path">@Model.Paths.FilesDir</dd>
+            <dt>백업</dt><dd class="path">@Model.Paths.BackupDir</dd>
+            <dt>원장</dt><dd class="path">@Model.Paths.LedgerPath</dd>
+        </dl>
+        <h3>구분코드</h3>
+        <ul class="file-list">
+        @foreach (var code in Model.Codes)
+        {
+            <li class="file-row">
+                <div>
+                    <strong>@code.Category</strong>
+                    <span class="file-meta">@code.Code · @(code.Used ? "사용됨, 변경 불가" : "아직 미사용")</span>
+                </div>
+                @if (!code.Used)
+                {
+                    <form method="post" asp-page-handler="Code" data-write="1" class="inline-form">
+                        <input type="hidden" name="category" value="@code.Category" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <label class="field">코드<input name="code" value="@code.Code" maxlength="2" required /></label>
+                        <button type="submit" class="btn">코드 저장</button>
+                    </form>
+                }
+            </li>
+        }
+        </ul>
+    </section>
+}

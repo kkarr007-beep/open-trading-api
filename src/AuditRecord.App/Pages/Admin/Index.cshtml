@@ -2,7 +2,6 @@
 @model AuditRecord.Pages.Admin.IndexModel
 @{
     ViewData["Title"] = "관리 · 감사기록";
-    ViewData["Crumb"] = "관리";
 }
 @if (Model.Forbidden)
 {
@@ -84,7 +83,7 @@ else
                     <th scope="row">@user.DisplayName</th>
                     <td>@user.Login</td>
                     <td>@user.Role@(user.IsLastAdmin ? " · 마지막 관리자" : "")</td>
-                    <td>@(user.Enabled ? "활성" : "끔")@(user.MustChange ? " · 비밀번호 변경 필요" : "")</td>
+                    <td><span class="badge" data-state="@(user.Enabled ? "활성" : "끔")"><span class="dot" aria-hidden="true"></span>@(user.Enabled ? "활성" : "끔")</span>@(user.MustChange ? " · 비밀번호 변경 필요" : "")</td>
                     <td class="account-actions">
                         <fieldset class="role-box">
                             <legend>역할</legend>

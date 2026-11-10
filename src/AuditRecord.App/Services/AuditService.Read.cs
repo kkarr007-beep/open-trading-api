@@ -1,6 +1,7 @@
 using System.Globalization;
 using AuditRecord.Data;
 using AuditRecord.Domain;
+using AuditRecord.Storage;
 using Microsoft.Data.Sqlite;
 
 namespace AuditRecord.Services;
@@ -69,7 +70,6 @@ public sealed partial class AuditService
         return new CaseDetail
         {
             CaseId = row.Id,
-            RecordNo = row.RecordNo,
             Year = row.Year,
             Category = row.Category,
             Title = row.Title,
@@ -125,8 +125,7 @@ public sealed partial class AuditService
                    c.Phase, c.PurgedAt, c.Hold, c.RetentionYears, c.FirstConfirmedOn,
                    c.Shelf, c.BinderNo, r.DocumentNo, c.PurgeIncomplete, c.Version,
                    (SELECT MIN(a.ReplyDueOn) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료'),
-                   (SELECT COUNT(*) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료'),
-                   c.RecordNo, r.SummaryLine, c.CreatedAt
+                   (SELECT COUNT(*) FROM Actions a WHERE a.CaseId=c.CaseId AND a.ActionState<>'이행완료')
             FROM Cases c
             JOIN Users u ON u.UserId=c.OwnerUserId
             JOIN Results r ON r.CaseId=c.CaseId
@@ -152,7 +151,7 @@ public sealed partial class AuditService
         }
         if (!string.IsNullOrWhiteSpace(query.Text))
         {
-            sql += " AND (c.Title LIKE $q ESCAPE '\\' OR c.Target LIKE $q ESCAPE '\\' OR r.DocumentNo LIKE $q ESCAPE '\\' OR c.BinderNo LIKE $q ESCAPE '\\' OR c.RecordNo LIKE $q ESCAPE '\\' OR r.SummaryLine LIKE $q ESCAPE '\\')";
+            sql += " AND (c.Title LIKE $q ESCAPE '\\' OR c.Target LIKE $q ESCAPE '\\' OR r.DocumentNo LIKE $q ESCAPE '\\' OR c.BinderNo LIKE $q ESCAPE '\\' OR EXISTS (SELECT 1 FROM Attachments af WHERE af.CaseId=c.CaseId AND af.DisplayName LIKE $q ESCAPE '\\'))";
             args.Add(("$q", Text.LikeContains(query.Text.Trim())));
         }
         using var cmd = Database.Cmd(conn, sql, args.ToArray());
@@ -204,10 +203,7 @@ public sealed partial class AuditService
                     BinderNo = reader.GetString(12),
                     OpenActions = open,
                     PurgeIncomplete = reader.GetInt32(14) == 1,
-                    Version = reader.GetInt32(15),
-                    RecordNo = reader.GetString(18),
-                    SummaryLine = reader.GetString(19),
-                    CreatedDate = DisplayDateOnly(reader.GetString(20))
+                    Version = reader.GetInt32(15)
                 });
             }
         }
@@ -439,7 +435,7 @@ public sealed partial class AuditService
     List<FileRow> LoadFiles(SqliteConnection conn, string caseId, bool hidden)
     {
         using var cmd = Database.Cmd(conn, """
-            SELECT a.AttachmentId, a.Kind, a.DisplayName, a.StorageState, a.StorageKey, a.RegisteredAt, u.DisplayName, a.DeletedAt
+            SELECT a.AttachmentId, a.Kind, a.DisplayName, a.StorageState, a.StorageKey, a.RegisteredAt, u.DisplayName, a.DeletedAt, a.Sha256
             FROM Attachments a JOIN Users u ON u.UserId=a.RegisteredBy
             WHERE a.CaseId=$id ORDER BY a.RegisteredAt, a.AttachmentId;
             """, ("$id", caseId));
@@ -481,7 +477,10 @@ public sealed partial class AuditService
                 RegisteredBy = reader.GetString(6),
                 DeletedAtDisplay = reader.IsDBNull(7) ? null : DisplayStamp(reader.GetString(7)),
                 DisplayLocation = hidden ? null : location,
-                LocationNote = note
+                LocationNote = note,
+                SizeBytes = hidden || state != "Present" ? 0 : _files.SizeOf(key),
+                OpenKind = hidden || state != "Present" ? "none" : FilePreview.KindForName(reader.GetString(2)),
+                Sha256 = reader.IsDBNull(8) ? null : reader.GetString(8)
             });
         }
         return list;
@@ -517,6 +516,4 @@ public sealed partial class AuditService
 
     static string? DisplayMaybe(string? canon) =>
         string.IsNullOrEmpty(canon) ? null : DisplayStamp(canon);
-
-    static string DisplayDateOnly(string canon) => canon.Length >= 10 ? canon[..10] : canon;
 }

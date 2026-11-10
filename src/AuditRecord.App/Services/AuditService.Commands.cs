@@ -27,23 +27,23 @@ public sealed partial class AuditService
                 return OpResult.Fail(422, "BAD_INPUT", "담당을 확인하세요.");
             var id = Text.NewId();
             var at = Kst.Canon(now);
-            var recordNo = Database.NextRecordNo(conn, input.Year);
             using (var insert = Database.Cmd(conn, """
                 INSERT INTO Cases(
-                  CaseId, Year, Category, Title, Target, RecordNo, OwnerUserId, Shelf, BinderNo, RetentionYears,
+                  CaseId, Year, Category, Title, Target, OwnerUserId, Shelf, BinderNo, RetentionYears,
                   EverConfirmed, Hold, Phase, PurgeIncomplete, Version, CreatedAt)
-                VALUES ($id,$year,$cat,$title,$target,$no,$owner,$shelf,$binder,$ret,0,0,'초안',0,1,$at);
+                VALUES ($id,$year,$cat,$title,$target,$owner,$shelf,$binder,$ret,0,0,'초안',0,1,$at);
                 """,
                 ("$id", id), ("$year", input.Year), ("$cat", input.Category), ("$title", input.Title),
-                ("$target", input.Target), ("$no", recordNo), ("$owner", input.OwnerId), ("$shelf", input.Shelf),
+                ("$target", input.Target), ("$owner", input.OwnerId), ("$shelf", input.Shelf),
                 ("$binder", input.Binder), ("$ret", input.Retention), ("$at", at)))
                 insert.ExecuteNonQuery();
+            var docNo = AllocateDocumentNo(conn, input.Year, input.Category);
             using (var resultInsert = Database.Cmd(conn, """
                 INSERT INTO Results(CaseId, DocumentNo, SummaryLine, Body) VALUES ($id,$doc,$sum,$body);
                 """,
-                ("$id", id), ("$doc", input.Doc), ("$sum", input.Summary), ("$body", input.Body)))
+                ("$id", id), ("$doc", docNo), ("$sum", input.Summary), ("$body", input.Body)))
                 resultInsert.ExecuteNonQuery();
-            AppendHistory(conn, id, now, actor.UserId, "등록", "건", id, "건 등록 · 등록번호 " + recordNo, null);
+            AppendHistory(conn, id, now, actor.UserId, "등록", "건", id, "건 등록", null);
             var done = OpResult.Success(Msg.Saved, id, 1);
             StoreReceipt(conn, actor, requestId!, "register", null, null, done, now);
             return done;
@@ -89,8 +89,8 @@ public sealed partial class AuditService
             var next = UpdateCase(conn, caseId, version, "", []);
             if (next < 0) return OpResult.Fail(409, "STALE_VERSION", Msg.Stale);
             using var upd = Database.Cmd(conn,
-                "UPDATE Results SET DocumentNo=$d, SummaryLine=$s, Body=$b WHERE CaseId=$id;",
-                ("$d", doc), ("$s", line), ("$b", string.IsNullOrEmpty(text) ? null : text), ("$id", caseId));
+                "UPDATE Results SET SummaryLine=$s, Body=$b WHERE CaseId=$id;",
+                ("$s", line), ("$b", string.IsNullOrEmpty(text) ? null : text), ("$id", caseId));
             upd.ExecuteNonQuery();
             AppendHistory(conn, caseId, now, actor.UserId, "수정", "결과", caseId, "결과 저장", null);
             return OpResult.Success(Msg.Saved, caseId, next);
@@ -319,13 +319,14 @@ public sealed partial class AuditService
                 };
             }
             writtenKey = key;
+            var sha = _files.Sha256Of(key) ?? "";
             var at = Kst.Canon(now);
             using var insert = Database.Cmd(conn, """
-                INSERT INTO Attachments(AttachmentId, CaseId, Kind, DisplayName, StorageKey, RegisteredAt, RegisteredBy, StorageState)
-                VALUES ($id,$case,$kind,$name,$key,$at,$by,'Present');
+                INSERT INTO Attachments(AttachmentId, CaseId, Kind, DisplayName, StorageKey, RegisteredAt, RegisteredBy, StorageState, Sha256)
+                VALUES ($id,$case,$kind,$name,$key,$at,$by,'Present',$sha);
                 """,
                 ("$id", attachmentId), ("$case", caseId), ("$kind", kind), ("$name", name),
-                ("$key", key), ("$at", at), ("$by", actor.UserId));
+                ("$key", key), ("$at", at), ("$by", actor.UserId), ("$sha", sha));
             insert.ExecuteNonQuery();
             var next = UpdateCase(conn, caseId, version, "", []);
             if (next < 0) return OpResult.Fail(409, "STALE_VERSION", Msg.Stale);
@@ -593,7 +594,7 @@ public sealed partial class AuditService
             SELECT c.CaseId, c.Year, c.Category, c.Title, c.Target, c.OwnerUserId, c.Shelf, c.BinderNo,
                    c.RetentionYears, c.FirstConfirmedOn, c.ConfirmedOn, c.EverConfirmed, c.Hold, c.HoldReason,
                    c.HoldSetAt, c.HoldReleasedAt, c.Phase, c.PurgedAt, c.BodiesClearedAt, c.PurgeIncomplete, c.Version,
-                   r.DocumentNo, r.SummaryLine, r.Body, r.ConfirmerUserId, c.RecordNo
+                   r.DocumentNo, r.SummaryLine, r.Body, r.ConfirmerUserId
             FROM Cases c JOIN Results r ON r.CaseId=c.CaseId
             WHERE c.CaseId=$id;
             """, ("$id", caseId));
@@ -625,8 +626,7 @@ public sealed partial class AuditService
             Doc = reader.GetString(21),
             Summary = reader.GetString(22),
             Body = reader.IsDBNull(23) ? null : reader.GetString(23),
-            ConfirmerId = reader.IsDBNull(24) ? null : reader.GetString(24),
-            RecordNo = reader.GetString(25)
+            ConfirmerId = reader.IsDBNull(24) ? null : reader.GetString(24)
         };
     }
 
@@ -704,6 +704,5 @@ public sealed partial class AuditService
         public string Summary { get; init; } = "";
         public string? Body { get; init; }
         public string? ConfirmerId { get; init; }
-        public string RecordNo { get; init; } = "";
     }
 }

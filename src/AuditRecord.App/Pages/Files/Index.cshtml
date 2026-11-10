@@ -1,0 +1,73 @@
+@page "/files"
+@model AuditRecord.Pages.Files.IndexModel
+@{
+    ViewData["Title"] = "자료 · 감사기록";
+}
+<div class="page-head">
+    <div>
+        <h1>자료</h1>
+        <p class="hint">등록된 첨부 파일을 파일명, 형식, 등록자, 소속 건으로 찾습니다. 내용 검색은 하지 않습니다.</p>
+    </div>
+</div>
+<form method="get" class="toolbar">
+    <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="sr">파일명</span>
+        <input name="name" value="@Model.Name" placeholder="파일명" maxlength="120" />
+    </label>
+    <label class="field">형식
+        <select name="kind" aria-label="형식">
+            <option value="">전체</option>
+            <option selected="@(Model.Kind == "결과원문")">결과원문</option>
+            <option selected="@(Model.Kind == "증빙")">증빙</option>
+            <option selected="@(Model.Kind == "회신첨부")">회신첨부</option>
+        </select>
+    </label>
+    <label class="field">등록자<input name="person" value="@Model.Person" maxlength="40" /></label>
+    <label class="field">소속 건<input name="caseTitle" value="@Model.CaseTitle" maxlength="120" /></label>
+    <button type="submit" class="btn btn-primary">찾기</button>
+</form>
+@if (Model.Files.Count == 0)
+{
+    <p class="empty"><span class="empty-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>조건에 맞는 자료가 없습니다.</p>
+}
+else
+{
+    <ul class="file-list">
+    @foreach (var file in Model.Files)
+    {
+        var ext = System.IO.Path.GetExtension(file.DisplayName).ToLowerInvariant();
+        var tile = file.OpenKind == "pdf" || ext == ".pdf" ? "pdf" : file.OpenKind == "image" ? "img" : file.OpenKind == "text" ? "txt" : ext is ".doc" or ".docx" ? "doc" : ext is ".xls" or ".xlsx" ? "xls" : "file";
+        var label = tile switch { "pdf" => "PDF", "img" => "IMG", "txt" => "TXT", "doc" => "DOC", "xls" => "XLS", _ => "FILE" };
+        var href = "/cases/" + file.CaseId + "/files/" + file.AttachmentId + "?view=inline";
+        <li class="file-row">
+            <a class="file-hit" href="@href" data-preview="@file.OpenKind" data-title="@file.DisplayName" data-meta="@file.Kind · @file.RegisteredBy · @file.RegisteredAt" data-tile="@label" data-tile-kind="@tile">
+                <span class="file-ico ico-@tile" aria-hidden="true">@label</span>
+                <span class="file-copy">
+                    <span class="file-name">@file.DisplayName</span>
+                    <span class="file-meta">@file.Kind · @file.RegisteredBy · @file.RegisteredAt · @file.CaseTitle</span>
+                </span>
+            </a>
+            <div class="file-side">
+                <a class="btn" href="/cases/@file.CaseId#files">건 열기</a>
+            </div>
+        </li>
+    }
+    </ul>
+    <dialog id="preview-dialog" aria-labelledby="preview-title">
+        <div class="dialog-head">
+            <span class="file-ico ico-file" id="preview-ico" aria-hidden="true">FILE</span>
+            <div>
+                <h2 id="preview-title">파일 미리보기</h2>
+                <p class="hint" id="preview-meta"></p>
+            </div>
+            <a class="btn" id="preview-download">내려받기</a>
+            <button type="button" class="icon-btn" data-close aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <p class="hint preview-note">서버는 파일을 실행하지 않습니다. HTML과 SVG는 미리보기 없이 내려받기만 합니다. 나스카 암호문은 풀지 않습니다.</p>
+        <iframe id="preview-frame" title="파일 미리보기" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
+        <img id="preview-img" alt="" hidden>
+    </dialog>
+}

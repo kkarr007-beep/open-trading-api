@@ -127,6 +127,29 @@ public sealed partial class FileStore
 
     public bool Exists(string key) => TryResolve(key, out var abs) && File.Exists(abs);
 
+    public long SizeOf(string? key)
+    {
+        if (string.IsNullOrEmpty(key) || !TryResolve(key, out var abs) || !File.Exists(abs)) return 0;
+        if (File.GetAttributes(abs).HasFlag(FileAttributes.ReparsePoint)) return 0;
+        return new FileInfo(abs).Length;
+    }
+
+    public string? Sha256Of(string? key)
+    {
+        if (string.IsNullOrEmpty(key) || !TryResolve(key, out var abs) || !File.Exists(abs)) return null;
+        if (File.GetAttributes(abs).HasFlag(FileAttributes.ReparsePoint)) return null;
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var stream = File.OpenRead(abs);
+        return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+    }
+
+    public FileStream? OpenRead(string? key)
+    {
+        if (string.IsNullOrEmpty(key) || !TryResolve(key, out var abs) || !File.Exists(abs)) return null;
+        if (File.GetAttributes(abs).HasFlag(FileAttributes.ReparsePoint)) return null;
+        return new FileStream(abs, FileMode.Open, FileAccess.Read, FileShare.Read);
+    }
+
     public FileDeleteResult DeleteKey(string? key)
     {
         if (string.IsNullOrEmpty(key))

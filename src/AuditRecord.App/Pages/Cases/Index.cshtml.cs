@@ -21,6 +21,15 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public IActionResult OnPostExport(string? requestId)
+    {
+        var actor = HttpContext.Items["actor"] as Actor;
+        if (actor is null) return RedirectToPage("/Account/Login");
+        Load();
+        var csv = _audit.ExportCasesCsv(actor, Query, string.IsNullOrWhiteSpace(requestId) ? Guid.NewGuid().ToString("N") : requestId);
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "cases.csv");
+    }
+
     public IActionResult OnPostApply(int? year, string? category, string? status, bool overdue, bool dueSoon, string? text, int? pageSize)
     {
         HttpContext.Session.SetString("f-year", year?.ToString() ?? "");

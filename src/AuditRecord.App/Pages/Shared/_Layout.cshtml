@@ -3,8 +3,15 @@
     var path = Context.Request.Path.Value ?? "";
     var actor = Context.Items["actor"] as Actor;
     var state = actor is null ? null : Audit.GetState();
-    static string Current(string path, string prefix) =>
-        path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? "page" : "false";
+    var onTodo = path.StartsWith("/todo", StringComparison.OrdinalIgnoreCase);
+    var onCases = path.StartsWith("/cases", StringComparison.OrdinalIgnoreCase);
+    var onFiles = path.StartsWith("/files", StringComparison.OrdinalIgnoreCase);
+    var onDiscipline = path.StartsWith("/discipline", StringComparison.OrdinalIgnoreCase);
+    var onSettings = path.StartsWith("/settings", StringComparison.OrdinalIgnoreCase);
+    var onNew = path.StartsWith("/cases/new", StringComparison.OrdinalIgnoreCase);
+    var onDetail = onCases && !onNew && path.Length > "/cases".Length && path != "/cases";
+    var onAdmin = path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase);
+    var initial = actor is null || string.IsNullOrEmpty(actor.DisplayName) ? "?" : actor.DisplayName.Trim()[..1];
 }
 <!DOCTYPE html>
 <html lang="ko">
@@ -13,143 +20,158 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
     <title>@ViewData["Title"]</title>
+    <script src="~/js/theme.js" asp-append-version="true"></script>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="icon" href="~/favicon.ico" />
-    <script src="~/js/theme.js" asp-append-version="true"></script>
 </head>
-<body class="@(state is { IntegrityOk: false } ? "frozen-integrity" : null) @(state is { RestoreLocked: true } ? "frozen-restore" : null)">
+<body class="@(actor is null ? "guest" : null) @(state is { IntegrityOk: false } ? "frozen-integrity" : null) @(state is { RestoreLocked: true } ? "frozen-restore" : null)">
     <a class="skip" href="#main">본문으로 건너뛰기</a>
     @if (actor is not null)
     {
-    <div class="shell">
-        <aside class="sidebar">
-            <div class="sidebar-head">
-                <a class="brand" href="/dashboard">
-                    <span class="brand-mark" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    </span>
-                    감사기록
-                </a>
-            </div>
-            <nav class="side-nav" aria-label="업무 화면">
-                <a href="/dashboard" aria-current="@Current(path, "/dashboard")">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-                    현황판
-                </a>
-                <a href="/todo" aria-current="@Current(path, "/todo")">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
-                    할 일
-                </a>
-                <a href="/cases" aria-current="@Current(path, "/cases")">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-                    건 목록
-                </a>
-                <a href="/register" aria-current="@Current(path, "/register")">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                    등록대장
-                </a>
+        <button type="button" class="scrim" aria-label="메뉴 닫기"></button>
+    }
+    <header class="top" id="app-nav">
+        <a class="brand" href="@(actor is null ? "/account/login" : "/todo")">
+            <span class="brand-mark" aria-hidden="true">감</span>
+            <span>감사기록</span>
+        </a>
+        @if (actor is not null)
+        {
+            <button type="button" class="nav-toggle" aria-controls="menu" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span class="sr">메뉴</span>
+            </button>
+            <nav id="menu" aria-label="업무 화면">
+                <a asp-page="/Todo/Index" aria-current="@(onTodo ? "page" : null)">할 일</a>
+                <a asp-page="/Cases/Index" aria-current="@(onCases ? "page" : null)">건 목록</a>
+                <a asp-page="/Files/Index" aria-current="@(onFiles ? "page" : null)">자료</a>
+                <a asp-page="/Discipline/Index" aria-current="@(onDiscipline ? "page" : null)">징계기록</a>
                 @if (actor.IsAdmin)
                 {
-                    <a href="/admin" aria-current="@Current(path, "/admin")">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                        관리
-                    </a>
+                    <a asp-page="/Admin/Index" aria-current="@(onAdmin ? "page" : null)">관리</a>
                 }
+                <a asp-page="/Settings/Index" aria-current="@(onSettings ? "page" : null)">설정</a>
             </nav>
-            <p class="side-section">빠른 작업</p>
-            <div class="sidebar-actions">
-                <a class="btn btn-primary" href="/cases/new">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                    건 등록
-                </a>
-            </div>
-            <div class="sidebar-foot">
-                <div class="user-card">
-                    <span class="user-avatar" aria-hidden="true">@(actor.DisplayName.Length > 0 ? actor.DisplayName[..1] : "?")</span>
-                    <span class="user-meta">
-                        <strong>@actor.DisplayName</strong>
-                        <span>@actor.Role</span>
-                    </span>
-                </div>
-                <div class="sidebar-actions">
-                    <button type="button" class="btn btn-quiet" data-theme-toggle aria-pressed="false">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
-                        <span class="theme-label">어둡게</span>
+            <div class="bar-end">
+                <div class="theme" role="group" aria-label="화면 테마">
+                    <button type="button" class="theme-btn" data-theme-set="light" aria-pressed="false" aria-label="라이트" title="라이트">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                     </button>
-                    <button type="button" class="btn btn-quiet" data-dialog="password-dialog">비밀번호</button>
-                    <form method="post" asp-page="/Account/Logout" data-allow="logout">
-                        <button type="submit" class="btn btn-quiet">나가기</button>
-                    </form>
+                    <button type="button" class="theme-btn" data-theme-set="dark" aria-pressed="false" aria-label="다크" title="다크">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3.5a8.2 8.2 0 1 0 5.5 14.2A7 7 0 0 1 15 3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button type="button" class="theme-btn" data-theme-set="system" aria-pressed="false" aria-label="시스템" title="시스템">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 19.5h6M12 16v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </button>
                 </div>
-            </div>
-        </aside>
-        <div class="content">
-            <header class="topbar">
-                <span class="page-crumb">@(ViewData["Crumb"] ?? "")</span>
-                <div class="topbar-actions">
-                    <span class="net @(state?.Demo == true ? "demo" : null)">@(state?.Demo == true ? "예시 모드" : "내부망")</span>
-                </div>
-            </header>
-            <main id="main">
-            <div class="global-banners">
-                @if (state is { IntegrityOk: false })
-                {
-                    <div class="banner danger" role="alert">
-                        <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
-                        변경 입력은 숨겼습니다. 고친 뒤에도 조사 확인 전에는 읽기 전용입니다. 503으로 보내지 않습니다.
-                    </div>
-                    @if (actor is { IsAdmin: true })
-                    {
-                        <form method="post" asp-page="/Admin/Index" asp-page-handler="ClearIntegrity" class="inline-form" data-write="ack">
-                            <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
-                            <label class="field">조사 사유<input name="reason" required maxlength="240" /></label>
-                            <button type="submit" class="btn">조사 후 읽기 전용 해제</button>
+                <details class="user-menu">
+                    <summary>
+                        <span class="avatar" aria-hidden="true">@initial</span>
+                        <span class="who"><strong>@actor.DisplayName</strong><span>@actor.Role</span></span>
+                    </summary>
+                    <div class="user-pop">
+                        <p class="hint">@(state?.Demo == true ? "예시" : "내부망")</p>
+                        <button type="button" class="btn" data-dialog="password-dialog">비밀번호</button>
+                        <form method="post" asp-page="/Account/Logout" data-allow="logout">
+                            <button type="submit" class="btn">나가기</button>
                         </form>
-                    }
-                }
-                @if (state is { RestoreLocked: true })
-                {
-                    <div class="banner danger" role="alert">
-                        <strong>복구 대조 전</strong>
-                        @(string.IsNullOrEmpty(state.RestoreMessage) ? "최신 삭제·보류 기록을 확인하기 전에는 일반 사용을 열지 않습니다." : state.RestoreMessage)
                     </div>
-                }
-                @if (state?.Demo == true)
-                {
-                    <div class="banner warn">예시 모드입니다. 가짜 기록만 있으며 운영 자료가 아닙니다. 예시 계정은 운영 모드에 만들어지지 않습니다.</div>
-                }
-                else if (state is { PolicyAcknowledged: false })
-                {
-                    <div class="banner warn">자동 보존 삭제는 관리자가 관리 화면에서 정책을 확인하기 전에는 실행되지 않습니다.</div>
-                }
+                </details>
             </div>
-                @RenderBody()
-            </main>
-            <footer class="foot">
-                <p>서버 시각 @AuditRecord.Domain.Kst.Display(DateTimeOffset.UtcNow) KST. 화면 시각은 이 페이지를 연 시점입니다.</p>
-            </footer>
-        </div>
-    </div>
-    }
-    else
-    {
-    <div class="auth-body">
-        <main id="main" class="auth-card">
-            <p class="auth-brand">
-                <span class="brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </span>
-                감사기록 <span class="net">내부망</span>
-            </p>
+        }
+        else
+        {
+            <p class="who"><span class="net">내부망</span></p>
+        }
+    </header>
+    <div class="workspace">
+        @if (actor is not null)
+        {
+            <div class="topbar">
+                <nav class="crumbs" aria-label="현재 위치">
+                    @if (onAdmin)
+                    {
+                        <span aria-current="page">관리</span>
+                    }
+                    else if (onSettings)
+                    {
+                        <span aria-current="page">설정</span>
+                    }
+                    else if (onFiles)
+                    {
+                        <span aria-current="page">자료</span>
+                    }
+                    else if (onDiscipline)
+                    {
+                        <span aria-current="page">징계기록</span>
+                    }
+                    else if (onNew)
+                    {
+                        <a href="/cases">건 목록</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">건 등록</span>
+                    }
+                    else if (onDetail)
+                    {
+                        <a href="/cases">건 목록</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">건 상세</span>
+                    }
+                    else if (onCases)
+                    {
+                        <span aria-current="page">건 목록</span>
+                    }
+                    else
+                    {
+                        <span aria-current="page">할 일</span>
+                    }
+                </nav>
+            </div>
+        }
+        <main id="main">
+            @if (state is { IntegrityOk: false })
+            {
+                <div class="banner danger" role="alert">
+                    <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
+                    변경 입력은 숨겼습니다. 고친 뒤에도 조사 확인 전에는 읽기 전용입니다. 503으로 보내지 않습니다.
+                </div>
+                @if (actor is { IsAdmin: true })
+                {
+                    <form method="post" asp-page="/Admin/Index" asp-page-handler="ClearIntegrity" class="inline-form" data-write="ack">
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                        <label class="field">조사 사유<input name="reason" required maxlength="240" /></label>
+                        <button type="submit" class="btn">조사 후 읽기 전용 해제</button>
+                    </form>
+                }
+            }
+            @if (state is { RestoreLocked: true })
+            {
+                <div class="banner danger" role="alert">
+                    <strong>복구 대조 전</strong>
+                    @(string.IsNullOrEmpty(state.RestoreMessage) ? "최신 삭제·보류 기록을 확인하기 전에는 일반 사용을 열지 않습니다." : state.RestoreMessage)
+                </div>
+            }
+            @if (state?.Demo == true)
+            {
+                <div class="banner demo">예시 모드입니다. 가짜 기록만 있으며 운영 자료가 아닙니다. 예시 계정은 운영 모드에 만들어지지 않습니다.</div>
+            }
+            else if (state is { PolicyAcknowledged: false })
+            {
+                <div class="banner warn">자동 보존 삭제는 관리자가 관리 화면에서 정책을 확인하기 전에는 실행되지 않습니다.</div>
+            }
             @RenderBody()
         </main>
+        <footer class="foot">
+            <p>서버 시각 @AuditRecord.Domain.Kst.Display(DateTimeOffset.UtcNow) KST. 화면 시각은 이 페이지를 연 시점입니다.</p>
+        </footer>
     </div>
-    }
+    <div class="toasts" aria-live="polite" aria-relevant="additions"></div>
     @if (actor is not null)
     {
         <dialog id="password-dialog" aria-labelledby="password-title">
             <form method="post" asp-page="/Account/Password" data-write="1">
-                <h2 id="password-title">비밀번호 변경</h2>
+                <div class="dialog-head">
+                    <h2 id="password-title">비밀번호 변경</h2>
+                    <button type="button" class="icon-btn" data-close aria-label="닫기">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
                 <p class="hint">현재 비밀번호를 확인한 뒤 바꿉니다. 바꾸면 이 계정의 세션은 모두 끝나며 다시 로그인합니다.</p>
                 <label class="field">현재 비밀번호
                     <input name="currentPassword" type="password" autocomplete="current-password" required minlength="12" />
@@ -158,13 +180,12 @@
                     <input name="newPassword" type="password" autocomplete="new-password" required minlength="12" />
                 </label>
                 <div class="row-actions">
-                    <button type="button" class="btn" data-close autofocus>닫기</button>
+                    <button type="button" class="btn" data-close>닫기</button>
                     <button type="submit" class="btn btn-primary">변경</button>
                 </div>
             </form>
         </dialog>
     }
     <script src="~/js/site.js" asp-append-version="true" defer></script>
-    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

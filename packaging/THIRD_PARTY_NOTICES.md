@@ -10,10 +10,3 @@
 - `licenses/sbom.json` — 그 패키지의 `AuditRecord.App.deps.json`으로 만든 RID별 목록
 
 SQLitePCLRaw 2.1.13 nupkg에는 LICENSE와 NOTICE 멤버가 없습니다. 엔진과 래퍼의 구분은 nuspec 저작권 문구와 Apache-2.0 전문으로 남깁니다.
-
-## 함께 제공하는 프런트엔드 자산
-
-인터넷이 없는 서버에서도 쓰도록 아래 오픈 소스 파일을 `app/wwwroot/`에 함께 둡니다. 실행 중 외부 요청은 없습니다.
-
-- Pretendard Variable 1.3.9 (글꼴) — SIL Open Font License 1.1. 원문: `app/wwwroot/fonts/LICENSE-Pretendard.txt`. 출처: npm `pretendard` 패키지 `dist/web/variable/woff2/PretendardVariable.woff2`
-- Chart.js 4.4.7 (현황판 그래프) — MIT. 원문: `app/wwwroot/lib/LICENSE-ChartJS.md`. 출처: npm `chart.js` 패키지 `dist/chart.umd.js`

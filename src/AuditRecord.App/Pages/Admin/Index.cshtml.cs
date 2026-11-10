@@ -141,6 +141,11 @@ public class IndexModel : PageModel
     {
         var issued = result.TakeIssuedPassword();
         if (!string.IsNullOrEmpty(issued)) HttpContext.Session.SetString("once", issued);
+        if (FetchReply.Wanted(Request))
+        {
+            if (!string.IsNullOrEmpty(issued)) HttpContext.Session.SetString("once", issued);
+            return FetchReply.Json(result, reload: !string.IsNullOrEmpty(issued));
+        }
         if (result.Ok) HttpContext.Session.SetString("flash", result.Message);
         else HttpContext.Session.SetString("flash", result.Message);
         if (!result.Ok) Response.StatusCode = result.Status;

@@ -31,6 +31,7 @@ public sealed partial class AuditService
         SettleAbsentJobs(now);
         var enqueued = EnqueueDue(now);
         var (completed, waiting) = RunJobs(now);
+        try { PurgeDueDiscipline(now); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         try { _db.Checkpoint(false); } catch (SqliteException) { }
         return new ProcessReport { Enqueued = enqueued, Completed = completed, Waiting = waiting, Note = "ran" };
     }
@@ -494,6 +495,7 @@ public sealed partial class AuditService
         using var empty = new MemoryStream([]);
         AddFile(staff, current.CaseId!, version, "증빙", "예시 빈 파일", empty, Text.NewId());
         _seedNow = null;
+        SeedDisciplineExamples();
     }
 
     void SettleAbsentJobs(DateTimeOffset now)

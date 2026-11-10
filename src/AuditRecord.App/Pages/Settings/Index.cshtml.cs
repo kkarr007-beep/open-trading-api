@@ -1,0 +1,51 @@
+using System.Reflection;
+using AuditRecord.Domain;
+using AuditRecord.Services;
+using AuditRecord.Storage;
+
+namespace AuditRecord.Pages.Settings;
+
+public class IndexModel : PageModel
+{
+    readonly AuditService _audit;
+    readonly AppPaths _paths;
+    public IndexModel(AuditService audit, AppPaths paths)
+    {
+        _audit = audit;
+        _paths = paths;
+    }
+
+    public bool Admin { get; set; }
+    public string Version { get; set; } = "";
+    public string? Error { get; set; }
+    public string? Flash { get; set; }
+    public IReadOnlyList<(string Category, string Code, bool Used)> Codes { get; set; } = [];
+    public AppPaths Paths => _paths;
+
+    public IActionResult OnGet()
+    {
+        var actor = HttpContext.Items["actor"] as Actor;
+        if (actor is null) return RedirectToPage("/Account/Login");
+        Admin = actor.IsAdmin;
+        Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+        Codes = _audit.ListCategoryCodes();
+        Flash = HttpContext.Session.GetString("flash");
+        HttpContext.Session.Remove("flash");
+        return Page();
+    }
+
+    public IActionResult OnPostCode(string? category, string? code, string? requestId)
+    {
+        var actor = HttpContext.Items["actor"] as Actor;
+        if (actor is null) return RedirectToPage("/Account/Login");
+        var result = _audit.SetCategoryCode(actor, category, code, requestId);
+        if (FetchReply.Wanted(Request)) return FetchReply.Json(result);
+        if (!result.Ok) Error = result.Message;
+        else HttpContext.Session.SetString("flash", result.Message);
+        if (result.Ok) return RedirectToPage();
+        Admin = actor.IsAdmin;
+        Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+        Codes = _audit.ListCategoryCodes();
+        return Page();
+    }
+}

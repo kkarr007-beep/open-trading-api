@@ -1,0 +1,40 @@
+@page "/cases/{id}/print"
+@model AuditRecord.Pages.Cases.PrintModel
+@{
+    ViewData["Title"] = "인쇄 · 감사기록";
+    var item = Model.Detail;
+}
+@if (item is null)
+{
+    <h1>건을 찾을 수 없음</h1>
+}
+else
+{
+    <article class="print-sheet">
+        <h1>@item.Title</h1>
+        <p>@item.Year · @item.Category · @item.DocumentNo · @item.DisplayState</p>
+        <dl class="facts">
+            <dt>대상</dt><dd>@item.Target</dd>
+            <dt>담당</dt><dd>@item.OwnerName</dd>
+            <dt>서가</dt><dd>@item.Shelf</dd>
+            <dt>철번호</dt><dd>@item.BinderNo</dd>
+            <dt>결과 한 줄</dt><dd>@item.Summary</dd>
+            <dt>보존</dt><dd>@(item.RetentionYears is null ? "없음" : item.RetentionYears + "년") @(item.ExpiryDisplay ?? "")</dd>
+        </dl>
+        <h2>조치</h2>
+        <ul>
+        @foreach (var action in item.Actions)
+        {
+            <li>@action.Sequence. @action.Title · @action.State · @action.ReplyDueOn</li>
+        }
+        </ul>
+        <h2>자료</h2>
+        <ul>
+        @foreach (var file in item.Files)
+        {
+            <li>@file.DisplayName · @file.Kind · @file.State</li>
+        }
+        </ul>
+        <p class="hint">이 페이지는 브라우저 인쇄 또는 PDF 저장용입니다. 본문 전체와 파일 내용은 싣지 않습니다.</p>
+    </article>
+}

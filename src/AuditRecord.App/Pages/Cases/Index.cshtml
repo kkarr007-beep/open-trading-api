@@ -2,12 +2,11 @@
 @model AuditRecord.Pages.Cases.IndexModel
 @{
     ViewData["Title"] = "건 목록 · 감사기록";
-    ViewData["Crumb"] = "건 목록";
 }
 <div class="page-head">
     <h1>건 목록</h1>
     <div class="row-actions">
-        <a class="btn" href="/register">등록대장</a>
+        <form method="post" asp-page-handler="Export"><input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" /><button type="submit" class="btn">CSV</button></form>
         <a class="btn btn-primary" href="/cases/new">건 등록</a>
     </div>
 </div>
@@ -15,9 +14,14 @@
 {
     <p class="banner info" role="status">@Model.Flash</p>
 }
-<form method="post" asp-page-handler="Apply" class="filters">
+<form method="post" asp-page-handler="Apply" class="toolbar">
+    <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="sr">제목·대상·문서번호·철번호</span>
+        <input name="text" value="@Model.Query.Text" placeholder="제목, 대상, 문서번호, 철번호, 파일명" autocomplete="off" spellcheck="false" maxlength="120" />
+    </label>
     <label class="field">연도
-        <select name="year">
+        <select name="year" aria-label="연도">
             <option value="">전체</option>
             @foreach (var year in Model.Years)
             {
@@ -26,14 +30,14 @@
         </select>
     </label>
     <label class="field">구분
-        <select name="category">
+        <select name="category" aria-label="구분">
             <option value="">전체</option>
             <option selected="@("업무진단" == Model.Query.Category)">업무진단</option>
             <option selected="@("준법감사" == Model.Query.Category)">준법감사</option>
         </select>
     </label>
     <label class="field">상태
-        <select name="status">
+        <select name="status" aria-label="상태">
             <option value="">전체</option>
             @foreach (var status in new[] { "초안", "확정", "조치중", "종결", "자료삭제됨" })
             {
@@ -43,12 +47,8 @@
     </label>
     <label class="check"><input type="checkbox" name="overdue" value="true" checked="@Model.Query.Overdue" /> 기한초과</label>
     <label class="check"><input type="checkbox" name="dueSoon" value="true" checked="@Model.Query.DueSoon" /> 삭제임박</label>
-    <label class="field grow">
-        <span>제목·대상·문서번호·철번호·등록번호·결과 한 줄 <kbd class="kbd">/</kbd></span>
-        <input name="text" value="@Model.Query.Text" autocomplete="off" spellcheck="false" maxlength="120" data-search-focus />
-    </label>
-    <label class="field">페이지 크기
-        <select name="pageSize">
+    <label class="field page-size">페이지 크기
+        <select name="pageSize" aria-label="페이지 크기">
             @foreach (var size in new[] { 25, 50, 100 })
             {
                 <option value="@size" selected="@(Model.Query.PageSize == size)">@size</option>
@@ -82,15 +82,15 @@
     {
         <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="text" /><button type="submit" class="chip">검색 조건 적용됨, 제거</button></form>
     }
-    @if (Model.Query.Year is not null || !string.IsNullOrEmpty(Model.Query.Category) || !string.IsNullOrEmpty(Model.Query.Status) || Model.Query.Overdue || Model.Query.DueSoon || Model.Searched)
-    {
-        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="all" /><button type="submit" class="chip">모두 지우기</button></form>
-    }
+    <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="all" /><button type="submit" class="chip">모두 지우기</button></form>
 </div>
+<div id="recent-cases" class="recent" hidden></div>
 <p class="count-line" role="status">검색 결과 @Model.Result.Total 건</p>
 @if (Model.Result.Total == 0)
 {
-    <p>@(Model.Years.Count == 0 && !Model.Searched && Model.Query.Year is null ? "등록된 건이 없습니다." : "조건에 맞는 건이 없습니다.")
+    <p class="empty"><span class="empty-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    </span>@(Model.Years.Count == 0 && !Model.Searched && Model.Query.Year is null ? "등록된 건이 없습니다." : "조건에 맞는 건이 없습니다.")
         @if (Model.Years.Count == 0)
         {
             <a href="/cases/new">건 등록</a>
@@ -108,7 +108,6 @@ else
             <caption>감사 건 @(Model.Result.Total)건 중 @Model.Result.Page 쪽</caption>
             <thead>
                 <tr>
-                    <th scope="col">등록번호</th>
                     <th scope="col" aria-sort="@Model.AriaSort("year")">
                         <form method="post" asp-page-handler="Sort"><input type="hidden" name="sort" value="year" /><button type="submit">연도 <span class="sr">@Model.SortLabel("year")</span></button></form>
                     </th>
@@ -134,28 +133,23 @@ else
             @foreach (var row in Model.Result.Items)
             {
                 <tr>
-                    <td class="num">@row.RecordNo</td>
                     <td class="num">@row.Year</td>
                     <td>@row.Category</td>
-                    <th scope="row">
-                        <a href="/cases/@row.CaseId">@row.Title</a>
-                        @if (!string.IsNullOrEmpty(row.SummaryLine))
-                        { <span class="cell-note">@row.SummaryLine</span> }
-                    </th>
+                    <th scope="row"><a href="/cases/@row.CaseId">@row.Title</a></th>
                     <td>@row.Target</td>
                     <td>@row.OwnerName</td>
                     <td>
-                        <span class="@Ui.BadgeClass(row.DisplayState)">@row.DisplayState</span>
+                        <span class="badge" data-state="@row.DisplayState"><span class="dot" aria-hidden="true"></span>@row.DisplayState</span>
                         @if (row.PurgeIncomplete)
-                        { <span class="cell-note cell-danger">삭제 미완료</span> }
+                        { <span class="badge" data-state="삭제 지연"><span class="dot" aria-hidden="true"></span>삭제 미완료</span> }
                     </td>
-                    <td class="num">@(row.NextDue ?? "없음")@if (row.Overdue) { <span class="cell-note cell-danger">회신기한 초과</span> }</td>
+                    <td class="num">@(row.NextDue ?? "없음")@if (row.Overdue) { <span class="badge" data-state="회신기한 초과"><span class="dot" aria-hidden="true"></span>회신기한 초과</span> }</td>
                     <td class="num">@(row.RetentionYears is null ? "없음" : row.RetentionYears + "년")</td>
                     <td class="num">
                         @(row.ExpiryDate ?? "없음")
-                        @if (row.Hold) { <span class="cell-note">삭제 보류</span> }
-                        @if (row.DeletionDelayed) { <span class="cell-note cell-danger">삭제 지연</span> }
-                        else if (row.DueSoon) { <span class="cell-note cell-warn">30일 안에 삭제 예정</span> }
+                        @if (row.Hold) { <span class="badge" data-state="삭제 보류"><span class="dot" aria-hidden="true"></span>삭제 보류</span> }
+                        @if (row.DeletionDelayed) { <span class="badge" data-state="삭제 지연"><span class="dot" aria-hidden="true"></span>삭제 지연</span> }
+                        else if (row.DueSoon) { <span> 30일 안에 삭제 예정</span> }
                     </td>
                     <td>@row.DocumentNo</td>
                     <td>@row.Shelf @row.BinderNo</td>

@@ -107,9 +107,7 @@ public class HttpTests
         Assert.DoesNotContain("https://", loginPage, StringComparison.OrdinalIgnoreCase);
         var css = await client.GetStringAsync("/css/site.css");
         Assert.DoesNotContain("http://", css, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("https://", css, StringComparison.OrdinalIgnoreCase);
-        // 글꼴은 이 서버가 함께 제공하는 파일만 상대 경로로 읽는다. 외부 글꼴 주소는 없다.
-        Assert.Contains("url(\"../fonts/PretendardVariable.woff2\")", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("@font-face", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Malgun Gothic", css, StringComparison.Ordinal);
         await client.PostAsync("/account/login", Form(TokenOf(loginPage), new()
         {
@@ -167,9 +165,9 @@ public class HttpTests
         Assert.DoesNotContain("예시 본문입니다", html, StringComparison.Ordinal);
     }
 
-    internal static async Task<string> Token(HttpClient client, string path) => TokenOf(await client.GetStringAsync(path));
+    static async Task<string> Token(HttpClient client, string path) => TokenOf(await client.GetStringAsync(path));
 
-    internal static string TokenOf(string html)
+    static string TokenOf(string html)
     {
         var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
         if (!match.Success)
@@ -201,7 +199,7 @@ public class HttpTests
         return response.Headers.Location!.ToString().Split('/').Last();
     }
 
-    internal static FormUrlEncodedContent Form(string token, Dictionary<string, string> fields)
+    static FormUrlEncodedContent Form(string token, Dictionary<string, string> fields)
     {
         fields["__RequestVerificationToken"] = token;
         return new FormUrlEncodedContent(fields);

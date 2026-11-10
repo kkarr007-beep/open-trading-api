@@ -1,0 +1,101 @@
+@page "/discipline/{id}"
+@model AuditRecord.Pages.Discipline.EditModel
+@{
+    ViewData["Title"] = "징계기록 상세 · 감사기록";
+    var item = Model.Item;
+}
+@if (!Model.Allowed)
+{
+    <h1>징계기록은 파트장과 관리자만 봅니다</h1>
+    <p><a href="/todo">할 일로 돌아가기</a></p>
+}
+else if (!string.IsNullOrEmpty(Model.Error) && item is null && Model.Id != "new")
+{
+    <h1>@Model.Error</h1>
+}
+else
+{
+    <div class="page-head">
+        <h1>@(item is null ? "징계기록 등록" : item.WhoMasked)</h1>
+        @if (item != null)
+        {
+            <span class="badge" data-state="@item.Status"><span class="dot" aria-hidden="true"></span>@item.Status</span>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="error-summary" role="alert"><p>@Model.Error</p></div>
+    }
+    @if (item != null)
+    {
+        <ul class="six">
+            <li><span>누가</span><strong>@item.WhoName</strong></li>
+            <li><span>언제</span><strong>@item.WhenText</strong></li>
+            <li><span>어디서</span><strong>@item.WhereText</strong></li>
+            <li><span>무엇을</span><strong>@item.WhatText</strong></li>
+            <li><span>어떻게</span><strong>@item.HowText</strong></li>
+            <li><span>왜</span><strong>@item.WhyText</strong></li>
+        </ul>
+        <section>
+            <h2>처분과 근거</h2>
+            <dl class="facts">
+                <dt>처분</dt><dd>@item.Sanction</dd>
+                <dt>결과</dt><dd>@(string.IsNullOrEmpty(item.Outcome) ? "없음" : item.Outcome)</dd>
+                <dt>근거</dt><dd>@(string.IsNullOrEmpty(item.RuleText) ? "없음" : item.RuleText)</dd>
+                <dt>감사 건</dt><dd>@if (item.CaseId != null) { <a href="/cases/@item.CaseId">@(item.CaseTitle ?? "건")</a> } else { <text>연결 없음</text> }</dd>
+            </dl>
+        </section>
+    }
+    @if (item is null || item.Status != "삭제됨")
+    {
+        <section>
+            <h2>@(item is null ? "입력" : "수정")</h2>
+            <form method="post" data-write="1">
+                <input type="hidden" name="version" value="@(item?.Version ?? 0)" />
+                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                <div class="form-grid">
+                    <label class="field">연도<input name="year" type="number" min="1990" max="2100" required value="@(item?.Year ?? DateTime.Now.Year)" /></label>
+                    <label class="field">누가<input name="who" required maxlength="40" value="@item?.WhoName" /></label>
+                    <label class="field">언제<input name="whenText" required maxlength="40" value="@item?.WhenText" /></label>
+                    <label class="field">어디서<input name="whereText" required maxlength="80" value="@item?.WhereText" /></label>
+                    <label class="field">처분<input name="sanction" required maxlength="40" value="@item?.Sanction" /></label>
+                    <label class="field">결과<input name="outcome" maxlength="80" value="@item?.Outcome" /></label>
+                    <label class="field grow">무엇을<textarea name="whatText" required maxlength="500">@item?.WhatText</textarea></label>
+                    <label class="field grow">어떻게<textarea name="howText" required maxlength="500">@item?.HowText</textarea></label>
+                    <label class="field grow">왜<textarea name="whyText" required maxlength="500">@item?.WhyText</textarea></label>
+                    <label class="field grow">근거<textarea name="ruleText" maxlength="240">@item?.RuleText</textarea></label>
+                    <label class="field grow">감사 건 번호<input name="caseId" maxlength="32" value="@item?.CaseId" placeholder="연결하지 않으면 비움" /></label>
+                </div>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </form>
+        </section>
+    }
+    @if (item != null && Model.Admin && item.Status != "삭제됨")
+    {
+        <section class="danger-zone">
+            <h2>삭제 보류</h2>
+            <form method="post" asp-page-handler="Hold" data-write="1" class="inline-form">
+                <input type="hidden" name="version" value="@item.Version" />
+                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                @if (item.Hold)
+                {
+                    <input type="hidden" name="release" value="1" />
+                }
+                <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                <button type="submit" class="btn btn-danger">@(item.Hold ? "보류 해제" : "삭제 보류")</button>
+            </form>
+        </section>
+    }
+    @if (item != null)
+    {
+        <section class="history">
+            <h2>시간순 이력</h2>
+            <ol class="timeline">
+            @foreach (var row in item.History)
+            {
+                <li><time>@row.AtDisplay</time><strong>@row.Action</strong><span>@row.Summary</span><span>@row.ActorName</span></li>
+            }
+            </ol>
+        </section>
+    }
+}

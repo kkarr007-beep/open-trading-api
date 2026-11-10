@@ -2,7 +2,6 @@
 @model AuditRecord.Pages.Cases.DetailModel
 @{
     ViewData["Title"] = "건 상세 · 감사기록";
-    ViewData["Crumb"] = "건 상세";
     var item = Model.Detail;
     var token = Guid.NewGuid().ToString("N");
 }
@@ -14,15 +13,18 @@
 }
 else
 {
-    <div class="page-head">
-        <p class="kicker">건 상세</p>
-        <h1>@item.Title</h1>
-        @if (item.DeletionQueued)
-        {
-            <p class="banner warn"><strong>삭제 대기</strong> 시도 @(item.DeletionAttempts)회@(string.IsNullOrEmpty(item.DeletionError) ? "" : " · " + item.DeletionError)</p>
-        }
-        <p class="meta">등록번호 @(string.IsNullOrEmpty(item.RecordNo) ? "미부여" : item.RecordNo) · @item.Year · @item.Category · 담당 @item.OwnerName · <span class="@Ui.BadgeClass(item.DisplayState)">@item.DisplayState</span></p>
+    <div class="case-hero">
+        <div>
+            <p class="kicker">@item.Year · @item.Category · 담당 @item.OwnerName</p>
+            <h1>@item.Title</h1>
+        </div>
+        <span class="badge" data-state="@item.DisplayState"><span class="dot" aria-hidden="true"></span>@item.DisplayState</span>
+        <a class="btn" href="/cases/@item.CaseId/print">인쇄용</a>
     </div>
+    @if (item.DeletionQueued)
+    {
+        <p class="banner warn"><strong>삭제 대기</strong> 시도 @(item.DeletionAttempts)회@(string.IsNullOrEmpty(item.DeletionError) ? "" : " · " + item.DeletionError)</p>
+    }
     @if (!string.IsNullOrEmpty(Model.Flash))
     {
         <p class="banner info" role="status">@Model.Flash</p>
@@ -41,6 +43,13 @@ else
         <li><span>삭제 현황</span><strong>@(string.IsNullOrEmpty(item.PurgeNote) ? "삭제 전" : item.PurgeNote)</strong></li>
     </ul>
     <p class="hint">보존 기산일은 최초 결과 확정일이며 취소나 재확정으로 바뀌지 않습니다. 만료 시각은 그 날짜에 보존연한(달력 연)을 더한 날 00:00 KST입니다. 2월 29일이 없는 해는 그달 말로 맞춥니다. 이 계산은 회사의 법정 보존연한이 아닙니다.</p>
+    <nav class="section-tabs" aria-label="건 구역">
+        <a href="#case">건</a>
+        <a href="#result">결과</a>
+        <a href="#actions">조치</a>
+        <a href="#files">자료</a>
+        <a href="#danger-title">확정·연한</a>
+    </nav>
     <div class="detail-layout">
         <div class="stack">
             <section id="case" aria-labelledby="case-title">
@@ -92,7 +101,7 @@ else
                         <input type="hidden" name="version" value="@item.Version" />
                         <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
                         <div class="form-grid">
-                            <label class="field">문서번호<input name="documentNo" maxlength="80" value="@item.DocumentNo" /></label>
+                            <label class="field">문서번호<input name="documentNo" maxlength="80" value="@item.DocumentNo" readonly /></label>
                             <label class="field grow">결과 한 줄<input name="summary" maxlength="160" value="@item.Summary" /></label>
                             <label class="field grow">결과 본문
                                 <textarea name="body" maxlength="20000" rows="6">@item.Body</textarea>
@@ -223,65 +232,111 @@ else
                 }
                 else
                 {
-                    <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
-                        <table class="data">
-                            <caption>자료 @(item.Files.Count)건</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">종류</th>
-                                    <th scope="col">표시 이름</th>
-                                    <th scope="col">위치</th>
-                                    <th scope="col">등록</th>
-                                    <th scope="col">삭제</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var file in item.Files)
+                    <ul class="file-list">
+                    @foreach (var file in item.Files)
+                    {
+                        var ext = System.IO.Path.GetExtension(file.DisplayName ?? "").ToLowerInvariant();
+                        var tile = file.OpenKind == "pdf" || ext == ".pdf" ? "pdf"
+                            : file.OpenKind == "image" ? "img"
+                            : file.OpenKind == "text" ? "txt"
+                            : ext is ".doc" or ".docx" ? "doc"
+                            : ext is ".xls" or ".xlsx" ? "xls"
+                            : "file";
+                        var tileLabel = tile switch { "pdf" => "PDF", "img" => "IMG", "txt" => "TXT", "doc" => "DOC", "xls" => "XLS", _ => "FILE" };
+                        var sizeText = file.SizeBytes < 1024 ? file.SizeBytes + " B" : (file.SizeBytes / 1024) + " KB";
+                        var meta = file.OpenKind == "none"
+                            ? file.Kind + " · " + file.LocationNote
+                            : file.Kind + " · " + sizeText + " · " + file.RegisteredBy + " · " + file.RegisteredAtDisplay;
+                        var openHref = "/cases/" + item.CaseId + "/files/" + file.AttachmentId + "?view=inline";
+                        <li class="file-row">
+                            @if (file.OpenKind != "none")
                             {
-                                <tr>
-                                    <td>@file.Kind</td>
-                                    <th scope="row">@file.DisplayName</th>
-                                    <td>
-                                        @if (!string.IsNullOrEmpty(file.DisplayLocation))
-                                        {
-                                            <span class="path">@file.DisplayLocation</span>
-                                            <button type="button" class="btn btn-quiet" data-copy="@file.DisplayLocation">위치 복사</button>
-                                        }
-                                        else
-                                        {
-                                            <span>@(file.State == "Deleted" ? "삭제됨" : file.LocationNote)</span>
-                                        }
-                                        @if (file.State == "Deleted")
-                                        { <span>삭제됨—복구되지 않음</span> }
-                                    </td>
-                                    <td>@file.RegisteredAtDisplay · @file.RegisteredBy</td>
-                                    <td>
-                                        @(file.DeletedAtDisplay ?? (file.State == "Missing" ? "파일 없음—확인 필요" : "삭제 전"))
-                                        @if (item.Caps.RemoveDraftFile && file.State == "Present")
-                                        {
-                                            <form method="post" data-write="1"  asp-page-handler="Remove">
-                                                <input type="hidden" name="version" value="@item.Version" />
-                                                <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
-                                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
-                                                <button type="submit" class="btn">첨부 빼기</button>
-                                            </form>
-                                        }
-                                        @if (item.Caps.EarlyDelete && file.State == "Present")
-                                        {
-                                            <form method="post" data-write="1"  asp-page-handler="Early">
-                                                <input type="hidden" name="version" value="@item.Version" />
-                                                <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
-                                                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
-                                                <label class="field">사유<input name="reason" required maxlength="240" /></label>
-                                                <button type="submit" class="btn btn-danger" id="btn-early-delete-@file.AttachmentId">파일 삭제</button>
-                                            </form>
-                                        }
-                                    </td>
-                                </tr>
+                                <a class="file-hit" href="@openHref" data-preview="@file.OpenKind" data-title="@file.DisplayName" data-meta="@meta" data-tile="@tileLabel" data-tile-kind="@tile">
+                                    <span class="file-ico ico-@tile" aria-hidden="true">@tileLabel</span>
+                                    <span class="file-copy">
+                                        <span class="file-name" title="@file.DisplayName">@file.DisplayName</span>
+                                        <span class="file-meta">@meta</span>
+                                    </span>
+                                </a>
                             }
-                            </tbody>
-                        </table>
-                    </div>
+                            else
+                            {
+                                <div class="file-hit">
+                                    <span class="file-ico ico-file" aria-hidden="true">FILE</span>
+                                    <span class="file-copy">
+                                        <span class="file-name" title="@file.DisplayName">@file.DisplayName</span>
+                                        <span class="file-meta">@meta</span>
+                                    </span>
+                                </div>
+                            }
+                            <div class="file-side">
+                                @if (!string.IsNullOrEmpty(file.DisplayLocation))
+                                {
+                                    <span class="path-clip" title="@file.DisplayLocation">@file.DisplayLocation</span>
+                                    <button type="button" class="icon-btn" data-copy="@file.DisplayLocation" aria-label="위치 복사" title="위치 복사">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 16V5.5h9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                                    </button>
+                                }
+                                else if (file.State == "Deleted")
+                                {
+                                    <span class="badge" data-state="자료삭제됨"><span class="dot" aria-hidden="true"></span>삭제됨—복구되지 않음</span>
+                                }
+                                else
+                                {
+                                    <span class="file-meta">@file.LocationNote</span>
+                                }
+                                @if (file.OpenKind is "pdf" or "image" or "text")
+                                {
+                                    <a class="icon-btn" href="@openHref" data-preview="@file.OpenKind" data-title="@file.DisplayName" data-meta="@meta" data-tile="@tileLabel" data-tile-kind="@tile" aria-label="미리보기" title="미리보기">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                                    </a>
+                                }
+                                @if (file.OpenKind == "download")
+                                {
+                                    <a class="icon-btn" href="@(openHref + "&dl=1")" data-preview="download" aria-label="내려받기" title="내려받기">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </a>
+                                }
+                                @if (file.OpenKind != "none" && !string.IsNullOrEmpty(file.Sha256))
+                                {
+                                    <form method="post" data-write="1" asp-page-handler="Hash" class="inline-form">
+                                        <input type="hidden" name="version" value="@item.Version" />
+                                        <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
+                                        <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                        <button type="submit" class="btn btn-quiet">해시 확인</button>
+                                    </form>
+                                }
+                                @if ((item.Caps.RemoveDraftFile || item.Caps.EarlyDelete) && file.State == "Present")
+                                {
+                                    <details class="menu">
+                                        <summary class="icon-btn" aria-label="삭제 메뉴">···</summary>
+                                        <div class="menu-pop">
+                                            @if (item.Caps.RemoveDraftFile)
+                                            {
+                                                <form method="post" data-write="1" asp-page-handler="Remove">
+                                                    <input type="hidden" name="version" value="@item.Version" />
+                                                    <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
+                                                    <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                                    <button type="submit" class="btn">첨부 빼기</button>
+                                                </form>
+                                            }
+                                            @if (item.Caps.EarlyDelete)
+                                            {
+                                                <form method="post" data-write="1" asp-page-handler="Early">
+                                                    <input type="hidden" name="version" value="@item.Version" />
+                                                    <input type="hidden" name="attachmentId" value="@file.AttachmentId" />
+                                                    <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                                                    <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                                                    <button type="submit" class="btn btn-danger" id="btn-early-delete-@file.AttachmentId">파일 삭제</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </details>
+                                }
+                            </div>
+                        </li>
+                    }
+                    </ul>
                 }
                 @if (item.Caps.AddFile)
                 {
@@ -293,7 +348,11 @@ else
                                 <select name="kind"><option>결과원문</option><option>증빙</option><option>회신첨부</option></select>
                             </label>
                             <label class="field">표시 이름<input name="displayName" required maxlength="120" /></label>
-                            <label class="field">파일<input type="file" name="upload" required /></label>
+                            <label class="drop">
+                                <input type="file" name="upload" required />
+                                <span class="drop-copy"><strong>파일을 여기에 놓거나 선택</strong><span>키보드로 이 영역에 들어간 뒤 Enter</span></span>
+                                <span class="drop-name" data-file-name>선택된 파일 없음</span>
+                            </label>
                         </div>
                         <p class="hint">표시 이름은 연한 후에도 남습니다. 파일 내용으로 쓰지 마세요.</p>
                         <button type="submit" class="btn">자료 추가</button>
@@ -308,15 +367,7 @@ else
                     <form method="post" data-write="1"  asp-page-handler="Retention" class="inline-form">
                         <input type="hidden" name="version" value="@item.Version" />
                         <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
-                        <label class="field">보존연한(년)
-                            <input name="years" type="number" min="1" max="100" required value="@item.RetentionYears" data-retention-input />
-                            <span class="preset-row" role="group" aria-label="보존연한 빠른 선택">
-                                @foreach (var preset in new[] { 1, 3, 5, 10, 30 })
-                                {
-                                    <button type="button" class="btn" data-retention-preset="@preset">@(preset)년</button>
-                                }
-                            </span>
-                        </label>
+                        <label class="field">보존연한(년)<input name="years" type="number" min="1" max="100" required value="@item.RetentionYears" /></label>
                         @if (item.Caps.RetentionNeedsReason)
                         {
                             <label class="field">사유<input name="reason" required maxlength="240" /></label>
@@ -378,4 +429,20 @@ else
             <p><a href="#h-@(item.History.LastOrDefault()?.Seq ?? 0)">마지막으로</a></p>
         </aside>
     </div>
+    <dialog id="preview-dialog" aria-labelledby="preview-title">
+        <div class="dialog-head">
+            <span class="file-ico ico-file" id="preview-ico" aria-hidden="true">FILE</span>
+            <div>
+                <h2 id="preview-title">파일 미리보기</h2>
+                <p class="hint" id="preview-meta"></p>
+            </div>
+            <a class="btn" id="preview-download">내려받기</a>
+            <button type="button" class="icon-btn" data-close aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <p class="hint preview-note">서버는 파일을 실행하지 않습니다. HTML과 SVG는 미리보기 없이 내려받기만 합니다. 나스카 암호문은 풀지 않습니다.</p>
+        <iframe id="preview-frame" title="파일 미리보기" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
+        <img id="preview-img" alt="" hidden>
+    </dialog>
 }

@@ -72,9 +72,18 @@ public class DetailModel : PageModel
     public IActionResult OnPostEarly(int version, string attachmentId, string? reason, string? requestId) =>
         Finish(_audit.EarlyDeleteFile(Need(), Id, version, attachmentId, reason, requestId));
 
+    public IActionResult OnPostHash(int version, string attachmentId, string? requestId) =>
+        Finish(_audit.VerifyFileHash(Need(), Id, attachmentId, requestId));
+
     IActionResult Finish(OpResult result)
     {
-        if (HttpContext.Items["actor"] is not Actor actor) return RedirectToPage("/Account/Login");
+        if (HttpContext.Items["actor"] is not Actor actor)
+        {
+            if (FetchReply.Wanted(Request))
+                return FetchReply.Json(OpResult.Fail(401, "UNAUTHORIZED", "다시 로그인하세요."));
+            return RedirectToPage("/Account/Login");
+        }
+        if (FetchReply.Wanted(Request)) return FetchReply.Json(result);
         if (result.Status == 403)
         {
             Error = string.IsNullOrWhiteSpace(result.Message) ? "이 작업 권한이 없습니다." : result.Message;
