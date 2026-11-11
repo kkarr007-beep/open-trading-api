@@ -66,6 +66,10 @@ if (!string.IsNullOrWhiteSpace(paths.CertificatePath))
         k.AddServerHeader = false;
         k.Limits.MaxRequestBodySize = FileStore.MaxBytes + (1024 * 1024);
         k.Listen(address, port, o => o.UseHttps(paths.CertificatePath, password));
+        // 최초 설치 화면은 서버 자신에서만 열립니다. 특정 IP만 듣고 있으면 그 화면에
+        // 들어갈 길이 없어지므로, 루프백도 함께 듣습니다. 바깥으로 더 열리지는 않습니다.
+        if (!IPAddress.IsLoopback(address) && !address.Equals(IPAddress.Any) && !address.Equals(IPAddress.IPv6Any))
+            k.Listen(IPAddress.Loopback, port, o => o.UseHttps(paths.CertificatePath, password));
     });
 }
 else
