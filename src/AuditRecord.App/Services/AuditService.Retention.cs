@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using AuditRecord.Data;
 using AuditRecord.Domain;
@@ -493,7 +493,8 @@ public sealed partial class AuditService
             "2024-03-15", "2024-06-30", "예시 조치 내용", Text.NewId());
         version = added.Version ?? version + 1;
         using var empty = new MemoryStream([]);
-        AddFile(staff, current.CaseId!, version, "증빙", "예시 빈 파일", empty, Text.NewId());
+        AddFile(staff, current.CaseId!, version, "증빙", "예시 빈 파일.txt", empty, Text.NewId());
+        SetDemoAccessPassword(admin.UserId, _paths.DemoAccessPath);
         _seedNow = null;
         SeedDisciplineExamples();
     }

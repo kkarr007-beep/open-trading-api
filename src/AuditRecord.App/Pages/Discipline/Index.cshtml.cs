@@ -10,10 +10,12 @@ public class IndexModel : PageModel
     public bool Allowed { get; set; }
     public bool Admin { get; set; }
     public List<DisciplineRow> Rows { get; set; } = [];
+    public IReadOnlyList<int> Years { get; set; } = [];
     public string? Text { get; set; }
     public string? Sanction { get; set; }
+    public int? Year { get; set; }
 
-    public IActionResult OnGet(string? text, string? sanction)
+    public IActionResult OnGet(string? text, string? sanction, int? year)
     {
         var actor = HttpContext.Items["actor"] as Actor;
         if (actor is null) return RedirectToPage("/Account/Login");
@@ -21,7 +23,12 @@ public class IndexModel : PageModel
         Admin = actor.IsAdmin;
         Text = text;
         Sanction = sanction;
-        if (Allowed) Rows = _audit.ListDiscipline(text, sanction);
+        Year = year;
+        if (Allowed)
+        {
+            Rows = _audit.ListDiscipline(text, sanction, year);
+            Years = _audit.DisciplineYears();
+        }
         return Page();
     }
 
@@ -31,6 +38,7 @@ public class IndexModel : PageModel
         if (actor is null) return RedirectToPage("/Account/Login");
         if (!actor.IsAdmin) return Forbid();
         var csv = _audit.ExportDisciplineCsv(actor, requestId);
-        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "discipline.csv");
+        var stamp = Kst.DateOf(DateTimeOffset.UtcNow).ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv; charset=utf-8", $"징계기록-{stamp}.csv");
     }
 }

@@ -11,10 +11,45 @@
     setNav(false);
   });
 
+  // 고른 파일의 이름과 확장자, 크기를 그대로 보여 준다.
+  // 표시 이름 칸이 비어 있으면 파일 이름을 넣어 둔다. 확장자가 있어야 내려받은 파일이 제 프로그램으로 열린다.
+  function fileSize(bytes) {
+    if (!bytes && bytes !== 0) return "";
+    var units = ["B", "KB", "MB", "GB"];
+    var n = bytes, i = 0;
+    while (n >= 1024 && i < units.length - 1) { n = n / 1024; i++; }
+    return (i === 0 ? n : n.toFixed(1)) + " " + units[i];
+  }
+
   document.querySelectorAll(".drop").forEach(function (zone) {
     var input = zone.querySelector("input[type=file]");
     var label = zone.querySelector("[data-file-name]");
     if (!input) return;
+    var form = input.closest("form");
+    var nameField = form ? form.querySelector("input[name=displayName]") : null;
+    var autoFilled = false;
+
+    function show() {
+      var file = input.files && input.files.length ? input.files[0] : null;
+      if (!label) return;
+      if (!file) {
+        label.textContent = "선택된 파일 없음";
+        label.removeAttribute("data-picked");
+        return;
+      }
+      var size = fileSize(file.size);
+      label.textContent = size ? file.name + " · " + size : file.name;
+      label.setAttribute("data-picked", "yes");
+      label.setAttribute("title", file.name);
+      if (nameField && (nameField.value === "" || autoFilled)) {
+        nameField.value = file.name;
+        autoFilled = true;
+      }
+    }
+
+    if (nameField) {
+      nameField.addEventListener("input", function () { autoFilled = false; });
+    }
     ["dragenter", "dragover"].forEach(function (type) {
       zone.addEventListener(type, function (event) {
         event.preventDefault();
@@ -27,11 +62,22 @@
       zone.classList.remove("drag");
       if (!event.dataTransfer || !event.dataTransfer.files.length) return;
       input.files = event.dataTransfer.files;
-      if (label && input.files[0]) label.textContent = input.files[0].name;
+      show();
     });
-    input.addEventListener("change", function () {
-      if (label) label.textContent = input.files && input.files[0] ? input.files[0].name : "선택된 파일 없음";
-    });
+    input.addEventListener("change", show);
+    show();
+  });
+
+  // 찾기 칸으로 건너뛰는 / 단축키. 입력 중에는 가로채지 않는다.
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+    var active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.isContentEditable)) return;
+    var box = document.querySelector("[data-search-focus]");
+    if (!box) return;
+    event.preventDefault();
+    box.focus();
+    if (typeof box.select === "function") box.select();
   });
 
   document.addEventListener("click", function (event) {

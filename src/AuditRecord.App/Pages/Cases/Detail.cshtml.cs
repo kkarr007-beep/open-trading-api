@@ -1,4 +1,4 @@
-using AuditRecord.Domain;
+﻿using AuditRecord.Domain;
 using AuditRecord.Services;
 
 namespace AuditRecord.Pages.Cases;
@@ -10,6 +10,8 @@ public class DetailModel : PageModel
 
     public CaseDetail? Detail { get; set; }
     public IReadOnlyList<UserAccount> Users { get; set; } = [];
+    public List<DisciplineRow> Discipline { get; set; } = [];
+    public bool CanSeeDiscipline { get; set; }
     public string? Error { get; set; }
     public string? Flash { get; set; }
     [BindProperty(SupportsGet = true)] public string Id { get; set; } = "";
@@ -25,6 +27,8 @@ public class DetailModel : PageModel
             return Page();
         }
         Users = _audit.ListUsers();
+        CanSeeDiscipline = _audit.CanReadDiscipline(actor);
+        if (CanSeeDiscipline) Discipline = _audit.DisciplineForCase(Id);
         Flash = HttpContext.Session.GetString("flash");
         HttpContext.Session.Remove("flash");
         return Page();
@@ -63,7 +67,8 @@ public class DetailModel : PageModel
         if (upload is null || upload.Length == 0)
             return Finish(OpResult.Fail(422, "BAD_INPUT", "파일을 선택하세요."));
         using var stream = upload.OpenReadStream();
-        return Finish(_audit.AddFile(actor, Id, version, kind, displayName, stream, requestId));
+        var name = AuditRecord.Storage.FilePreview.NameWithExtension(displayName, upload.FileName);
+        return Finish(_audit.AddFile(actor, Id, version, kind, name, stream, requestId));
     }
 
     public IActionResult OnPostRemove(int version, string attachmentId, string? requestId) =>

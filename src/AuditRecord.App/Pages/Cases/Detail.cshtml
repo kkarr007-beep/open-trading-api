@@ -1,4 +1,4 @@
-@page "/cases/{id}"
+﻿@page "/cases/{id}"
 @model AuditRecord.Pages.Cases.DetailModel
 @{
     ViewData["Title"] = "건 상세 · 감사기록";
@@ -347,10 +347,13 @@ else
                             <label class="field">종류
                                 <select name="kind"><option>결과원문</option><option>증빙</option><option>회신첨부</option></select>
                             </label>
-                            <label class="field">표시 이름<input name="displayName" required maxlength="120" /></label>
+                            <label class="field">표시 이름
+                                <input name="displayName" required maxlength="120" placeholder="비워 두면 파일 이름을 그대로 씁니다" />
+                                <span class="field-note">확장자가 없으면 올린 파일의 확장자를 붙입니다.</span>
+                            </label>
                             <label class="drop">
                                 <input type="file" name="upload" required />
-                                <span class="drop-copy"><strong>파일을 여기에 놓거나 선택</strong><span>키보드로 이 영역에 들어간 뒤 Enter</span></span>
+                                <span class="drop-copy"><strong>파일을 여기에 놓거나 눌러서 고르기</strong><span>키보드로 이 영역에 들어간 뒤 Enter</span></span>
                                 <span class="drop-name" data-file-name>선택된 파일 없음</span>
                             </label>
                         </div>
@@ -409,6 +412,52 @@ else
                     </form>
                 }
             </section>
+            @if (Model.CanSeeDiscipline)
+            {
+                <section id="discipline" aria-labelledby="discipline-title">
+                    <h2 id="discipline-title">연결된 징계기록</h2>
+                    <p class="hint">이 감사 건의 감사번호로 이어 둔 징계기록입니다. 목록의 성명은 일부를 가립니다. 파트장과 관리자만 봅니다.</p>
+                    @if (Model.Discipline.Count == 0)
+                    {
+                        <p class="empty">연결된 징계기록이 없습니다. <a href="/discipline/new">징계기록 등재</a>에서 이 건의 감사번호를 고르면 여기에 나타납니다.</p>
+                    }
+                    else
+                    {
+                        <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+                            <table class="data">
+                                <caption>연결된 징계기록 @(Model.Discipline.Count)건</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="num">순번</th>
+                                        <th scope="col">사번</th>
+                                        <th scope="col">성명</th>
+                                        <th scope="col">부서·직위</th>
+                                        <th scope="col" class="num">위반일자</th>
+                                        <th scope="col">징계종류</th>
+                                        <th scope="col" class="num">징계일자</th>
+                                        <th scope="col">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var row in Model.Discipline)
+                                {
+                                    <tr>
+                                        <td class="num">@row.Seq</td>
+                                        <td>@row.EmployeeNo</td>
+                                        <th scope="row"><a href="/discipline/@row.Id">@row.PersonMasked</a></th>
+                                        <td>@row.Department @row.Position</td>
+                                        <td class="num">@row.ViolationDate</td>
+                                        <td>@row.SanctionType</td>
+                                        <td class="num">@row.SanctionDate</td>
+                                        <td><span class="badge" data-state="@row.Status"><span class="dot" aria-hidden="true"></span>@row.Status</span></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+            }
         </div>
         <aside class="history" aria-label="시간순 이력">
             <h2>시간순 이력</h2>

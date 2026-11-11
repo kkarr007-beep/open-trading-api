@@ -10,6 +10,7 @@ public class EditModel : PageModel
     public bool Allowed { get; set; }
     public bool Admin { get; set; }
     public DisciplineRow? Item { get; set; }
+    public IReadOnlyList<CaseRefOption> CaseRefs { get; set; } = [];
     public string? Error { get; set; }
     [BindProperty(SupportsGet = true)] public string? Id { get; set; }
 
@@ -20,6 +21,7 @@ public class EditModel : PageModel
         Allowed = _audit.CanReadDiscipline(actor);
         Admin = actor.IsAdmin;
         if (!Allowed) return Page();
+        CaseRefs = _audit.ListCaseRefs();
         if (!string.IsNullOrEmpty(Id) && Id != "new")
         {
             Item = _audit.OpenDiscipline(actor, Id, recordView: true);
@@ -32,13 +34,37 @@ public class EditModel : PageModel
         return Page();
     }
 
-    public IActionResult OnPost(int version, string? caseId, int year, string? who, string? whenText, string? whereText, string? whatText, string? howText, string? whyText, string? sanction, string? outcome, string? ruleText, string? requestId)
+    public IActionResult OnPost(
+        int version, string? caseRef, int year, string? employeeNo, string? personName, string? department,
+        string? position, string? violationDate, string? violationText, string? ruleText, string? sanctionType,
+        string? sanctionDate, string? sanctionTerm, string? decisionBody, string? docNo, string? status,
+        string? remark, string? requestId)
     {
         var actor = Need();
         if (actor is null) return RedirectToPage("/Account/Login");
         if (!_audit.CanReadDiscipline(actor)) return Forbid();
         var id = Id == "new" ? null : Id;
-        var result = _audit.SaveDiscipline(actor, id, version, caseId, year, who, whenText, whereText, whatText, howText, whyText, sanction, outcome, ruleText, requestId);
+        var result = _audit.SaveDiscipline(actor, new DisciplineInput
+        {
+            Id = id,
+            Version = version,
+            CaseRef = caseRef,
+            Year = year,
+            EmployeeNo = employeeNo,
+            PersonName = personName,
+            Department = department,
+            Position = position,
+            ViolationDate = violationDate,
+            ViolationText = violationText,
+            RuleText = ruleText,
+            SanctionType = sanctionType,
+            SanctionDate = sanctionDate,
+            SanctionTerm = sanctionTerm,
+            DecisionBody = decisionBody,
+            DocNo = docNo,
+            Status = status,
+            Remark = remark
+        }, requestId);
         if (FetchReply.Wanted(Request))
             return FetchReply.Json(result, result.Ok ? "/discipline/" + result.Extra : null);
         if (!result.Ok)
@@ -46,6 +72,7 @@ public class EditModel : PageModel
             Error = result.Message;
             Allowed = true;
             Admin = actor.IsAdmin;
+            CaseRefs = _audit.ListCaseRefs();
             if (!string.IsNullOrEmpty(id)) Item = _audit.OpenDiscipline(actor, id, false);
             Response.StatusCode = result.Status == 0 ? 400 : result.Status;
             return Page();

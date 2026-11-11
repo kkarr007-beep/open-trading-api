@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using AuditRecord.Domain;
 using AuditRecord.Services;
 using AuditRecord.Storage;
@@ -20,6 +20,7 @@ public class IndexModel : PageModel
     public string? Error { get; set; }
     public string? Flash { get; set; }
     public IReadOnlyList<(string Category, string Code, bool Used)> Codes { get; set; } = [];
+    public AccessState Access { get; set; } = new();
     public AppPaths Paths => _paths;
 
     public IActionResult OnGet()
@@ -29,6 +30,7 @@ public class IndexModel : PageModel
         Admin = actor.IsAdmin;
         Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
         Codes = _audit.ListCategoryCodes();
+        Access = _audit.GetAccessState();
         Flash = HttpContext.Session.GetString("flash");
         HttpContext.Session.Remove("flash");
         return Page();
@@ -47,5 +49,26 @@ public class IndexModel : PageModel
         Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
         Codes = _audit.ListCategoryCodes();
         return Page();
+    }
+
+    /// <summary>접속 비밀번호 변경. 관리자만. 바꾼 뒤에는 새 비밀번호만 들어옵니다.</summary>
+    public IActionResult OnPostAccess(string? current, string? next, string? confirm, string? requestId)
+    {
+        var actor = HttpContext.Items["actor"] as Actor;
+        if (actor is null) return RedirectToPage("/Account/Login");
+        var result = _audit.ChangeAccessPassword(actor, current, next, confirm, requestId);
+        HttpContext.Session.SetString("flash", result.Message);
+        if (!result.Ok)
+        {
+            Admin = actor.IsAdmin;
+            Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            Codes = _audit.ListCategoryCodes();
+            Access = _audit.GetAccessState();
+            Error = result.Message;
+            HttpContext.Session.Remove("flash");
+            Response.StatusCode = result.Status == 0 ? 400 : result.Status;
+            return Page();
+        }
+        return RedirectToPage();
     }
 }

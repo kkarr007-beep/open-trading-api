@@ -1,8 +1,10 @@
 @page "/discipline/{id}"
 @model AuditRecord.Pages.Discipline.EditModel
 @{
-    ViewData["Title"] = "징계기록 상세 · 감사기록";
+    ViewData["Title"] = "징계기록 · 감사기록";
     var item = Model.Item;
+    var caseRef = item?.CaseDocumentNo;
+    if (string.IsNullOrEmpty(caseRef)) { caseRef = item?.CaseTitle; }
 }
 @if (!Model.Allowed)
 {
@@ -15,11 +17,21 @@ else if (!string.IsNullOrEmpty(Model.Error) && item is null && Model.Id != "new"
 }
 else
 {
+    <p class="back"><a href="/discipline">징계기록 목록</a></p>
     <div class="page-head">
-        <h1>@(item is null ? "징계기록 등록" : item.WhoMasked)</h1>
+        <div>
+            <h1>@(item is null ? "징계기록 등재" : "순번 " + item.Seq + " · " + item.PersonMasked)</h1>
+            @if (item != null)
+            {
+                <p class="hint">등록일자 @item.CreatedDate · 담당자 @item.OwnerName</p>
+            }
+        </div>
         @if (item != null)
         {
-            <span class="badge" data-state="@item.Status"><span class="dot" aria-hidden="true"></span>@item.Status</span>
+            <div class="row-actions">
+                <span class="badge" data-state="@item.Status"><span class="dot" aria-hidden="true"></span>@item.Status</span>
+                @if (item.Hold) { <span class="badge" data-state="보류"><span class="dot" aria-hidden="true"></span>삭제 보류</span> }
+            </div>
         }
     </div>
     @if (!string.IsNullOrEmpty(Model.Error))
@@ -28,52 +40,94 @@ else
     }
     @if (item != null)
     {
-        <ul class="six">
-            <li><span>누가</span><strong>@item.WhoName</strong></li>
-            <li><span>언제</span><strong>@item.WhenText</strong></li>
-            <li><span>어디서</span><strong>@item.WhereText</strong></li>
-            <li><span>무엇을</span><strong>@item.WhatText</strong></li>
-            <li><span>어떻게</span><strong>@item.HowText</strong></li>
-            <li><span>왜</span><strong>@item.WhyText</strong></li>
+        <ul class="summary">
+            <li><span>순번</span><strong>@item.Seq</strong></li>
+            <li><span>사번</span><strong>@(string.IsNullOrEmpty(item.EmployeeNo) ? "—" : item.EmployeeNo)</strong></li>
+            <li><span>성명</span><strong>@item.PersonName</strong></li>
+            <li><span>부서·직위</span><strong>@item.Department @item.Position</strong></li>
+            <li><span>위반일자</span><strong>@item.ViolationDate</strong></li>
+            <li><span>징계종류</span><strong>@item.SanctionType</strong></li>
+            <li><span>징계일자</span><strong>@(string.IsNullOrEmpty(item.SanctionDate) ? "—" : item.SanctionDate)</strong></li>
+            <li><span>징계기간</span><strong>@(string.IsNullOrEmpty(item.SanctionTerm) ? "—" : item.SanctionTerm)</strong></li>
+            <li><span>결정기관</span><strong>@(string.IsNullOrEmpty(item.DecisionBody) ? "—" : item.DecisionBody)</strong></li>
+            <li><span>근거문서번호</span><strong>@(string.IsNullOrEmpty(item.DocNo) ? "—" : item.DocNo)</strong></li>
         </ul>
-        <section>
-            <h2>처분과 근거</h2>
+        <section class="card">
+            <h2>위반내용과 관련규정</h2>
             <dl class="facts">
-                <dt>처분</dt><dd>@item.Sanction</dd>
-                <dt>결과</dt><dd>@(string.IsNullOrEmpty(item.Outcome) ? "없음" : item.Outcome)</dd>
-                <dt>근거</dt><dd>@(string.IsNullOrEmpty(item.RuleText) ? "없음" : item.RuleText)</dd>
-                <dt>감사 건</dt><dd>@if (item.CaseId != null) { <a href="/cases/@item.CaseId">@(item.CaseTitle ?? "건")</a> } else { <text>연결 없음</text> }</dd>
+                <dt>위반내용</dt><dd>@item.ViolationText</dd>
+                <dt>관련규정</dt><dd>@(string.IsNullOrEmpty(item.RuleText) ? "없음" : item.RuleText)</dd>
+                <dt>비고</dt><dd>@(string.IsNullOrEmpty(item.Remark) ? "없음" : item.Remark)</dd>
+                <dt>감사 건</dt>
+                <dd>
+                    @if (item.CaseId != null)
+                    {
+                        <a href="/cases/@item.CaseId">@(string.IsNullOrEmpty(item.CaseDocumentNo) ? "" : item.CaseDocumentNo + " · ")@item.CaseTitle</a>
+                    }
+                    else
+                    {
+                        <text>연결 없음</text>
+                    }
+                </dd>
             </dl>
         </section>
     }
     @if (item is null || item.Status != "삭제됨")
     {
-        <section>
-            <h2>@(item is null ? "입력" : "수정")</h2>
-            <form method="post" data-write="1">
+        <section class="card">
+            <h2>@(item is null ? "등재 입력" : "수정")</h2>
+            <form method="post" data-write="1" data-track>
                 <input type="hidden" name="version" value="@(item?.Version ?? 0)" />
                 <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
                 <div class="form-grid">
                     <label class="field">연도<input name="year" type="number" min="1990" max="2100" required value="@(item?.Year ?? DateTime.Now.Year)" /></label>
-                    <label class="field">누가<input name="who" required maxlength="40" value="@item?.WhoName" /></label>
-                    <label class="field">언제<input name="whenText" required maxlength="40" value="@item?.WhenText" /></label>
-                    <label class="field">어디서<input name="whereText" required maxlength="80" value="@item?.WhereText" /></label>
-                    <label class="field">처분<input name="sanction" required maxlength="40" value="@item?.Sanction" /></label>
-                    <label class="field">결과<input name="outcome" maxlength="80" value="@item?.Outcome" /></label>
-                    <label class="field grow">무엇을<textarea name="whatText" required maxlength="500">@item?.WhatText</textarea></label>
-                    <label class="field grow">어떻게<textarea name="howText" required maxlength="500">@item?.HowText</textarea></label>
-                    <label class="field grow">왜<textarea name="whyText" required maxlength="500">@item?.WhyText</textarea></label>
-                    <label class="field grow">근거<textarea name="ruleText" maxlength="240">@item?.RuleText</textarea></label>
-                    <label class="field grow">감사 건 번호<input name="caseId" maxlength="32" value="@item?.CaseId" placeholder="연결하지 않으면 비움" /></label>
+                    <label class="field">사번<input name="employeeNo" maxlength="40" value="@item?.EmployeeNo" placeholder="A-1001" /></label>
+                    <label class="field">성명<input name="personName" required maxlength="40" value="@item?.PersonName" /></label>
+                    <label class="field">부서<input name="department" maxlength="80" value="@item?.Department" /></label>
+                    <label class="field">직위<input name="position" maxlength="40" value="@item?.Position" /></label>
+                    <label class="field">위반일자<input name="violationDate" type="date" required value="@item?.ViolationDate" /></label>
+                    <label class="field">징계종류
+                        <select name="sanctionType" required>
+                            @foreach (var name in AuditService.SanctionTypes)
+                            {
+                                <option selected="@(item?.SanctionType == name)">@name</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">징계일자<input name="sanctionDate" type="date" value="@item?.SanctionDate" /></label>
+                    <label class="field">징계기간<input name="sanctionTerm" maxlength="80" value="@item?.SanctionTerm" placeholder="1개월 · 해당 없음" /></label>
+                    <label class="field">결정기관<input name="decisionBody" maxlength="80" value="@item?.DecisionBody" placeholder="인사위원회" /></label>
+                    <label class="field">근거문서번호<input name="docNo" maxlength="80" value="@item?.DocNo" /></label>
+                    <label class="field">상태
+                        <select name="status">
+                            <option selected="@(item is null || item.Status == "초안")">초안</option>
+                            <option selected="@(item?.Status == "확정")">확정</option>
+                        </select>
+                    </label>
+                    <label class="field grow">감사 건 연결 (감사번호)
+                        <input name="caseRef" list="case-refs" maxlength="80" value="@caseRef" placeholder="연결하지 않으면 비움" />
+                        <span class="field-note">목록에서 감사번호를 고르거나 건 제목을 적습니다. 저장할 때 그 건으로 이어집니다.</span>
+                    </label>
+                    <label class="field grow">위반내용<textarea name="violationText" required maxlength="500" rows="3">@item?.ViolationText</textarea></label>
+                    <label class="field grow">관련규정<textarea name="ruleText" maxlength="240" rows="2">@item?.RuleText</textarea></label>
+                    <label class="field grow">비고<textarea name="remark" maxlength="500" rows="2">@item?.Remark</textarea></label>
                 </div>
+                <datalist id="case-refs">
+                    @foreach (var option in Model.CaseRefs)
+                    {
+                        <option value="@(string.IsNullOrEmpty(option.DocumentNo) ? option.Title : option.DocumentNo)">@option.Year @option.Category · @option.Title</option>
+                    }
+                </datalist>
+                <p class="hint">성명, 위반일자, 위반내용, 징계종류는 반드시 입력합니다. 상태를 확정으로 두면 징계일자가 보존 기산일이 됩니다.</p>
                 <button type="submit" class="btn btn-primary">저장</button>
             </form>
         </section>
     }
     @if (item != null && Model.Admin && item.Status != "삭제됨")
     {
-        <section class="danger-zone">
+        <section class="card danger-zone">
             <h2>삭제 보류</h2>
+            <p class="hint">보류 중에는 보존 만료가 와도 지우지 않습니다. 설정과 해제 모두 사유가 이력에 남습니다.</p>
             <form method="post" asp-page-handler="Hold" data-write="1" class="inline-form">
                 <input type="hidden" name="version" value="@item.Version" />
                 <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
@@ -81,14 +135,14 @@ else
                 {
                     <input type="hidden" name="release" value="1" />
                 }
-                <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                <label class="field grow">사유<input name="reason" required maxlength="240" /></label>
                 <button type="submit" class="btn btn-danger">@(item.Hold ? "보류 해제" : "삭제 보류")</button>
             </form>
         </section>
     }
     @if (item != null)
     {
-        <section class="history">
+        <section class="card history">
             <h2>시간순 이력</h2>
             <ol class="timeline">
             @foreach (var row in item.History)

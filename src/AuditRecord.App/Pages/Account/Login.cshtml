@@ -1,28 +1,49 @@
-@page "/account/login"
+﻿@page "/account/login"
 @model AuditRecord.Pages.Account.LoginModel
 @{
-    ViewData["Title"] = "로그인 · 감사기록";
+    ViewData["Title"] = "들어가기 · 감사기록";
 }
-<section class="narrow">
-    <h1>로그인</h1>
-    <p class="hint">감사파트 계정만 사용합니다. 사내 포털이나 SSO와 연결하지 않습니다.</p>
+<section class="auth">
+    <div class="auth-mark" aria-hidden="true">감</div>
+    <h1>@(string.IsNullOrEmpty(Model.Access.TeamName) ? "감사기록" : Model.Access.TeamName)</h1>
+    <p class="auth-lead">@(Model.ShowAccountForm ? "계정 이름과 비밀번호로 들어오세요." : "비밀번호를 누르고 들어오세요.")</p>
     @if (!string.IsNullOrEmpty(Model.Notice))
     {
         <p class="banner info" role="status">@Model.Notice</p>
     }
     @if (!string.IsNullOrEmpty(Model.Error))
     {
-        <div class="error-summary" role="alert" tabindex="-1">
-            <p>@Model.Error</p>
-        </div>
+        <div class="error-summary" role="alert" tabindex="-1"><p>@Model.Error</p></div>
     }
-    <form method="post">
-        <label class="field" for="login">로그인 이름
-            <input id="login" name="login" autocomplete="username" required maxlength="40" />
-        </label>
-        <label class="field" for="password">비밀번호
-            <input id="password" name="password" type="password" autocomplete="current-password" required />
-        </label>
-        <button type="submit" class="btn btn-primary">들어가기</button>
-    </form>
+    @if (!Model.ShowAccountForm)
+    {
+        <form method="post" class="auth-form">
+            <label class="field">
+                <span class="sr">접속 비밀번호</span>
+                <span class="input-row">
+                    <input name="password" type="password" required autocomplete="current-password"
+                           autofocus placeholder="접속 비밀번호" aria-label="접속 비밀번호" />
+                    <button type="submit" class="btn btn-primary">들어가기</button>
+                </span>
+            </label>
+        </form>
+        <p class="auth-alt"><a href="/account/login?account=true">계정 이름으로 들어가기</a></p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Account" class="auth-form">
+            <label class="field" for="login">로그인 이름
+                <input id="login" name="login" autocomplete="username" required maxlength="40" autofocus />
+            </label>
+            <label class="field" for="password">비밀번호
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">들어가기</button>
+        </form>
+        @if (Model.Access.AccessPasswordSet)
+        {
+            <p class="auth-alt"><a href="/account/login">접속 비밀번호로 들어가기</a></p>
+        }
+    }
+    <p class="auth-foot">사내 포털이나 SSO와 연결하지 않습니다. 이 서버 안에서만 확인합니다.</p>
 </section>

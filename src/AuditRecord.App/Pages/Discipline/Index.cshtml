@@ -14,33 +14,54 @@ else
 <div class="page-head">
     <div>
         <h1>징계기록</h1>
-        <p class="hint">감사 건과 따로 둡니다. 목록의 이름은 일부를 가리고, 상세를 열면 열람 이력이 남습니다.</p>
+        <p class="hint">등재 항목 그대로 한 줄에 담습니다. 목록의 성명은 일부를 가리고, 상세를 열면 열람 이력이 남습니다.</p>
     </div>
     <div class="row-actions">
         @if (Model.Admin)
         {
-            <form method="post" asp-page-handler="Export"><input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" /><button class="btn" type="submit">CSV</button></form>
+            <form method="post" asp-page-handler="Export">
+                <input type="hidden" name="requestId" value="@Guid.NewGuid().ToString("N")" />
+                <button class="btn" type="submit">CSV 내려받기</button>
+            </form>
         }
-        <a class="btn btn-primary" href="/discipline/new">기록 등록</a>
+        <a class="btn btn-primary" href="/discipline/new">기록 등재</a>
     </div>
 </div>
-<form method="get" class="toolbar">
-    <label class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <span class="sr">이름, 내용, 장소, 건 제목</span>
-        <input name="text" value="@Model.Text" placeholder="이름, 내용, 장소, 건 제목" maxlength="80" />
-    </label>
-    <label class="field">처분
-        <select name="sanction" aria-label="처분">
-            <option value="">전체</option>
-            @foreach (var name in new[] { "견책", "감봉", "정직", "경고" })
-            {
-                <option selected="@(Model.Sanction == name)">@name</option>
-            }
-        </select>
-    </label>
-    <button class="btn btn-primary" type="submit">찾기</button>
-</form>
+<div class="sticky-tools">
+    <form method="get" class="toolbar">
+        <div class="search-row">
+            <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span class="sr">사번, 성명, 부서, 위반내용, 근거문서번호, 감사번호</span>
+                <input name="text" value="@Model.Text" placeholder="사번·성명·부서·위반내용·근거문서번호·감사번호" maxlength="80" data-search-focus />
+            </label>
+            <button class="btn btn-primary" type="submit">찾기</button>
+        </div>
+        <label class="field">연도
+            <select name="year">
+                <option value="">전체</option>
+                @foreach (var y in Model.Years)
+                {
+                    <option value="@y" selected="@(Model.Year == y)">@y</option>
+                }
+            </select>
+        </label>
+        <label class="field">징계종류
+            <select name="sanction" aria-label="징계종류">
+                <option value="">전체</option>
+                @foreach (var name in AuditService.SanctionTypes)
+                {
+                    <option selected="@(Model.Sanction == name)">@name</option>
+                }
+            </select>
+        </label>
+        @if (!string.IsNullOrEmpty(Model.Text) || !string.IsNullOrEmpty(Model.Sanction) || Model.Year is not null)
+        {
+            <a class="btn" href="/discipline">조건 지우기</a>
+        }
+    </form>
+</div>
+<p class="count-line" role="status">총 @Model.Rows.Count 건</p>
 @if (Model.Rows.Count == 0)
 {
     <p class="empty">조건에 맞는 징계기록이 없습니다.</p>
@@ -52,32 +73,60 @@ else
             <caption>징계기록 @Model.Rows.Count 건</caption>
             <thead>
                 <tr>
-                    <th scope="col">누가</th>
-                    <th scope="col">언제</th>
-                    <th scope="col">어디서</th>
-                    <th scope="col">무엇을</th>
-                    <th scope="col">어떻게</th>
-                    <th scope="col">왜</th>
-                    <th scope="col">처분</th>
-                    <th scope="col">결과</th>
+                    <th scope="col" class="num">순번</th>
+                    <th scope="col">사번</th>
+                    <th scope="col">성명</th>
+                    <th scope="col">부서</th>
+                    <th scope="col">직위</th>
+                    <th scope="col" class="num">위반일자</th>
+                    <th scope="col">위반내용</th>
+                    <th scope="col">관련규정</th>
+                    <th scope="col">징계종류</th>
+                    <th scope="col" class="num">징계일자</th>
+                    <th scope="col">징계기간</th>
+                    <th scope="col">결정기관</th>
+                    <th scope="col">근거문서번호</th>
                     <th scope="col">상태</th>
-                    <th scope="col">감사 건</th>
+                    <th scope="col">비고</th>
+                    <th scope="col" class="num">등록일자</th>
+                    <th scope="col">담당자</th>
+                    <th scope="col">감사번호</th>
                 </tr>
             </thead>
             <tbody>
             @foreach (var row in Model.Rows)
             {
                 <tr>
-                    <th scope="row"><a href="/discipline/@row.Id">@row.WhoMasked</a></th>
-                    <td class="num">@row.WhenText</td>
-                    <td>@row.WhereText</td>
-                    <td>@row.WhatText</td>
-                    <td>@row.HowText</td>
-                    <td>@row.WhyText</td>
-                    <td><span class="badge" data-state="조치중"><span class="dot" aria-hidden="true"></span>@row.Sanction</span></td>
-                    <td>@row.Outcome</td>
-                    <td><span class="badge" data-state="@row.Status"><span class="dot" aria-hidden="true"></span>@row.Status</span></td>
-                    <td>@if (row.CaseId != null) { <a href="/cases/@row.CaseId">@row.CaseTitle</a> } else { <text>없음</text> }</td>
+                    <td class="num">@row.Seq</td>
+                    <td>@row.EmployeeNo</td>
+                    <th scope="row"><a href="/discipline/@row.Id">@row.PersonMasked</a></th>
+                    <td>@row.Department</td>
+                    <td>@row.Position</td>
+                    <td class="num">@row.ViolationDate</td>
+                    <td class="wrap-cell">@row.ViolationText</td>
+                    <td>@row.RuleText</td>
+                    <td><span class="badge" data-state="조치중"><span class="dot" aria-hidden="true"></span>@row.SanctionType</span></td>
+                    <td class="num">@row.SanctionDate</td>
+                    <td>@row.SanctionTerm</td>
+                    <td>@row.DecisionBody</td>
+                    <td>@row.DocNo</td>
+                    <td>
+                        <span class="badge" data-state="@row.Status"><span class="dot" aria-hidden="true"></span>@row.Status</span>
+                        @if (row.Hold) { <span class="badge" data-state="보류"><span class="dot" aria-hidden="true"></span>보류</span> }
+                    </td>
+                    <td class="wrap-cell">@row.Remark</td>
+                    <td class="num">@row.CreatedDate</td>
+                    <td>@row.OwnerName</td>
+                    <td>
+                        @if (row.CaseId != null)
+                        {
+                            <a href="/cases/@row.CaseId">@(string.IsNullOrEmpty(row.CaseDocumentNo) ? row.CaseTitle : row.CaseDocumentNo)</a>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>
@@ -87,9 +136,9 @@ else
     @foreach (var row in Model.Rows)
     {
         <li>
-            <a href="/discipline/@row.Id"><strong>@row.WhoMasked</strong> · @row.Sanction</a>
-            <p>@row.WhenText · @row.WhereText</p>
-            <p>@row.WhatText</p>
+            <a href="/discipline/@row.Id"><strong>@row.Seq. @row.PersonMasked</strong> · @row.SanctionType</a>
+            <p>@row.ViolationDate · @row.Department @row.Position · 사번 @row.EmployeeNo</p>
+            <p>@row.ViolationText</p>
         </li>
     }
     </ul>

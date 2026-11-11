@@ -15,20 +15,15 @@ public class SetupModel : PageModel
     public IActionResult OnGet()
     {
         if (_audit.AnyUsers()) return NotFound();
-        if (BlockRemote()) return Page();
+        BlockRemote();
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? login, string? displayName, string? password, string? confirm)
+    public async Task<IActionResult> OnPostAsync(string? teamName, string? password, string? confirm)
     {
         if (_audit.AnyUsers()) return NotFound();
         if (BlockRemote()) return Page();
-        if (!string.Equals(password, confirm, StringComparison.Ordinal))
-        {
-            Error = "비밀번호 확인이 일치하지 않습니다.";
-            return Page();
-        }
-        var result = _audit.SetupAdmin(login, displayName, password);
+        var result = _audit.InstallSimple(teamName, password, confirm);
         if (!result.Ok || result.UserId is null)
         {
             Error = result.Message;
@@ -37,7 +32,7 @@ public class SetupModel : PageModel
         var user = _audit.FindUser(result.UserId);
         if (user is null) return RedirectToPage("/Account/Login");
         await LoginModel.SignInAsync(HttpContext, user);
-        return RedirectToPage("/Admin/Index");
+        return RedirectToPage("/Todo/Index");
     }
 
     bool BlockRemote()

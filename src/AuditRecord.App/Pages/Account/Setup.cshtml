@@ -1,36 +1,42 @@
 @page "/account/setup"
 @model AuditRecord.Pages.Account.SetupModel
 @{
-    ViewData["Title"] = "최초 설정 · 감사기록";
+    ViewData["Title"] = "간편 설치 · 감사기록";
 }
-<section class="narrow">
-    <h1>최초 관리자</h1>
-    <p class="hint">이 서버의 127.0.0.1 브라우저에서 한 번만 만듭니다. 다른 컴퓨터에서 이 화면을 열지 마세요. 관리자를 만든 뒤에만 내부망 주소를 엽니다. 공개 가입은 없습니다.</p>
+<section class="auth">
+    <div class="auth-mark" aria-hidden="true">감</div>
+    <h1>간편 설치</h1>
     @if (Model.Blocked)
     {
-        <div class="error-summary" role="alert" tabindex="-1"><p>최초 관리자는 이 서버의 127.0.0.1 에서만 만듭니다. 내부망 주소로 이 화면을 열지 마세요.</p></div>
+        <div class="error-summary" role="alert" tabindex="-1">
+            <p>설치는 이 서버 컴퓨터의 <span class="path">http://127.0.0.1:47321</span> 에서만 합니다. 내부망 주소로는 열 수 없습니다.</p>
+        </div>
     }
     else
     {
-    @if (!string.IsNullOrEmpty(Model.Error))
-    {
-        <div class="error-summary" role="alert" tabindex="-1"><p>@Model.Error</p></div>
-    }
-    <form method="post">
-        <label class="field">표시 이름
-            <input name="displayName" required maxlength="40" autocomplete="off" />
-        </label>
-        <p class="hint">연한 후에도 계정 표시에 남을 수 있습니다. 실명 대신 역할이 드러나지 않는 운영 이름을 쓰세요.</p>
-        <label class="field">로그인 이름
-            <input name="login" required maxlength="40" autocomplete="off" spellcheck="false" />
-        </label>
-        <label class="field">비밀번호
-            <input name="password" type="password" required minlength="12" autocomplete="new-password" />
-        </label>
-        <label class="field">비밀번호 확인
-            <input name="confirm" type="password" required minlength="12" autocomplete="new-password" />
-        </label>
-        <button type="submit" class="btn btn-primary">관리자 만들기</button>
-    </form>
+        <p class="auth-lead">비밀번호 하나만 정하면 끝납니다. 다른 컴퓨터는 브라우저로 들어와 그 비밀번호만 누릅니다.</p>
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="error-summary" role="alert" tabindex="-1"><p>@Model.Error</p></div>
+        }
+        <form method="post" class="auth-form">
+            <label class="field">우리 파트 이름
+                <input name="teamName" maxlength="40" autocomplete="off" value="감사파트" />
+                <span class="field-note">화면 위와 기록에 남는 이름입니다. 실명은 적지 마세요.</span>
+            </label>
+            <label class="field">접속 비밀번호
+                <input name="password" type="password" required minlength="12" autocomplete="new-password" />
+                <span class="field-note">12자 이상. 이 비밀번호를 파트원에게 알려 주면 됩니다.</span>
+            </label>
+            <label class="field">비밀번호 확인
+                <input name="confirm" type="password" required minlength="12" autocomplete="new-password" />
+            </label>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">설치하고 시작하기</button>
+        </form>
+        <ol class="auth-steps">
+            <li>이 화면에서 비밀번호를 정합니다.</li>
+            <li>서버의 내부망 주소를 파트원에게 알려 줍니다.</li>
+            <li>파트원은 그 주소를 열고 비밀번호만 누르면 들어옵니다.</li>
+        </ol>
     }
 </section>

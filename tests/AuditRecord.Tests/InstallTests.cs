@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using AuditRecord.Services;
 using AuditRecord.Storage;
@@ -59,7 +59,7 @@ public class InstallTests
         var body = await new StreamReader(context.Response.Body, Encoding.UTF8).ReadToEndAsync();
         Assert.Equal(403, context.Response.StatusCode);
         Assert.Contains("127.0.0.1", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("관리자 만들기", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("설치하고 시작하기", body, StringComparison.Ordinal);
         Assert.Empty(factory.Services.GetRequiredService<AuditService>().ListUsers());
     }
 

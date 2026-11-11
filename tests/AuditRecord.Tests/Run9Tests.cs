@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using AuditRecord.Domain;
 using AuditRecord.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,13 +105,20 @@ public class Run9Tests
         var staff = h.Account(admin, "staff9", "시험담당", "담당");
         var lead = h.Account(admin, "lead9", "시험파트장", "파트장");
         Assert.False(h.Svc.CanReadDiscipline(staff));
-        var saved = h.Svc.SaveDiscipline(lead, null, 0, null, 2026, "가상갑", "2026-01-02", "예시부서", "허위 보고", "장부를 고침", "확인을 빠뜨림", "견책", "경고", "예시 기준", Guid.NewGuid().ToString("N"));
+        var saved = h.Svc.SaveDiscipline(lead, new DisciplineInput
+        {
+            Year = 2026, EmployeeNo = "A-1", PersonName = "가상갑", Department = "예시부서", Position = "대리",
+            ViolationDate = "2026-01-02", ViolationText = "허위 보고", RuleText = "예시 기준",
+            SanctionType = "견책", SanctionDate = "2026-02-02", SanctionTerm = "해당 없음",
+            DecisionBody = "예시 인사위원회", DocNo = "예시-2026-1", Status = "초안", Remark = "장부를 고침"
+        }, Guid.NewGuid().ToString("N"));
         Assert.True(saved.Ok, saved.Message);
-        var list = h.Svc.ListDiscipline(null, null);
-        Assert.Contains(list, row => row.WhoMasked == "가*갑" && row.WhoName == "가상갑");
+        var list = h.Svc.ListDiscipline(null, null, null);
+        Assert.Contains(list, row => row.PersonMasked == "가*갑" && row.PersonName == "가상갑");
+        Assert.Contains(list, row => row.Seq > 0 && row.EmployeeNo == "A-1" && row.Position == "대리");
         Assert.Null(h.Svc.OpenDiscipline(staff, saved.Extra, true));
         var opened = h.Svc.OpenDiscipline(lead, saved.Extra, true);
-        Assert.Equal("가상갑", opened!.WhoName);
+        Assert.Equal("가상갑", opened!.PersonName);
         Assert.Contains(opened.History, row => row.Action == "열람");
         Assert.Equal("", h.Svc.ExportDisciplineCsv(staff, Guid.NewGuid().ToString("N")));
         var csv = h.Svc.ExportDisciplineCsv(admin, Guid.NewGuid().ToString("N"));
@@ -142,12 +149,17 @@ public class Run9Tests
         foreach (var value in dangerous) AssertNeutralized(cases, value);
         _ = other;
 
-        Assert.True(h.Svc.SaveDiscipline(lead, null, 0, null, 2026, dangerous[0], "2026-01-02", dangerous[1], "내용", dangerous[3], "이유", "견책", dangerous[2], "예시 기준", Guid.NewGuid().ToString("N")).Ok);
+        Assert.True(h.Svc.SaveDiscipline(lead, new DisciplineInput
+        {
+            Year = 2026, PersonName = dangerous[0], Department = dangerous[1], ViolationDate = "2026-01-02",
+            ViolationText = "내용", RuleText = dangerous[3], SanctionType = "견책", SanctionTerm = dangerous[2],
+            Status = "초안", Remark = "비고"
+        }, Guid.NewGuid().ToString("N")).Ok);
         using (var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={h.Paths.DatabasePath}"))
         {
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE Discipline SET WhatText=$tab, WhyText=$cr WHERE WhoName=$who;";
+            cmd.CommandText = "UPDATE Discipline SET ViolationText=$tab, Remark=$cr WHERE PersonName=$who;";
             cmd.Parameters.AddWithValue("$tab", dangerous[4]);
             cmd.Parameters.AddWithValue("$cr", dangerous[5]);
             cmd.Parameters.AddWithValue("$who", dangerous[0]);

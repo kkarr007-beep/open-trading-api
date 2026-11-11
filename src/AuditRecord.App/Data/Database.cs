@@ -1,4 +1,4 @@
-using AuditRecord.Storage;
+﻿using AuditRecord.Storage;
 using Microsoft.Data.Sqlite;
 
 namespace AuditRecord.Data;
@@ -120,18 +120,23 @@ public sealed class Database
                 CREATE UNIQUE INDEX IF NOT EXISTS UX_Results_DocumentNo ON Results(DocumentNo) WHERE DocumentNo <> '';
                 CREATE TABLE IF NOT EXISTS Discipline (
                   DisciplineId TEXT PRIMARY KEY,
+                  Seq INTEGER NOT NULL,
                   CaseId TEXT NULL,
                   Year INTEGER NOT NULL,
-                  WhoName TEXT NOT NULL,
-                  WhenText TEXT NOT NULL,
-                  WhereText TEXT NOT NULL,
-                  WhatText TEXT NOT NULL,
-                  HowText TEXT NOT NULL,
-                  WhyText TEXT NOT NULL,
-                  Sanction TEXT NOT NULL,
-                  Outcome TEXT NOT NULL DEFAULT '',
+                  EmployeeNo TEXT NOT NULL DEFAULT '',
+                  PersonName TEXT NOT NULL,
+                  Department TEXT NOT NULL DEFAULT '',
+                  Position TEXT NOT NULL DEFAULT '',
+                  ViolationDate TEXT NOT NULL,
+                  ViolationText TEXT NOT NULL,
                   RuleText TEXT NOT NULL DEFAULT '',
+                  SanctionType TEXT NOT NULL,
+                  SanctionDate TEXT NOT NULL DEFAULT '',
+                  SanctionTerm TEXT NOT NULL DEFAULT '',
+                  DecisionBody TEXT NOT NULL DEFAULT '',
+                  DocNo TEXT NOT NULL DEFAULT '',
                   Status TEXT NOT NULL,
+                  Remark TEXT NOT NULL DEFAULT '',
                   Hold INTEGER NOT NULL DEFAULT 0,
                   RetentionYears INTEGER NOT NULL DEFAULT 5,
                   ConfirmedOn TEXT NULL,
@@ -149,9 +154,116 @@ public sealed class Database
             alter.ExecuteNonQuery();
         }
         catch (SqliteException) { }
+        AddColumnIfMissing(conn, "SystemMeta", "AccessHash", "TEXT NULL");
+        AddColumnIfMissing(conn, "SystemMeta", "AccessSetAt", "TEXT NULL");
+        AddColumnIfMissing(conn, "SystemMeta", "AccessUserId", "TEXT NULL");
+        AddColumnIfMissing(conn, "SystemMeta", "AccessFailed", "INTEGER NOT NULL DEFAULT 0");
+        AddColumnIfMissing(conn, "SystemMeta", "AccessLockUntil", "TEXT NULL");
+        MigrateDisciplineColumns(conn);
         if (!string.Equals(storedMode, mode, StringComparison.Ordinal))
             throw new StartupFailure("데이터베이스 모드가 이 프로세스와 다릅니다. Production과 Demo를 같은 데이터 폴더에서 바꾸지 마세요.");
         _ = created;
+    }
+
+    /// <summary>Adds a column when an older database does not have it yet. Existing rows keep their values.</summary>
+    static void AddColumnIfMissing(SqliteConnection conn, string table, string column, string definition)
+    {
+        using (var probe = Cmd(conn, "SELECT COUNT(*) FROM pragma_table_info($t) WHERE name=$c;", ("$t", table), ("$c", column)))
+        {
+            if (Convert.ToInt32(probe.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) > 0) return;
+        }
+        using var alter = conn.CreateCommand();
+        alter.CommandText = "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition + ";";
+        alter.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// 이전 징계기록(누가·언제·어디서·무엇을·어떻게·왜)을 등재 항목(사번·성명·부서·직위·위반일자 …)으로 옮긴다.
+    /// 어떻게·왜는 비고로 합치고, 순번은 등록 순서대로 다시 매긴다. 이력은 건드리지 않는다.
+    /// </summary>
+    static void MigrateDisciplineColumns(SqliteConnection conn)
+    {
+        using (var probe = Cmd(conn, "SELECT COUNT(*) FROM pragma_table_info('Discipline') WHERE name='WhoName';"))
+        {
+            if (Convert.ToInt32(probe.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) == 0) return;
+        }
+        using (var begin = conn.CreateCommand())
+        {
+            begin.CommandText = "BEGIN IMMEDIATE;";
+            begin.ExecuteNonQuery();
+        }
+        try
+        {
+            using (var move = conn.CreateCommand())
+            {
+                move.CommandText = """
+                    ALTER TABLE Discipline RENAME TO Discipline_v1;
+                    CREATE TABLE Discipline (
+                      DisciplineId TEXT PRIMARY KEY,
+                      Seq INTEGER NOT NULL,
+                      CaseId TEXT NULL,
+                      Year INTEGER NOT NULL,
+                      EmployeeNo TEXT NOT NULL DEFAULT '',
+                      PersonName TEXT NOT NULL,
+                      Department TEXT NOT NULL DEFAULT '',
+                      Position TEXT NOT NULL DEFAULT '',
+                      ViolationDate TEXT NOT NULL,
+                      ViolationText TEXT NOT NULL,
+                      RuleText TEXT NOT NULL DEFAULT '',
+                      SanctionType TEXT NOT NULL,
+                      SanctionDate TEXT NOT NULL DEFAULT '',
+                      SanctionTerm TEXT NOT NULL DEFAULT '',
+                      DecisionBody TEXT NOT NULL DEFAULT '',
+                      DocNo TEXT NOT NULL DEFAULT '',
+                      Status TEXT NOT NULL,
+                      Remark TEXT NOT NULL DEFAULT '',
+                      Hold INTEGER NOT NULL DEFAULT 0,
+                      RetentionYears INTEGER NOT NULL DEFAULT 5,
+                      ConfirmedOn TEXT NULL,
+                      Version INTEGER NOT NULL,
+                      CreatedAt TEXT NOT NULL,
+                      CreatedBy TEXT NOT NULL
+                    );
+                    INSERT INTO Discipline(
+                      DisciplineId, Seq, CaseId, Year, EmployeeNo, PersonName, Department, Position,
+                      ViolationDate, ViolationText, RuleText, SanctionType, SanctionDate, SanctionTerm,
+                      DecisionBody, DocNo, Status, Remark, Hold, RetentionYears, ConfirmedOn, Version, CreatedAt, CreatedBy)
+                    SELECT
+                      DisciplineId,
+                      ROW_NUMBER() OVER (ORDER BY CreatedAt, DisciplineId),
+                      CaseId, Year, '', WhoName, WhereText, '',
+                      WhenText, WhatText, RuleText, Sanction, '', Outcome,
+                      '', '', Status,
+                      TRIM(CASE WHEN HowText = '' THEN '' ELSE '경위: ' || HowText || ' ' END ||
+                           CASE WHEN WhyText = '' THEN '' ELSE '사유: ' || WhyText END),
+                      Hold, RetentionYears, ConfirmedOn, Version, CreatedAt, CreatedBy
+                    FROM Discipline_v1;
+                    DROP TABLE Discipline_v1;
+                    """;
+                move.ExecuteNonQuery();
+            }
+            using var commit = conn.CreateCommand();
+            commit.CommandText = "COMMIT;";
+            commit.ExecuteNonQuery();
+        }
+        catch
+        {
+            try
+            {
+                using var rollback = conn.CreateCommand();
+                rollback.CommandText = "ROLLBACK;";
+                rollback.ExecuteNonQuery();
+            }
+            catch (SqliteException) { }
+            throw;
+        }
+    }
+
+    /// <summary>징계기록의 다음 순번. BEGIN IMMEDIATE 안에서 부른다.</summary>
+    public static int NextDisciplineSeq(SqliteConnection conn)
+    {
+        using var cmd = Cmd(conn, "SELECT IFNULL(MAX(Seq), 0) FROM Discipline;");
+        return Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) + 1;
     }
 
     public void Checkpoint(bool vacuum)

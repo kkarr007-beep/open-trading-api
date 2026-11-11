@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using AuditRecord.Data;
@@ -214,7 +214,8 @@ app.MapGet("/cases/{id}/files/{attachmentId}", (string id, string attachmentId, 
         "sandbox; default-src 'none'; script-src 'none'; style-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
     http.Response.Headers["Cache-Control"] = "no-store";
     var kind = opened.Inline ? "inline" : "attachment";
-    http.Response.Headers.ContentDisposition = $"{kind}; filename=\"file\"; filename*=UTF-8''{Uri.EscapeDataString(opened.DownloadName)}";
+    var ascii = AuditRecord.Storage.FilePreview.AsciiFallbackName(opened.DownloadName);
+    http.Response.Headers.ContentDisposition = $"{kind}; filename=\"{ascii}\"; filename*=UTF-8''{Uri.EscapeDataString(opened.DownloadName)}";
     return Results.Stream(opened.Content, opened.ContentType);
 });
 app.MapRazorPages();
