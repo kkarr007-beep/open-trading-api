@@ -351,11 +351,11 @@ else
                                 <input name="displayName" required maxlength="120" placeholder="비워 두면 파일 이름을 그대로 씁니다" />
                                 <span class="field-note">확장자가 없으면 올린 파일의 확장자를 붙입니다.</span>
                             </label>
-                            <label class="drop">
-                                <input type="file" name="upload" required />
-                                <span class="drop-copy"><strong>파일을 여기에 놓거나 눌러서 고르기</strong><span>키보드로 이 영역에 들어간 뒤 Enter</span></span>
-                                <span class="drop-name" data-file-name>선택된 파일 없음</span>
-                            </label>
+                            <div class="drop">
+                                <p class="drop-copy"><strong>파일을 여기에 놓거나, 아래에서 고르세요</strong></p>
+                                <input type="file" name="upload" required aria-label="올릴 파일" />
+                                <span class="drop-name" data-file-name hidden></span>
+                            </div>
                         </div>
                         <p class="hint">표시 이름은 연한 후에도 남습니다. 파일 내용으로 쓰지 마세요.</p>
                         <button type="submit" class="btn">자료 추가</button>

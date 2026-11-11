@@ -692,33 +692,53 @@ section { margin: 0 0 20px; }
    파일 고르기
    -------------------------------------------------------------------------- */
 
+/* 파일 고르기.
+   브라우저가 주는 파일 칸을 그대로 보여 줍니다. 자바스크립트가 막혀 있어도
+   고른 파일 이름이 브라우저 글씨로 보입니다. 아래 알림 칸은 덤입니다. */
 .drop {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
   grid-column: 1 / -1;
   min-height: 118px;
   padding: 18px;
   border: 1.5px dashed var(--line-strong);
   border-radius: var(--radius);
   background: var(--paper-2);
-  cursor: pointer;
   text-align: center;
   transition: border-color .15s ease, background .15s ease;
 }
-.drop:hover { border-color: var(--accent); background: var(--accent-soft); }
+.drop:hover { border-color: var(--accent); }
 .drop input[type=file] {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
+  max-width: 100%;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  padding: 9px 12px;
   cursor: pointer;
 }
-.drop-copy { display: grid; gap: 2px; }
+.drop input[type=file]::file-selector-button {
+  appearance: none;
+  margin-right: 12px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  border-bottom-color: var(--raise-edge);
+  background-image: linear-gradient(180deg, var(--raise-top), rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, var(--paper), var(--bg-accent));
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: var(--raise-drop);
+}
+.drop input[type=file]::file-selector-button:hover { filter: brightness(1.03); }
+.drop-copy { margin: 0; display: grid; gap: 2px; }
 .drop-copy strong { font-size: 14.5px; font-weight: 650; color: var(--ink); }
 .drop-copy span, .drop-name { font-size: 12.5px; color: var(--muted); font-weight: 400; }
 .drop-name {
@@ -728,12 +748,12 @@ section { margin: 0 0 20px; }
   max-width: 100%;
   padding: 6px 13px;
   border-radius: 999px;
-  background: var(--bg-accent);
-  color: var(--muted);
+  background: var(--ok-bg);
+  color: var(--ok);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.drop-name[data-picked="yes"] { background: var(--ok-bg); color: var(--ok); }
+.drop-name[hidden] { display: none; }
 .drop.drag { border-color: var(--accent); background: var(--accent-soft); }
 
 /* --------------------------------------------------------------------------

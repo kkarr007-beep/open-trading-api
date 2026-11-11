@@ -29,18 +29,21 @@
     var nameField = form ? form.querySelector("input[name=displayName]") : null;
     var autoFilled = false;
 
+    // 고른 파일 이름은 브라우저가 파일 칸에 이미 보여 줍니다.
+    // 여기서는 크기를 덧붙이고 표시 이름 칸을 채워 둘 뿐입니다.
+    // 이 코드가 돌지 않아도 사람은 파일 칸에서 이름을 볼 수 있습니다.
     function show() {
       var file = input.files && input.files.length ? input.files[0] : null;
-      if (!label) return;
       if (!file) {
-        label.textContent = "선택된 파일 없음";
-        label.removeAttribute("data-picked");
+        if (label) { label.textContent = ""; label.hidden = true; }
         return;
       }
-      var size = fileSize(file.size);
-      label.textContent = size ? file.name + " · " + size : file.name;
-      label.setAttribute("data-picked", "yes");
-      label.setAttribute("title", file.name);
+      if (label) {
+        var size = fileSize(file.size);
+        label.textContent = size ? "고른 파일: " + file.name + " · " + size : "고른 파일: " + file.name;
+        label.hidden = false;
+        label.setAttribute("title", file.name);
+      }
       if (nameField && (nameField.value === "" || autoFilled)) {
         nameField.value = file.name;
         autoFilled = true;

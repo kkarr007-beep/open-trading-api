@@ -27,8 +27,12 @@ param(
     [switch]$NoShortcut,
     [switch]$NoBrowser,
     # 권한을 올려 다시 실행한 것임을 알리는 표시입니다. 사람이 직접 주지 않습니다.
-    [switch]$Relaunched
+    [switch]$Relaunched,
+    # 권한 확인을 건너뜁니다. 이미 관리자인데 확인이 막혀 진행이 안 될 때만 씁니다.
+    [switch]$SkipAdminCheck
 )
+
+$script:AdminCheckNote = ''
 
 $ServiceName = 'AuditRecord'
 $DisplayName = '감사기록'
@@ -51,13 +55,37 @@ function Hold {
     }
 }
 
+# 관리자(권한을 올린 상태)인지 봅니다.
+# 회사 PC는 PowerShell 을 제한 언어 모드로 잠가 두는 일이 있습니다. 그러면 .NET 형식을
+# 직접 부를 수 없어 아래 첫 번째 방법이 막힙니다. 그래서 whoami 로도 확인합니다.
+# S-1-16-12288 은 높은 무결성 수준, 곧 권한을 올린 상태를 뜻합니다. 언어와 무관합니다.
 function IsAdmin {
+    $dotnetSaid = $null
     try {
         $id = [Security.Principal.WindowsIdentity]::GetCurrent()
-        return (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
+        $dotnetSaid = (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
             [Security.Principal.WindowsBuiltInRole]::Administrator)
+        if ($dotnetSaid) { return $true }
     }
-    catch { return $false }
+    catch {
+        $script:AdminCheckNote = '.NET 확인이 막혔습니다: ' + $_.Exception.Message
+    }
+
+    try {
+        $groups = & whoami.exe /groups 2>$null | Out-String
+        if ($groups -match 'S-1-16-12288') {
+            if ($null -ne $dotnetSaid) { $script:AdminCheckNote = '.NET 확인은 아니라고 했지만 whoami 는 맞다고 합니다.' }
+            return $true
+        }
+        if ($groups -match 'S-1-16-16384') { return $true }   # 시스템 무결성
+        if ($groups) { $script:AdminCheckNote = 'whoami 로도 권한을 올린 흔적을 찾지 못했습니다.' }
+    }
+    catch {
+        $script:AdminCheckNote = 'whoami 확인도 막혔습니다: ' + $_.Exception.Message
+    }
+
+    if ($null -ne $dotnetSaid) { return [bool]$dotnetSaid }
+    return $false
 }
 
 try { Start-Transcript -LiteralPath $LogPath -Force -ErrorAction SilentlyContinue | Out-Null } catch { }
@@ -67,15 +95,20 @@ Write-Host '  감사기록 간편 설치' -ForegroundColor White
 Write-Host '  ------------------------------------------------'
 Write-Host ("   . 설치 폴더: " + $Root) -ForegroundColor Gray
 Write-Host ("   . 기록: " + $LogPath) -ForegroundColor Gray
+try { Write-Host ("   . PowerShell " + $PSVersionTable.PSVersion + ", 언어 모드 " + $ExecutionContext.SessionState.LanguageMode) -ForegroundColor Gray } catch { }
 
 # ---------------------------------------------------------------- 권한
 
-if (-not (IsAdmin)) {
+if ($SkipAdminCheck) { Warn '권한 확인을 건너뜁니다. 관리자 창이 아니면 뒤에서 실패합니다.' }
+elseif (-not (IsAdmin)) {
     if ($Relaunched) {
         # 한 번 올렸는데도 관리자가 아닙니다. 다시 올리면 창만 계속 뜨므로 여기서 멈춥니다.
         Write-Host ''
         Oops '관리자 권한을 얻지 못했습니다.'
+        if ($script:AdminCheckNote) { Note $script:AdminCheckNote }
         Note '이 계정이 이 PC의 관리자인지 확인하세요.'
+        Note '맞는데도 이 글이 나오면 -SkipAdminCheck 를 붙여 다시 실행하세요.'
+        Write-Host ("     & '" + $PSCommandPath + "' -SkipAdminCheck") -ForegroundColor White
         Note '또는 시작 단추를 오른쪽 눌러 Windows PowerShell(관리자)을 열고 아래를 실행하세요.'
         Write-Host ''
         Write-Host ("     & '" + $PSCommandPath + "'") -ForegroundColor White
@@ -99,7 +132,9 @@ if (-not (IsAdmin)) {
     if ($NoBrowser)              { $argv += '-NoBrowser' }
 
     try {
-        Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $argv -Verb RunAs -ErrorAction Stop
+        $host_exe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        if (-not (Test-Path -LiteralPath $host_exe)) { $host_exe = 'powershell.exe' }
+        Start-Process -FilePath $host_exe -ArgumentList $argv -Verb RunAs -ErrorAction Stop
         Note '새 창에서 이어서 진행합니다. 이 창은 닫아도 됩니다.'
         try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { }
         exit 0
@@ -116,7 +151,8 @@ if (-not (IsAdmin)) {
     }
 }
 
-Good '관리자 권한으로 실행 중입니다'
+if (-not $SkipAdminCheck) { Good '관리자 권한으로 실행 중입니다' }
+if ($script:AdminCheckNote) { Note $script:AdminCheckNote }
 $ErrorActionPreference = 'Stop'
 
 try {
@@ -220,8 +256,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "서비스를 만들지 못했습니다(sc.exe 코드 $LASTEXITCODE)." }
     }
     else {
-        $secure = Read-Host -AsSecureString -Prompt "   $Account 의 암호 (화면에 보이지 않습니다)"
-        $credential = New-Object System.Management.Automation.PSCredential ($Account, $secure)
+        $credential = Get-Credential -UserName $Account -Message "$Account 의 암호를 넣으세요. 화면에 보이지 않습니다."
+        if (-not $credential) { throw '암호를 넣지 않아 서비스를 등록하지 못했습니다.' }
         New-Service -Name $ServiceName -BinaryPathName "`"$Exe`"" -Credential $credential `
             -StartupType Automatic -DisplayName $DisplayName | Out-Null
     }
@@ -272,13 +308,16 @@ try {
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Milliseconds 700
         try {
-            $client = New-Object Net.Sockets.TcpClient
-            $client.Connect('127.0.0.1', $Port)
-            $client.Close()
-            $ok = $true
-            break
+            if (Test-NetConnection -ComputerName '127.0.0.1' -Port $Port -InformationLevel Quiet -WarningAction SilentlyContinue) {
+                $ok = $true
+                break
+            }
         }
-        catch { }
+        catch {
+            # Test-NetConnection 이 없는 환경이면 서비스 상태로 갈음합니다.
+            $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            if ($svc -and $svc.Status -eq 'Running') { Start-Sleep -Seconds 3; $ok = $true; break }
+        }
     }
     if ($ok) { Good "서비스가 올라왔습니다. $localUrl 가 응답합니다." }
     else {
@@ -293,7 +332,7 @@ try {
         Step '7. 바탕화면 아이콘 만들기'
         try {
             $desktop = Join-Path $env:PUBLIC 'Desktop'
-            if (-not (Test-Path -LiteralPath $desktop)) { $desktop = [Environment]::GetFolderPath('Desktop') }
+            if (-not (Test-Path -LiteralPath $desktop)) { $desktop = Join-Path $env:USERPROFILE 'Desktop' }
             $link = Join-Path $desktop '감사기록.url'
             $body = @('[InternetShortcut]', "URL=$localUrl", "IconFile=$Exe", 'IconIndex=0') -join "`r`n"
             Set-Content -LiteralPath $link -Value $body -Encoding ASCII
