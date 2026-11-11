@@ -144,32 +144,7 @@
       window.scrollTo(0, y);
       var focus = focusSelector ? document.querySelector(focusSelector) : null;
       if (focus) focus.focus();
-      noteRecent();
       bindPreview();
-    });
-  }
-  function noteRecent() {
-    var box = document.getElementById("recent-cases");
-    var title = document.querySelector("h1");
-    var match = location.pathname.match(/^\/cases\/([0-9a-f]{32})$/);
-    if (match && title) {
-      var items = [];
-      try { items = JSON.parse(localStorage.getItem("audit-recent") || "[]"); } catch (e) { items = []; }
-      items = [{ id: match[1], title: title.textContent.trim() }].concat(items.filter(function (item) { return item.id !== match[1]; })).slice(0, 5);
-      localStorage.setItem("audit-recent", JSON.stringify(items));
-    }
-    if (!box) return;
-    var saved = [];
-    try { saved = JSON.parse(localStorage.getItem("audit-recent") || "[]"); } catch (e) { saved = []; }
-    if (!saved.length) return;
-    box.hidden = false;
-    box.innerHTML = "";
-    saved.forEach(function (item) {
-      var link = document.createElement("a");
-      link.className = "chip";
-      link.href = "/cases/" + item.id;
-      link.textContent = item.title;
-      box.appendChild(link);
     });
   }
   function bindPreview() {
@@ -283,7 +258,8 @@
     form.dataset.submitted = "1";
     form.setAttribute("aria-busy", "true");
   });
-  noteRecent();
+  // 예전 판이 브라우저에 남긴 '최근 본 건' 값을 치웁니다. 더 쓰지 않습니다.
+  try { localStorage.removeItem("audit-recent"); } catch (e) { }
   bindPreview();
 
   function applyTheme(choice) {

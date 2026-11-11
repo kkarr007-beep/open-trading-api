@@ -1212,9 +1212,6 @@ dialog .field { margin-bottom: 12px; }
 }
 .progress span { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .2s ease; }
 
-.recent { display: grid; gap: 7px; }
-.recent a { font-size: 13.5px; }
-
 /* --------------------------------------------------------------------------
    좁은 화면
    -------------------------------------------------------------------------- */

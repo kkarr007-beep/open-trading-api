@@ -85,10 +85,12 @@
     {
         <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="text" /><button type="submit" class="chip">검색 조건 적용됨, 제거</button></form>
     }
-    <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="all" /><button type="submit" class="chip">모두 지우기</button></form>
+    @if (Model.Query.Year is not null || !string.IsNullOrEmpty(Model.Query.Category) || !string.IsNullOrEmpty(Model.Query.Status) || Model.Query.Overdue || Model.Query.DueSoon || Model.Searched)
+    {
+        <form method="post" asp-page-handler="Clear"><input type="hidden" name="key" value="all" /><button type="submit" class="chip">모두 지우기</button></form>
+    }
 </div>
 </div>
-<div id="recent-cases" class="recent" hidden></div>
 <p class="count-line" role="status">검색 결과 @Model.Result.Total 건</p>
 @if (Model.Result.Total == 0)
 {

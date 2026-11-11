@@ -195,7 +195,12 @@ try {
     }
     else {
         $settings = [ordered]@{
-            Logging = [ordered]@{ LogLevel = [ordered]@{ Default = 'Information'; 'Microsoft.AspNetCore' = 'Warning' } }
+            Logging = [ordered]@{ LogLevel = [ordered]@{
+                Default = 'Information'
+                'Microsoft.AspNetCore' = 'Warning'
+                # 우리가 일부러 단 Cache-Control 을 두고 경고가 매 요청마다 올라옵니다. 오류만 남깁니다.
+                'Microsoft.AspNetCore.Antiforgery' = 'Error'
+            } }
             Audit   = [ordered]@{
                 Mode              = 'Production'
                 Root              = '..'

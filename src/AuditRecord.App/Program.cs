@@ -42,6 +42,11 @@ builder.Logging.AddSimpleConsole(o =>
 });
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
 builder.Logging.AddFilter("System", LogLevel.Warning);
+// 이 프로그램은 모든 응답에 Cache-Control: no-store 를 스스로 답니다.
+// 위조 방지 토큰 기능은 그때마다 "헤더를 덮어썼다"는 경고를 남기는데,
+// 우리가 이미 바라는 값으로 달아 둔 것이라 알릴 내용이 없습니다.
+// 화면을 한 줄씩 채워 운영 감시를 가리므로 오류만 남깁니다.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Antiforgery", LogLevel.Error);
 
 var paths = AppPaths.FromConfiguration(builder.Configuration, builder.Environment.ContentRootPath);
 var urls = ListenUrls.Resolve(args, Environment.GetEnvironmentVariable("AUDIT_URLS"), paths.Urls);
