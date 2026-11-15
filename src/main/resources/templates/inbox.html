@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>수집함 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">자동 수집</p>
+        <h1>수집함</h1>
+        <p class="hint">아래 폴더에 문서를 넣어 두면 15초 안에 가져와 내용을 읽고, 읽은 내용에 맞춰 건에 붙이거나 초안을 만듭니다. 자동으로 만드는 것은 모두 초안이며 확정은 직접 합니다.</p>
+    </div>
+    <form method="post" action="/inbox/scan" data-write="1" class="row-actions"><button type="submit" class="btn btn-primary">지금 수집</button></form>
+</div>
+<div class="grid-2">
+    <section class="card">
+        <h2>살펴보는 폴더</h2>
+        <ul class="file-list">
+            <li class="file-row folder-row" th:each="f : ${folders}">
+                <span class="path-clip" th:title="${f}" th:text="${f}"></span>
+                <button type="button" class="btn btn-quiet" th:data-copy="${f}">위치 복사</button>
+            </li>
+        </ul>
+        <p class="hint">
+            자동 등록:
+            <strong th:text="${autoMode == 'full'} ? '새 건 초안·조치요구·회신·징계기록까지' : (${autoMode == 'attach'} ? '맞는 건에 붙이기까지' : '끔 (수집만)')"></strong> ·
+            암호화 문서 읽기: <strong th:text="${officeOn} ? '사무용 프로그램으로 열어 읽음' : '사용 안 함'"></strong> ·
+            <a href="/settings">설정에서 바꾸기</a>
+        </p>
+    </section>
+    <section class="card">
+        <h2>여기에 바로 넣기</h2>
+        <form method="post" action="/inbox/upload" data-write="1" enctype="multipart/form-data">
+            <div class="drop">
+                <p class="drop-copy"><strong>파일을 여기에 놓거나, 아래에서 고르세요</strong><span>여러 개를 한 번에 넣을 수 있습니다</span></p>
+                <input type="file" name="upload" required multiple aria-label="넣을 파일" />
+                <span class="drop-name" data-file-name hidden></span>
+            </div>
+            <button type="submit" class="btn">수집함에 넣기</button>
+        </form>
+    </section>
+</div>
+<section aria-labelledby="pending-title">
+    <h2 id="pending-title">확인 대기 <span class="count" th:text="${#lists.size(pending)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(pending)}">확인할 파일이 없습니다. 자동으로 등록된 것은 아래 '처리한 것'에 있습니다.</p>
+    <details class="inbox-item" th:each="row, st : ${pending}" th:open="${st.index < 3}" th:with="s=${row.S}">
+        <summary>
+            <span class="file-name" th:text="${row.FileName}"></span>
+            <span class="read-tag" th:data-read="${row.ReadState}" th:text="${row.Encrypted == 1} ? |암호화 · ${row.ReadState}| : |내용 ${row.ReadState}|"></span>
+            <span class="badge" th:data-state="${s['docType']}" th:if="${s['docType'] != null}"><span class="dot" aria-hidden="true"></span><span th:text="|${s['docType']} 문서로 보임|"></span></span>
+            <span class="file-meta" th:text="|${row.SizeText} · ${row.DetectedDisplay}|"></span>
+        </summary>
+        <div class="inbox-body">
+            <p class="banner warn" th:if="${row.State == '실패'}" th:text="${row.AppliedNote}"></p>
+            <p class="banner warn" th:if="${!#strings.isEmpty(row.ReadNote) and row.ReadState != '읽음'}">
+                <strong th:text="${row.ReadNote}"></strong>
+                포털에 로그인한 뒤 '다시 읽기'를 누르세요. 10분마다 자동으로도 다시 읽습니다. 읽지 못해도 건을 골라 원문만 붙일 수 있습니다.
+            </p>
+            <p class="hint path-clip" th:title="${row.SourcePath}" th:text="${row.SourcePath}"></p>
+            <th:block th:if="${row.HasText}">
+                <pre class="read-preview" th:text="${row.Preview}"></pre>
+                <p><a th:href="|/inbox/${row.InboxId}/text|" data-preview="text" th:data-title="|${row.FileName} — 읽은 내용|" data-meta="" data-tile="TXT" data-tile-kind="txt">읽은 내용 전체 보기</a></p>
+            </th:block>
+            <form method="post" th:action="|/inbox/${row.InboxId}/apply|" data-write="1" th:if="${row.State == '대기'}">
+                <div class="form-grid">
+                    <label class="field grow">어디에 등록할까요
+                        <select name="target" required>
+                            <option value="new" th:selected="${#strings.isEmpty(s['matchCaseId']) and s['docType'] != '징계'}">새 건 초안 만들기</option>
+                            <option value="none" th:if="${row.DisciplineCount > 0}" th:selected="${#strings.isEmpty(s['matchCaseId']) and s['docType'] == '징계'}">건 없이 징계기록만 등재</option>
+                            <option th:each="c : ${caseRefs}" th:if="${c.PurgedAt == null and c.Phase != '종결'}" th:value="${c.CaseId}"
+                                    th:selected="${c.CaseId == s['matchCaseId']}" th:text="|${c.DocumentNo} · ${c.Title} (${c.Phase})|"></option>
+                        </select>
+                        <span class="field-note" th:if="${!#strings.isEmpty(s['matchCaseId'])}" th:text="|맞는 건을 찾았습니다: ${s['matchWhy']}|"></span>
+                    </label>
+                    <label class="field">자료 종류
+                        <select name="kind"><option th:each="k : ${kinds}" th:text="${k}" th:selected="${s['kind'] == k}"></option></select>
+                    </label>
+                    <label class="field grow">제목 (새 건일 때)<input name="title" maxlength="120" th:value="${s['title']}" /></label>
+                    <label class="field">대상<input name="targetName" maxlength="120" th:value="${s['target']}" /></label>
+                    <label class="field">연도<input name="year" type="number" min="1990" max="2100" th:value="${s['year']}" /></label>
+                    <label class="field">구분
+                        <select name="category"><option th:each="c : ${ {'업무진단','준법감사'} }" th:text="${c}" th:selected="${s['category'] == c}"></option></select>
+                    </label>
+                    <label class="field grow">결과 한 줄<input name="summary" maxlength="160" th:value="${s['summary']}" /></label>
+                </div>
+                <p>
+                    <label class="check" th:if="${row.HasText}"><input type="checkbox" name="useBody" value="1" checked /> 읽은 내용을 새 건의 결과 본문에 넣기</label>
+                    <label class="check" th:if="${row.ActionCount > 0}"><input type="checkbox" name="withActions" value="1" checked /> <span th:text="|찾은 조치요구 ${row.ActionCount}개 함께 등록|"></span></label>
+                    <label class="check" th:if="${s['docType'] == '회신' and row.HasText}"><input type="checkbox" name="withReply" value="1" checked /> 조치요구의 회신으로 기록</label>
+                    <label class="check" th:if="${row.DisciplineCount > 0}"><input type="checkbox" name="withDiscipline" value="1" checked /> <span th:text="|찾은 징계기록 ${row.DisciplineCount}개 초안으로 등재|"></span></label>
+                </p>
+                <ol class="steps" th:if="${row.ActionCount > 0}">
+                    <li th:each="a : ${s['actions']}" th:text="|[${a.type}] ${a.title}${#strings.isEmpty(a.dueOn) ? '' : ' · 회신기한 ' + a.dueOn}|"></li>
+                </ol>
+                <div class="row-actions">
+                    <button type="submit" class="btn btn-primary">이대로 등록</button>
+                </div>
+            </form>
+            <div class="row-actions">
+                <form method="post" th:action="|/inbox/${row.InboxId}/reread|" data-write="1" th:if="${row.State == '대기'}"><button type="submit" class="btn">다시 읽기</button></form>
+                <form method="post" th:action="|/inbox/${row.InboxId}/exclude|" data-write="1"><button type="submit" class="btn">등록하지 않음</button></form>
+            </div>
+        </div>
+    </details>
+</section>
+<section aria-labelledby="done-title">
+    <h2 id="done-title">처리한 것 <span class="count" th:text="${#lists.size(done)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(done)}">아직 처리한 파일이 없습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(done)}">
+        <table class="data">
+            <thead><tr><th scope="col">수집 시각</th><th scope="col">파일</th><th scope="col">내용 읽기</th><th scope="col">결과</th><th scope="col">건</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${done}">
+                <td class="num" th:text="${row.DetectedDisplay}"></td>
+                <th scope="row" th:text="${row.FileName}"></th>
+                <td th:text="${row.Encrypted == 1} ? |암호화 · ${row.ReadState}| : ${row.ReadState}"></td>
+                <td th:text="${row.AppliedNote}"></td>
+                <td><a th:if="${row.AppliedCaseId != null}" th:href="|/cases/${row.AppliedCaseId}|">건 열기</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

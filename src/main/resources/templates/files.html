@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>자료 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>자료</h1>
+        <p class="hint">등록된 파일을 파일명, 종류, 소속 건, 그리고 읽어 둔 내용으로 찾습니다.</p>
+    </div>
+</div>
+<div class="sticky-tools">
+<form method="get" action="/files" class="toolbar">
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">내용</span>
+            <input name="body" th:value="${q['body']}" placeholder="문서 내용에서 찾기" maxlength="120" data-search-focus />
+        </label>
+        <button type="submit" class="btn btn-primary">찾기</button>
+    </div>
+    <label class="field">파일명<input name="name" th:value="${q['name']}" maxlength="120" /></label>
+    <label class="field">종류
+        <select name="kind" aria-label="종류">
+            <option value="">전체</option>
+            <option th:each="k : ${ {'결과원문','증빙','회신첨부'} }" th:text="${k}" th:selected="${q['kind'] == k}"></option>
+        </select>
+    </label>
+    <label class="field">소속 건<input name="caseTitle" th:value="${q['caseTitle']}" maxlength="120" placeholder="제목 또는 문서번호" /></label>
+</form>
+</div>
+<p class="empty" th:if="${#lists.isEmpty(files)}">조건에 맞는 자료가 없습니다.</p>
+<ul class="file-list" th:unless="${#lists.isEmpty(files)}">
+    <li class="file-row" th:each="f : ${files}" th:with="href=|/cases/${f.CaseId}/files/${f.AttachmentId}|">
+        <a class="file-hit" th:href="${f.HasText and f.OpenKind == 'download'} ? ${href + '/text'} : ${href}"
+           th:data-preview="${f.HasText and f.OpenKind == 'download'} ? 'text' : ${f.OpenKind}" th:data-title="${f.DisplayName}"
+           th:data-meta="|${f.Kind} · ${f.SizeText} · ${f.RegisteredAtDisplay}|" th:data-tile="${f.TileLabel}" th:data-tile-kind="${f.Tile}">
+            <span class="file-ico" th:classappend="|ico-${f.Tile}|" aria-hidden="true" th:text="${f.TileLabel}">FILE</span>
+            <span class="file-copy">
+                <span class="file-name" th:text="${f.DisplayName}"></span>
+                <span class="file-meta" th:text="|${f.Kind} · ${f.SizeText} · ${f.RegisteredAtDisplay} · ${f.DocumentNo} ${f.CaseTitle}|"></span>
+                <span class="snippet" th:if="${f['Snippet']}" th:text="${f['Snippet']}"></span>
+            </span>
+        </a>
+        <div class="file-side">
+            <span class="read-tag" th:data-read="${f.ReadState}" th:text="${f.Encrypted == 1} ? |암호화 · ${f.ReadState}| : ${f.ReadState}"></span>
+            <a class="btn" th:href="|/cases/${f.CaseId}#files|">건 열기</a>
+        </div>
+    </li>
+</ul>
+</th:block>
+</body>
+</html>

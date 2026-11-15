@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>징계기록 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<p class="back"><a href="/discipline">징계기록 목록</a></p>
+<h1 th:if="${!fresh and item == null}">징계기록을 찾을 수 없음</h1>
+<th:block th:if="${fresh or item != null}" th:with="gone=${item != null and item.Status == '삭제됨'}">
+    <div class="page-head">
+        <div>
+            <h1 th:text="${fresh} ? '징계기록 등재' : |순번 ${item.Seq} · ${item.PersonMasked}|"></h1>
+            <p class="hint" th:if="${item != null}" th:text="|등록일자 ${item.CreatedDate} · 담당자 ${item.CreatedBy}|"></p>
+        </div>
+        <div class="row-actions" th:if="${item != null}">
+            <span class="badge" th:data-state="${item.Status}"><span class="dot" aria-hidden="true"></span><span th:text="${item.Status}"></span></span>
+            <span class="badge" data-state="삭제 보류" th:if="${item.Hold == 1}"><span class="dot" aria-hidden="true"></span>삭제 보류</span>
+        </div>
+    </div>
+    <ul class="summary" th:if="${item != null}">
+        <li><span>순번</span><strong th:text="${item.Seq}"></strong></li>
+        <li><span>사번</span><strong th:text="${#strings.isEmpty(item.EmployeeNo)} ? '—' : ${item.EmployeeNo}"></strong></li>
+        <li><span>성명</span><strong th:text="${item.PersonName}"></strong></li>
+        <li><span>부서·직위</span><strong th:text="|${item.Department} ${item.Position}|"></strong></li>
+        <li><span>위반일자</span><strong th:text="${item.ViolationDate}"></strong></li>
+        <li><span>징계종류</span><strong th:text="${item.SanctionType}"></strong></li>
+        <li><span>징계일자</span><strong th:text="${#strings.isEmpty(item.SanctionDate)} ? '—' : ${item.SanctionDate}"></strong></li>
+        <li><span>보존</span><strong th:text="|${item.RetentionYears}년 · 기산일 ${item.ConfirmedOn ?: '확정 전'}|"></strong></li>
+        <li><span>감사 건</span><strong><a th:if="${item.CaseId != null}" th:href="|/cases/${item.CaseId}|" th:text="|${item.CaseDocumentNo} ${item.CaseTitle}|"></a><span th:if="${item.CaseId == null}">연결 없음</span></strong></li>
+    </ul>
+    <section class="card" th:unless="${gone}">
+        <h2 th:text="${fresh} ? '등재 입력' : '수정'"></h2>
+        <form method="post" th:action="|/discipline/${id}|" data-write="1" data-track>
+            <input type="hidden" name="version" th:value="${item?.Version}" />
+            <div class="form-grid">
+                <label class="field">연도<input name="year" type="number" min="1990" max="2100" required th:value="${item?.Year ?: year}" /></label>
+                <label class="field">사번<input name="employeeNo" maxlength="40" th:value="${item?.EmployeeNo}" /></label>
+                <label class="field">성명<input name="personName" required maxlength="40" th:value="${item?.PersonName}" /></label>
+                <label class="field">부서<input name="department" maxlength="80" th:value="${item?.Department}" /></label>
+                <label class="field">직위<input name="position" maxlength="40" th:value="${item?.Position}" /></label>
+                <label class="field">위반일자<input name="violationDate" type="date" required th:value="${item?.ViolationDate}" /></label>
+                <label class="field">징계종류
+                    <select name="sanctionType" required><option th:each="name : ${sanctions}" th:text="${name}" th:selected="${item?.SanctionType == name}"></option></select>
+                </label>
+                <label class="field">징계일자<input name="sanctionDate" type="date" th:value="${item?.SanctionDate}" /></label>
+                <label class="field">징계기간<input name="sanctionTerm" maxlength="80" th:value="${item?.SanctionTerm}" placeholder="1개월 · 해당 없음" /></label>
+                <label class="field">결정기관<input name="decisionBody" maxlength="80" th:value="${item?.DecisionBody}" placeholder="인사위원회" /></label>
+                <label class="field">근거문서번호<input name="docNo" maxlength="80" th:value="${item?.DocNo}" /></label>
+                <label class="field">상태
+                    <select name="status"><option th:selected="${item == null or item.Status == '초안'}">초안</option><option th:selected="${item?.Status == '확정'}">확정</option></select>
+                </label>
+                <label class="field grow">감사 건 연결 (감사번호)
+                    <input name="caseRef" list="case-refs" maxlength="80" th:value="${item != null} ? ${item.CaseDocumentNo} : ${caseRefInit}" placeholder="연결하지 않으면 비움" />
+                    <span class="field-note">목록에서 감사번호를 고르거나 건 제목을 적습니다.</span>
+                </label>
+                <label class="field grow">위반내용<textarea name="violationText" required maxlength="500" rows="3" th:text="${item?.ViolationText}"></textarea></label>
+                <label class="field grow">관련규정<textarea name="ruleText" maxlength="240" rows="2" th:text="${item?.RuleText}"></textarea></label>
+                <label class="field grow">비고<textarea name="remark" maxlength="500" rows="2" th:text="${item?.Remark}"></textarea></label>
+            </div>
+            <datalist id="case-refs">
+                <option th:each="o : ${caseRefs}" th:value="${o.DocumentNo}" th:text="|${o.Year} ${o.Category} · ${o.Title}|"></option>
+            </datalist>
+            <p class="hint">성명, 위반일자, 위반내용, 징계종류는 반드시 입력합니다. 상태를 확정으로 두면 징계일자가 보존 기산일이 됩니다. 보존 만료가 오면 성명과 위반내용은 지우고 순번·날짜·이력은 남깁니다.</p>
+            <button type="submit" class="btn btn-primary">저장</button>
+        </form>
+    </section>
+    <section class="card danger-zone" th:if="${item != null and !gone}">
+        <h2>보존연한·삭제 보류</h2>
+        <form method="post" th:action="|/discipline/${id}/retention|" data-write="1" class="inline-form">
+            <label class="field">보존연한(년)<input name="years" type="number" min="1" max="100" required th:value="${item.RetentionYears}" /></label>
+            <button type="submit" class="btn">연한 저장</button>
+        </form>
+        <form method="post" th:action="|/discipline/${id}/hold|" data-write="1" class="inline-form">
+            <input type="hidden" name="release" value="1" th:if="${item.Hold == 1}" />
+            <label class="field grow">사유<input name="reason" required maxlength="240" /></label>
+            <button type="submit" class="btn btn-danger" th:text="${item.Hold == 1} ? '보류 해제' : '삭제 보류'"></button>
+        </form>
+        <p class="hint">보류 중에는 보존 만료가 와도 지우지 않습니다. 설정과 해제 모두 사유가 이력에 남습니다.</p>
+    </section>
+    <section class="card history" th:if="${item != null}">
+        <h2>시간순 이력</h2>
+        <ol class="timeline">
+            <li th:each="row : ${item.History}"><time th:text="${row.AtDisplay}"></time><strong th:text="${row.Action}"></strong><span th:text="${row.Summary}"></span><span th:text="${row.Actor ?: '프로그램'}"></span></li>
+        </ol>
+    </section>
+</th:block>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>건 목록 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <h1>건 목록</h1>
+    <div class="row-actions">
+        <form method="get" action="/cases/export"><th:block th:replace="~{parts :: keep('|page|')}" /><button type="submit" class="btn">CSV</button></form>
+        <a class="btn btn-primary" href="/cases/new">건 등록</a>
+    </div>
+</div>
+<div class="sticky-tools">
+<form method="get" action="/cases" class="toolbar">
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">찾기</span>
+            <input name="text" th:value="${q['text']}" placeholder="제목, 대상, 문서번호, 철번호, 파일명, 본문·자료 내용" autocomplete="off" spellcheck="false" maxlength="120" data-search-focus />
+        </label>
+        <button type="submit" class="btn btn-primary">적용</button>
+    </div>
+    <label class="field">연도
+        <select name="year" aria-label="연도">
+            <option value="">전체</option>
+            <option th:each="y : ${years}" th:value="${y.Year}" th:text="${y.Year}" th:selected="${q['year'] == '' + y.Year}"></option>
+        </select>
+    </label>
+    <label class="field">구분
+        <select name="category" aria-label="구분">
+            <option value="">전체</option>
+            <option th:each="c : ${ {'업무진단','준법감사'} }" th:text="${c}" th:selected="${q['category'] == c}"></option>
+        </select>
+    </label>
+    <label class="field">상태
+        <select name="status" aria-label="상태">
+            <option value="">전체</option>
+            <option th:each="s : ${ {'초안','확정','조치중','종결','자료삭제됨'} }" th:text="${s}" th:selected="${q['status'] == s}"></option>
+        </select>
+    </label>
+    <label class="check"><input type="checkbox" name="overdue" value="true" th:checked="${q['overdue'] == 'true'}" /> 기한초과</label>
+    <label class="check"><input type="checkbox" name="dueSoon" value="true" th:checked="${q['dueSoon'] == 'true'}" /> 삭제임박</label>
+    <label class="field page-size">페이지 크기
+        <select name="pageSize" aria-label="페이지 크기">
+            <option th:each="n : ${ {25,50,100} }" th:value="${n}" th:text="${n}" th:selected="${result.PageSize == n}"></option>
+        </select>
+    </label>
+</form>
+<div class="chips" aria-label="적용 중인 필터" th:if="${filtered}">
+    <a class="chip" href="/cases">모두 지우기</a>
+</div>
+</div>
+<p class="count-line" role="status">검색 결과 <span th:text="${result.Total}">0</span> 건</p>
+<p class="empty" th:if="${result.Total == 0}">
+    <span th:text="${filtered} ? '조건에 맞는 건이 없습니다.' : '등록된 건이 없습니다.'"></span>
+    <a href="/cases/new" th:unless="${filtered}">건 등록</a>
+    <span th:unless="${filtered}"> 또는 <a href="/inbox">수집함</a>에 문서를 넣으면 초안이 만들어집니다.</span>
+</p>
+<th:block th:unless="${result.Total == 0}">
+<div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
+    <table class="data">
+        <thead>
+            <tr>
+                <th scope="col" th:each="col : ${ {'year|연도','category|구분','title|제목','target|대상','state|상태','due|회신기한','ret|보존연한','expiry|만료·보류','doc|문서번호','shelf|서가·철번호'} }"
+                    th:with="key=${#strings.substringBefore(col,'|')}, label=${#strings.substringAfter(col,'|')}, sortable=${#lists.contains({'year','title','due','expiry'}, #strings.substringBefore(col,'|'))}">
+                    <form method="get" action="/cases" th:if="${sortable}">
+                        <th:block th:replace="~{parts :: keep('|sort|dir|page|')}" />
+                        <input type="hidden" name="sort" th:value="${key}" />
+                        <input type="hidden" name="dir" th:value="${q['sort'] == key and q['dir'] == 'asc'} ? 'desc' : 'asc'" />
+                        <button type="submit" th:text="${label + (q['sort'] == key ? (q['dir'] == 'asc' ? ' ▲' : ' ▼') : '')}"></button>
+                    </form>
+                    <th:block th:unless="${sortable}" th:text="${label}" />
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        <tr th:each="row : ${result.Items}">
+            <td class="num" th:text="${row.Year}"></td>
+            <td th:text="${row.Category}"></td>
+            <th scope="row"><a th:href="|/cases/${row.CaseId}|" th:text="${row.Title}"></a></th>
+            <td th:text="${row.Target}"></td>
+            <td><span class="badge" th:data-state="${row.DisplayState}"><span class="dot" aria-hidden="true"></span><span th:text="${row.DisplayState}"></span></span></td>
+            <td class="num"><span th:text="${row.NextDue ?: '없음'}"></span>
+                <span class="badge" data-state="회신기한 초과" th:if="${row.Overdue}"><span class="dot" aria-hidden="true"></span>회신기한 초과</span></td>
+            <td class="num" th:text="${row.RetentionYears == null} ? '없음' : |${row.RetentionYears}년|"></td>
+            <td class="num"><span th:text="${row.ExpiryDate ?: '없음'}"></span>
+                <span class="badge" data-state="삭제 보류" th:if="${row.Hold == 1}"><span class="dot" aria-hidden="true"></span>삭제 보류</span>
+                <span class="badge" data-state="삭제 지연" th:if="${row.DeletionDelayed}"><span class="dot" aria-hidden="true"></span>만료됨</span>
+                <span th:if="${row.DueSoon}"> 30일 안에 삭제 예정</span></td>
+            <td th:text="${row.DocumentNo}"></td>
+            <td th:text="|${row.Shelf} ${row.BinderNo}|"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<nav class="pager" aria-label="쪽">
+    <form method="get" action="/cases"><th:block th:replace="~{parts :: keep('|page|')}" /><input type="hidden" name="page" th:value="${result.Page - 1}" />
+        <button type="submit" class="btn" th:disabled="${result.Page <= 1}">이전</button></form>
+    <p th:text="|${result.Page} / ${result.Pages} 쪽, 총 ${result.Total}건|"></p>
+    <form method="get" action="/cases"><th:block th:replace="~{parts :: keep('|page|')}" /><input type="hidden" name="page" th:value="${result.Page + 1}" />
+        <button type="submit" class="btn" th:disabled="${result.Page >= result.Pages}">다음</button></form>
+</nav>
+</th:block>
+</th:block>
+</body>
+</html>

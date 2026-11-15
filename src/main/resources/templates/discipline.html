@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>징계기록 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>징계기록</h1>
+        <p class="hint">등재 항목 그대로 한 줄에 담습니다. 목록의 성명은 일부를 가립니다. 징계대장 엑셀이나 의결서를 <a href="/inbox">수집함</a>에 넣으면 초안으로 등재됩니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" href="/discipline/export">CSV 내려받기</a>
+        <a class="btn btn-primary" href="/discipline/new">기록 등재</a>
+    </div>
+</div>
+<div class="sticky-tools">
+    <form method="get" action="/discipline" class="toolbar">
+        <div class="search-row">
+            <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span class="sr">찾기</span>
+                <input name="text" th:value="${q['text']}" placeholder="사번·성명·부서·위반내용·근거문서번호·감사번호" maxlength="80" data-search-focus />
+            </label>
+            <button class="btn btn-primary" type="submit">찾기</button>
+        </div>
+        <label class="field">연도
+            <select name="year"><option value="">전체</option>
+                <option th:each="y : ${years}" th:value="${y.Year}" th:text="${y.Year}" th:selected="${q['year'] == '' + y.Year}"></option></select>
+        </label>
+        <label class="field">징계종류
+            <select name="sanction" aria-label="징계종류"><option value="">전체</option>
+                <option th:each="name : ${sanctions}" th:text="${name}" th:selected="${q['sanction'] == name}"></option></select>
+        </label>
+        <a class="btn" href="/discipline" th:if="${!#strings.isEmpty(q['text']) or !#strings.isEmpty(q['sanction']) or !#strings.isEmpty(q['year'])}">조건 지우기</a>
+    </form>
+</div>
+<p class="count-line" role="status" th:text="|${#lists.size(rows)} 건|"></p>
+<p class="empty" th:if="${#lists.isEmpty(rows)}">징계기록이 없습니다.</p>
+<div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(rows)}">
+    <table class="data">
+        <thead><tr>
+            <th scope="col" class="num">순번</th><th scope="col">사번</th><th scope="col">성명</th><th scope="col">부서</th><th scope="col">직위</th>
+            <th scope="col" class="num">위반일자</th><th scope="col">위반내용</th><th scope="col">징계종류</th><th scope="col" class="num">징계일자</th>
+            <th scope="col">징계기간</th><th scope="col">결정기관</th><th scope="col">근거문서번호</th><th scope="col">감사 건</th><th scope="col">상태</th><th scope="col" class="num">등록일자</th>
+        </tr></thead>
+        <tbody>
+        <tr th:each="row : ${rows}">
+            <td class="num" th:text="${row.Seq}"></td>
+            <td th:text="${row.EmployeeNo}"></td>
+            <th scope="row"><a th:href="|/discipline/${row.DisciplineId}|" th:text="${row.PersonMasked}"></a></th>
+            <td th:text="${row.Department}"></td>
+            <td th:text="${row.Position}"></td>
+            <td class="num" th:text="${row.ViolationDate}"></td>
+            <td th:text="${#strings.abbreviate(row.ViolationText, 40)}"></td>
+            <td th:text="${row.SanctionType}"></td>
+            <td class="num" th:text="${row.SanctionDate}"></td>
+            <td th:text="${row.SanctionTerm}"></td>
+            <td th:text="${row.DecisionBody}"></td>
+            <td th:text="${row.DocNo}"></td>
+            <td><a th:if="${row.CaseId != null}" th:href="|/cases/${row.CaseId}|" th:text="${row.CaseDocumentNo}"></a></td>
+            <td><span class="badge" th:data-state="${row.Status}"><span class="dot" aria-hidden="true"></span><span th:text="${row.Status}"></span></span>
+                <span class="badge" data-state="삭제 보류" th:if="${row.Hold == 1}"><span class="dot" aria-hidden="true"></span>보류</span></td>
+            <td class="num" th:text="${row.CreatedDate}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</th:block>
+</body>
+</html>

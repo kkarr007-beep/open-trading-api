@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>할 일 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">오늘</p>
+        <h1>할 일</h1>
+    </div>
+    <p class="row-actions"><a class="btn" href="/inbox">수집함</a> <a class="btn" href="/cases">건 목록</a> <a class="btn btn-primary" href="/cases/new">건 등록</a></p>
+</div>
+<ul class="metrics">
+    <li th:class="${inboxPending > 0} ? 'metric-warn' : 'metric-ok'">
+        <a href="/inbox"><span class="metric-top">수집함 확인 대기</span><strong th:text="${inboxPending}">0</strong></a>
+    </li>
+    <li th:class="${#lists.size(data.Overdue) > 0} ? 'metric-bad' : 'metric-ok'">
+        <a href="#overdue-title"><span class="metric-top">회신기한 초과</span><strong th:text="${#lists.size(data.Overdue)}">0</strong></a>
+    </li>
+    <li th:class="${#lists.size(data.Upcoming) > 0} ? 'metric-warn' : 'metric-ok'">
+        <a href="#upcoming-title"><span class="metric-top">7일 안 회신기한</span><strong th:text="${#lists.size(data.Upcoming)}">0</strong></a>
+    </li>
+    <li th:class="${#lists.size(data.Drafts) > 0} ? 'metric-warn' : 'metric-ok'">
+        <a href="#wait-title"><span class="metric-top">확정 전 초안</span><strong th:text="${#lists.size(data.Drafts)}">0</strong></a>
+    </li>
+    <li th:class="${#lists.size(data.Expiring) > 0} ? 'metric-warn' : 'metric-ok'">
+        <a href="#expire-title"><span class="metric-top">삭제 임박·지연</span><strong th:text="${#lists.size(data.Expiring)}">0</strong></a>
+    </li>
+</ul>
+<section aria-labelledby="overdue-title">
+    <h2 id="overdue-title">회신기한 초과 <span class="count" th:text="${#lists.size(data.Overdue)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(data.Overdue)}">회신기한이 지난 조치요구가 없습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(data.Overdue)}">
+        <table class="data">
+            <thead><tr><th scope="col">건 제목</th><th scope="col">조치</th><th scope="col">대상</th><th scope="col">회신기한</th><th scope="col">초과</th><th scope="col">상태</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${data.Overdue}">
+                <th scope="row"><a th:href="|/cases/${row.CaseId}#action-${row.ActionId}|" th:text="${row.CaseTitle}"></a></th>
+                <td th:text="|${row.Sequence}. ${row.Title}|"></td>
+                <td th:text="${row.Target}"></td>
+                <td class="num" th:text="${row.ReplyDueOn}"></td>
+                <td class="num" th:text="|${row.DaysOver}일|"></td>
+                <td><span class="badge" data-state="회신기한 초과"><span class="dot" aria-hidden="true"></span><span th:text="${row.ActionState}"></span></span></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+<section aria-labelledby="upcoming-title">
+    <h2 id="upcoming-title">7일 안 회신기한 <span class="count" th:text="${#lists.size(data.Upcoming)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(data.Upcoming)}">7일 안에 회신기한이 오는 조치요구가 없습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(data.Upcoming)}">
+        <table class="data">
+            <thead><tr><th scope="col">건 제목</th><th scope="col">조치</th><th scope="col">대상</th><th scope="col">회신기한</th><th scope="col">남은 일수</th><th scope="col">상태</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${data.Upcoming}">
+                <th scope="row"><a th:href="|/cases/${row.CaseId}#action-${row.ActionId}|" th:text="${row.CaseTitle}"></a></th>
+                <td th:text="|${row.Sequence}. ${row.Title}|"></td>
+                <td th:text="${row.Target}"></td>
+                <td class="num" th:text="${row.ReplyDueOn}"></td>
+                <td class="num" th:text="${row.DaysLeft == 0} ? '오늘' : |${row.DaysLeft}일|"></td>
+                <td><span class="badge" th:data-state="${row.ActionState}"><span class="dot" aria-hidden="true"></span><span th:text="${row.ActionState}"></span></span></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+<section aria-labelledby="wait-title">
+    <h2 id="wait-title">확정 전 초안 <span class="count" th:text="${#lists.size(data.Drafts)}">0</span></h2>
+    <p class="hint">수집함이 자동으로 만든 초안도 여기에 모입니다. 내용을 확인하고 확정합니다.</p>
+    <p class="empty" th:if="${#lists.isEmpty(data.Drafts)}">초안이 없습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(data.Drafts)}">
+        <table class="data">
+            <thead><tr><th scope="col">연도/구분</th><th scope="col">제목</th><th scope="col">대상</th><th scope="col">문서번호</th><th scope="col">연한</th><th scope="col">확정 준비</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${data.Drafts}">
+                <td class="num" th:text="|${row.Year} ${row.Category}|"></td>
+                <th scope="row"><a th:href="|/cases/${row.CaseId}#result|" th:text="${row.Title}"></a></th>
+                <td th:text="${row.Target}"></td>
+                <td th:text="${row.DocumentNo}"></td>
+                <td class="num" th:text="${row.RetentionYears == null} ? '없음' : |${row.RetentionYears}년|"></td>
+                <td th:text="${row.Ready} ? '확정 가능' : '연한 또는 결과 한 줄 필요'"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+<section aria-labelledby="expire-title">
+    <h2 id="expire-title">30일 안 삭제 예정 <span class="count" th:text="${#lists.size(data.Expiring)}">0</span></h2>
+    <p class="hint">만료 시각은 최초 확정일에 보존연한을 더한 날 00:00 KST입니다. 보류 중이면 지우지 않습니다.
+        <span th:unless="${autoPurge}">자동 삭제는 꺼져 있습니다. <a href="/admin#retention">관리 화면</a>에서 직접 실행합니다.</span></p>
+    <p class="empty" th:if="${#lists.isEmpty(data.Expiring)}">30일 안에 삭제 예정이거나 삭제가 지연된 건이 없습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(data.Expiring)}">
+        <table class="data">
+            <thead><tr><th scope="col">제목</th><th scope="col">기산일</th><th scope="col">만료 예정</th><th scope="col">남은 일수</th><th scope="col">미완료 조치</th><th scope="col">보류</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${data.Expiring}">
+                <th scope="row"><a th:href="|/cases/${row.CaseId}#retention|" th:text="${row.Title}"></a></th>
+                <td class="num" th:text="${row.FirstConfirmedOn}"></td>
+                <td class="num" th:text="${row.ExpiryDate}"></td>
+                <td class="num" th:text="${row.Expired} ? '만료됨' : |${row.DaysLeft}일|"></td>
+                <td class="num" th:text="${row.OpenActions}"></td>
+                <td th:text="${row.Hold == 1} ? '삭제 보류 — 지우지 않음' : '보류 아님'"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

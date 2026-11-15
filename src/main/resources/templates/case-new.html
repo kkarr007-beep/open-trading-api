@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>건 등록 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<p class="back"><a href="/cases">목록으로</a></p>
+<h1>건 등록</h1>
+<p class="hint">초안 저장은 결과 확정이 아닙니다. 문서가 있으면 <a href="/inbox">수집함</a>에 넣어 초안을 자동으로 만들 수 있습니다.</p>
+<form method="post" action="/cases/new" data-track data-write="1">
+    <div class="form-grid">
+        <label class="field">연도<input name="year" type="number" min="1990" max="2100" required th:value="${year}" /></label>
+        <label class="field">구분<select name="category" required><option>업무진단</option><option>준법감사</option></select></label>
+        <label class="field grow">제목<input name="title" required maxlength="120" /></label>
+        <label class="field">대상<input name="target" required maxlength="120" /></label>
+        <label class="field">서가<input name="shelf" maxlength="80" /></label>
+        <label class="field">철번호<input name="binder" maxlength="80" /></label>
+        <label class="field">문서번호<input id="doc-preview" th:value="|자동 부여(예정: ${previewNo})|" readonly /></label>
+        <label class="field">보존연한(년)<input name="retentionYears" type="number" min="1" max="100" /></label>
+        <label class="field grow">결과 한 줄<input name="summary" maxlength="160" /></label>
+        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="6"></textarea></label>
+    </div>
+    <p class="hint">제목, 대상, 결과 한 줄, 서가, 철번호는 연한 후에도 남습니다. 개인식별정보나 민감한 상세내용은 결과 본문에 적으세요. 본문은 만료 후 비워집니다.</p>
+    <button type="submit" class="btn btn-primary">초안 저장</button>
+</form>
+</th:block>
+</body>
+</html>

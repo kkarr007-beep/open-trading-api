@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:fragment="page(title, content)">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title th:replace="${title}">감사기록</title>
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="stylesheet" href="/css/local.css" />
+    <link rel="icon" href="/favicon.ico" />
+</head>
+<body th:classappend="${integrityOk} ? '' : 'frozen-integrity'">
+    <a class="skip" href="#main">본문으로 건너뛰기</a>
+    <button type="button" class="scrim" aria-label="메뉴 닫기"></button>
+    <header class="top" id="app-nav">
+        <a class="brand" href="/todo">
+            <span class="brand-mark" aria-hidden="true">감</span>
+            <span>감사기록</span>
+        </a>
+        <button type="button" class="nav-toggle" aria-controls="menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">메뉴</span>
+        </button>
+        <nav id="menu" aria-label="업무 화면">
+            <a href="/todo" th:aria-current="${nav == 'todo'} ? 'page'">할 일</a>
+            <a href="/inbox" th:aria-current="${nav == 'inbox'} ? 'page'">수집함<span class="count" th:if="${inboxPending > 0}" th:text="${inboxPending}">0</span></a>
+            <a href="/cases" th:aria-current="${nav == 'cases'} ? 'page'">건 목록</a>
+            <a href="/files" th:aria-current="${nav == 'files'} ? 'page'">자료</a>
+            <a href="/discipline" th:aria-current="${nav == 'discipline'} ? 'page'">징계기록</a>
+            <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'">관리</a>
+            <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'">설정</a>
+        </nav>
+        <div class="bar-end">
+            <div class="theme" role="group" aria-label="화면 테마">
+                <button type="button" class="theme-btn" data-theme-set="light" aria-pressed="false" aria-label="라이트" title="라이트">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
+                <button type="button" class="theme-btn" data-theme-set="dark" aria-pressed="false" aria-label="다크" title="다크">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3.5a8.2 8.2 0 1 0 5.5 14.2A7 7 0 0 1 15 3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="theme-btn" data-theme-set="system" aria-pressed="false" aria-label="시스템" title="시스템">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 19.5h6M12 16v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <a class="user-menu-link" href="/settings" title="설정">
+                <span class="avatar" aria-hidden="true" th:text="${ownerInitial}">나</span>
+                <span class="who"><strong th:text="${ownerName}">나</strong><span>이 컴퓨터 전용</span></span>
+            </a>
+        </div>
+    </header>
+    <div class="workspace">
+        <main id="main">
+            <div class="banner danger" role="alert" th:unless="${integrityOk}">
+                <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>
+                데이터 파일이 직접 고쳐졌을 수 있습니다. 변경은 멈췄습니다. <a href="/admin#integrity">관리 화면</a>에서 조사 사유를 남기고 해제합니다.
+            </div>
+            <p class="banner info" role="status" th:if="${flash}" th:text="${flash}"></p>
+            <th:block th:replace="${content}" />
+        </main>
+        <footer class="foot">
+            <p>이 컴퓨터에서만 열립니다 · 화면 시각 <span th:text="${nowDisplay}"></span> KST</p>
+        </footer>
+    </div>
+    <div class="toasts" aria-live="polite" aria-relevant="additions"></div>
+    <dialog id="preview-dialog" aria-labelledby="preview-title">
+        <div class="dialog-head">
+            <span class="file-ico ico-file" id="preview-ico" aria-hidden="true">FILE</span>
+            <div>
+                <h2 id="preview-title">미리보기</h2>
+                <p class="hint" id="preview-meta"></p>
+            </div>
+            <a class="btn" id="preview-download">내려받기</a>
+            <button type="button" class="icon-btn" data-close aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <p class="hint preview-note">암호화된 원문은 화면에서 펼치지 않습니다. '열기'로 이 컴퓨터의 프로그램에서 엽니다.</p>
+        <iframe id="preview-frame" title="미리보기" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
+        <img id="preview-img" alt="" hidden>
+    </dialog>
+    <script src="/js/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>건 상세 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<p class="back"><a href="/cases">목록으로</a></p>
+<th:block th:if="${item == null}">
+    <h1>건을 찾을 수 없음</h1>
+    <p><a href="/cases">목록으로</a></p>
+</th:block>
+<th:block th:if="${item != null}" th:with="base=|/cases/${item.CaseId}|, caps=${item.Caps}">
+    <div class="case-hero">
+        <div>
+            <p class="kicker" th:text="|${item.Year} · ${item.Category} · ${item.DocumentNo} · 담당 ${item.Owner}|"></p>
+            <h1 th:text="${item.Title}"></h1>
+        </div>
+        <span class="badge" th:data-state="${item.DisplayState}"><span class="dot" aria-hidden="true"></span><span th:text="${item.DisplayState}"></span></span>
+        <a class="btn" th:href="${base + '/print'}">인쇄용</a>
+    </div>
+    <ul class="summary" id="retention">
+        <li><span>기록 상태</span><strong th:text="${item.DisplayState}"></strong></li>
+        <li><span>조치 진행</span><strong th:text="|${item.ActionCount} 개 중 ${item.DoneActions} 개 완료|"></strong></li>
+        <li><span>최초 확정일</span><strong th:text="${item.FirstConfirmedOn ?: '없음'}"></strong></li>
+        <li><span>현재 확정</span><strong th:text="${item.ConfirmedOn ?: '확정 아님'}"></strong></li>
+        <li><span>연한·만료</span><strong th:text="${item.RetentionYears == null} ? '연한 없음' : |${item.RetentionYears}년 · ${item.ExpiryDate ?: '확정 후 계산'}|"></strong></li>
+        <li><span>보류</span><strong th:text="${item.Hold == 1} ? '삭제 보류' : '보류 아님'"></strong></li>
+        <li><span>삭제 현황</span><strong th:text="${#strings.isEmpty(item.PurgeNote)} ? '삭제 전' : ${item.PurgeNote}"></strong></li>
+    </ul>
+    <p class="hint">보존 기산일은 최초 결과 확정일이며 취소나 재확정으로 바뀌지 않습니다. 만료 시각은 그 날짜에 보존연한(달력 연)을 더한 날 00:00 KST입니다. 이 계산은 회사의 법정 보존연한이 아닙니다.</p>
+    <nav class="section-tabs" aria-label="건 구역">
+        <a href="#case">건</a><a href="#result">결과</a><a href="#actions">조치</a><a href="#files">자료</a><a href="#danger-title">확정·연한</a><a href="#discipline">징계기록</a>
+    </nav>
+    <div class="detail-layout">
+        <div class="stack">
+            <section id="case" aria-labelledby="case-title">
+                <h2 id="case-title">건</h2>
+                <form method="post" th:action="${base + '/save'}" data-write="1" data-track th:if="${caps.EditList}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <div class="form-grid">
+                        <label class="field">연도<input name="year" type="number" min="1990" max="2100" th:value="${item.Year}" required /></label>
+                        <label class="field">구분
+                            <select name="category"><option th:each="c : ${ {'업무진단','준법감사'} }" th:text="${c}" th:selected="${item.Category == c}"></option></select>
+                        </label>
+                        <label class="field grow">제목<input name="title" maxlength="120" required th:value="${item.Title}" /></label>
+                        <label class="field">대상<input name="target" maxlength="120" required th:value="${item.Target}" /></label>
+                        <label class="field">담당<input name="owner" maxlength="40" th:value="${item.Owner}" /></label>
+                        <label class="field">서가<input name="shelf" maxlength="80" th:value="${item.Shelf}" /></label>
+                        <label class="field">철번호<input name="binder" maxlength="80" th:value="${item.BinderNo}" /></label>
+                    </div>
+                    <p class="hint">이 항목들은 연한 후에도 남습니다. 종이 철함은 프로그램이 폐기하지 않습니다.</p>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </form>
+                <dl class="facts" th:unless="${caps.EditList}">
+                    <dt>대상</dt><dd th:text="${item.Target}"></dd>
+                    <dt>서가</dt><dd th:text="${#strings.isEmpty(item.Shelf)} ? '없음' : ${item.Shelf}"></dd>
+                    <dt>철번호</dt><dd th:text="${#strings.isEmpty(item.BinderNo)} ? '없음' : ${item.BinderNo}"></dd>
+                </dl>
+            </section>
+            <section id="result" aria-labelledby="result-title">
+                <h2 id="result-title">결과</h2>
+                <form method="post" th:action="${base + '/result'}" data-write="1" data-track th:if="${caps.EditResult}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <div class="form-grid">
+                        <label class="field">문서번호<input th:value="${item.DocumentNo}" readonly /></label>
+                        <label class="field grow">결과 한 줄<input name="summary" maxlength="160" th:value="${item.SummaryLine}" /></label>
+                        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="8" th:text="${item.Body}"></textarea></label>
+                    </div>
+                    <p class="hint">결과 한 줄은 연한 후에도 남습니다. 본문은 만료 후 비워집니다. 초안 저장은 확정이 아닙니다.</p>
+                    <button type="submit" class="btn btn-primary">결과 저장</button>
+                </form>
+                <dl class="facts" th:unless="${caps.EditResult}">
+                    <dt>문서번호</dt><dd th:text="${item.DocumentNo}"></dd>
+                    <dt>결과 한 줄</dt><dd th:text="${#strings.isEmpty(item.SummaryLine)} ? '없음' : ${item.SummaryLine}"></dd>
+                    <dt>확정자</dt><dd th:text="${item.Confirmer ?: '없음'}"></dd>
+                    <dt>결과 본문</dt>
+                    <dd>
+                        <span th:if="${item.BodiesClearedAt != null}">보존 만료로 본문 삭제</span>
+                        <span th:if="${item.BodiesClearedAt == null and #strings.isEmpty(item.Body)}">작성된 본문 없음</span>
+                        <pre class="body" th:if="${item.BodiesClearedAt == null and !#strings.isEmpty(item.Body)}" th:text="${item.Body}"></pre>
+                    </dd>
+                </dl>
+            </section>
+            <section id="actions" aria-labelledby="actions-title">
+                <h2 id="actions-title">조치요구·이행</h2>
+                <p class="hint">회신 수신은 이행 완료가 아닙니다. 회신 문서를 <a href="/inbox">수집함</a>에 넣으면 이 건에 붙고 회신으로 기록됩니다.</p>
+                <p th:if="${#lists.isEmpty(item.Actions)}">아직 조치요구가 없습니다.</p>
+                <details th:each="action : ${item.Actions}" th:id="|action-${action.ActionId}|" class="action" th:open="${action.ActionState != '이행완료'}">
+                    <summary th:text="|${action.Sequence}. ${action.Title} · ${action.ActionState}${action.Overdue ? ' · 회신기한 초과' : ''}|"></summary>
+                    <dl class="facts">
+                        <dt>유형</dt><dd th:text="${action.Type}"></dd>
+                        <dt>대상 부서</dt><dd th:text="${action.TargetDept}"></dd>
+                        <dt>요구일</dt><dd th:text="${action.RequestedOn}"></dd>
+                        <dt>회신기한</dt><dd th:text="${action.ReplyDueOn}"></dd>
+                        <dt>내용</dt>
+                        <dd>
+                            <span th:if="${item.BodiesClearedAt != null}">보존 만료로 본문 삭제</span>
+                            <span th:if="${item.BodiesClearedAt == null and #strings.isEmpty(action.Content)}">작성된 내용 없음</span>
+                            <pre class="body" th:if="${!#strings.isEmpty(action.Content)}" th:text="${action.Content}"></pre>
+                        </dd>
+                    </dl>
+                    <p th:if="${#lists.isEmpty(action.Entries)}">아직 회신 기록 없음</p>
+                    <ol class="entries" th:unless="${#lists.isEmpty(action.Entries)}">
+                        <li th:each="entry : ${action.Entries}">
+                            <p th:text="|${entry.AtDisplay} · ${entry.Kind} · ${entry.FromState} → ${entry.ToState} · ${entry.Actor}|"></p>
+                            <p th:if="${entry.ReplyBody == null and entry.CheckBody == null}">보존 만료로 본문 삭제</p>
+                            <th:block th:if="${entry.ReplyBody != null}"><p>회신 본문</p><pre class="body" th:text="${entry.ReplyBody}"></pre></th:block>
+                            <th:block th:if="${entry.CheckBody != null}"><p>확인 본문</p><pre class="body" th:text="${entry.CheckBody}"></pre></th:block>
+                        </li>
+                    </ol>
+                    <th:block th:if="${caps.Reply and action.ActionState != '이행완료'}">
+                        <form method="post" th:action="${base + '/reply'}" data-write="1">
+                            <input type="hidden" name="version" th:value="${item.Version}" />
+                            <input type="hidden" name="actionId" th:value="${action.ActionId}" />
+                            <label class="field">회신 본문<textarea name="reply" required maxlength="20000" rows="3"></textarea></label>
+                            <button type="submit" class="btn">회신 기록</button>
+                        </form>
+                        <form method="post" th:action="${base + '/verify'}" data-write="1">
+                            <input type="hidden" name="version" th:value="${item.Version}" />
+                            <input type="hidden" name="actionId" th:value="${action.ActionId}" />
+                            <label class="field">이행 확인 본문<textarea name="check" required maxlength="20000" rows="3"></textarea></label>
+                            <button type="submit" class="btn">이행 확인</button>
+                        </form>
+                    </th:block>
+                </details>
+                <th:block th:if="${caps.AddAction}">
+                    <h3>조치요구 추가</h3>
+                    <form method="post" th:action="${base + '/action'}" data-write="1" data-track>
+                        <input type="hidden" name="version" th:value="${item.Version}" />
+                        <div class="form-grid">
+                            <label class="field">제목<input name="title" required maxlength="120" /></label>
+                            <label class="field">유형<select name="type"><option>지적</option><option>개선요구</option><option>권고</option></select></label>
+                            <label class="field">대상 부서<input name="dept" required maxlength="120" th:value="${item.Target}" /></label>
+                            <label class="field">요구일<input name="requestedOn" type="date" required th:value="${today}" /></label>
+                            <label class="field">회신기한<input name="dueOn" type="date" required /></label>
+                            <label class="field grow">내용<textarea name="content" maxlength="20000" rows="3"></textarea></label>
+                        </div>
+                        <p class="hint">제목과 대상은 연한 후에도 남습니다. 내용은 만료 후 비워집니다.</p>
+                        <button type="submit" class="btn">조치요구 추가</button>
+                    </form>
+                </th:block>
+            </section>
+            <section id="files" aria-labelledby="files-title">
+                <h2 id="files-title">자료</h2>
+                <p class="hint">원문은 받은 그대로(암호화된 문서는 암호화된 채로) 이 컴퓨터의 files 폴더에 둡니다. '열기'를 누르면 이 컴퓨터의 프로그램으로 열리고, 열림 여부는 문서보안이 판단합니다.</p>
+                <p th:if="${#lists.isEmpty(item.Files)}">등록된 자료 없음</p>
+                <ul class="file-list" th:unless="${#lists.isEmpty(item.Files)}">
+                    <li class="file-row" th:each="file : ${item.Files}" th:with="href=|${base}/files/${file.AttachmentId}|, present=${file.StorageState == 'Present'}">
+                        <a class="file-hit" th:if="${present}" th:href="${file.OpenKind == 'download' and file.HasText} ? ${href + '/text'} : ${href}"
+                           th:data-preview="${file.OpenKind == 'download'} ? (${file.HasText} ? 'text' : 'download') : ${file.OpenKind}"
+                           th:data-title="${file.DisplayName}" th:data-meta="|${file.Kind} · ${file.SizeText} · ${file.RegisteredAtDisplay}|"
+                           th:data-tile="${file.TileLabel}" th:data-tile-kind="${file.Tile}">
+                            <span class="file-ico" th:classappend="|ico-${file.Tile}|" aria-hidden="true" th:text="${file.TileLabel}">FILE</span>
+                            <span class="file-copy">
+                                <span class="file-name" th:title="${file.DisplayName}" th:text="${file.DisplayName}"></span>
+                                <span class="file-meta" th:text="|${file.Kind} · ${file.SizeText} · ${file.RegisteredAtDisplay}${#strings.isEmpty(file.ReadNote) ? '' : ' · ' + file.ReadNote}|"></span>
+                            </span>
+                        </a>
+                        <div class="file-hit" th:unless="${present}">
+                            <span class="file-ico ico-file" aria-hidden="true">FILE</span>
+                            <span class="file-copy">
+                                <span class="file-name" th:text="${file.DisplayName}"></span>
+                                <span class="file-meta" th:text="|${file.Kind} · 삭제 ${file.DeletedAtDisplay}|"></span>
+                            </span>
+                        </div>
+                        <div class="file-side">
+                            <span class="badge" data-state="자료삭제됨" th:unless="${present}"><span class="dot" aria-hidden="true"></span>삭제됨 — 복구되지 않음</span>
+                            <th:block th:if="${present}">
+                                <span class="read-tag" th:data-read="${file.ReadState}" th:title="${file.ReadNote}"
+                                      th:text="${file.Encrypted == 1} ? |암호화 · ${file.ReadState}| : |내용 ${file.ReadState}|"></span>
+                                <form method="post" th:action="${base + '/open'}" data-write="1" class="inline-form">
+                                    <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                    <button type="submit" class="btn btn-quiet" title="이 컴퓨터의 프로그램으로 엽니다">열기</button>
+                                </form>
+                                <a class="btn btn-quiet" th:if="${file.HasText}" th:href="${href + '/text'}" data-preview="text" th:data-title="|${file.DisplayName} — 읽은 내용|"
+                                   th:data-meta="|${file.ReadMethod} 읽기|" data-tile="TXT" data-tile-kind="txt">읽은 내용</a>
+                                <a class="icon-btn" th:href="${href + '?dl=1'}" aria-label="내려받기" title="내려받기">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </a>
+                                <details class="menu">
+                                    <summary class="icon-btn" aria-label="더 보기">···</summary>
+                                    <div class="menu-pop">
+                                        <button type="button" class="btn" th:data-copy="${file.Location}">위치 복사</button>
+                                        <form method="post" th:action="${base + '/reread'}" data-write="1">
+                                            <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                            <button type="submit" class="btn">내용 다시 읽기</button>
+                                        </form>
+                                        <form method="post" th:action="${base + '/fill'}" data-write="1" th:if="${file.HasText and caps.EditResult}">
+                                            <input type="hidden" name="version" th:value="${item.Version}" />
+                                            <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                            <button type="submit" class="btn">읽은 내용을 결과 본문에 넣기</button>
+                                        </form>
+                                        <form method="post" th:action="${base + '/hash'}" data-write="1">
+                                            <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                            <button type="submit" class="btn">등록 때와 같은지 확인</button>
+                                        </form>
+                                        <form method="post" th:action="${base + '/remove'}" data-write="1" th:if="${caps.RemoveDraftFile}">
+                                            <input type="hidden" name="version" th:value="${item.Version}" />
+                                            <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                            <button type="submit" class="btn">첨부 빼기</button>
+                                        </form>
+                                        <form method="post" th:action="${base + '/early'}" data-write="1" th:if="${caps.EarlyDelete}">
+                                            <input type="hidden" name="version" th:value="${item.Version}" />
+                                            <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                            <label class="field">사유<input name="reason" required maxlength="240" /></label>
+                                            <button type="submit" class="btn btn-danger">파일 삭제</button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </th:block>
+                        </div>
+                    </li>
+                </ul>
+                <form method="post" th:action="${base + '/upload'}" data-write="1" enctype="multipart/form-data" th:if="${caps.AddFile}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <div class="form-grid">
+                        <label class="field">종류<select name="kind"><option>결과원문</option><option>증빙</option><option>회신첨부</option></select></label>
+                        <label class="field">표시 이름
+                            <input name="displayName" maxlength="120" placeholder="비워 두면 파일 이름을 그대로 씁니다" />
+                            <span class="field-note">확장자가 없으면 올린 파일의 확장자를 붙입니다.</span>
+                        </label>
+                        <div class="drop">
+                            <p class="drop-copy"><strong>파일을 여기에 놓거나, 아래에서 고르세요</strong></p>
+                            <input type="file" name="upload" required aria-label="올릴 파일" />
+                            <span class="drop-name" data-file-name hidden></span>
+                        </div>
+                    </div>
+                    <p class="hint">올리면 내용을 자동으로 읽어 찾기에 씁니다. 암호화된 문서는 포털에 로그인된 상태에서 사무용 프로그램으로 열어 읽습니다.</p>
+                    <button type="submit" class="btn">자료 추가</button>
+                </form>
+            </section>
+            <section class="danger-zone" aria-labelledby="danger-title">
+                <h2 id="danger-title">확정·종결·연한</h2>
+                <p class="hint">저장 단추와 떨어져 있습니다. 종결은 자료 삭제가 아닙니다.</p>
+                <form method="post" th:action="${base + '/retention'}" data-write="1" class="inline-form" th:if="${caps.SetRetention}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <label class="field">보존연한(년)<input name="years" type="number" min="1" max="100" required th:value="${item.RetentionYears}" /></label>
+                    <label class="field" th:if="${caps.RetentionNeedsReason}">사유<input name="reason" required maxlength="240" /></label>
+                    <button type="submit" class="btn">연한 저장</button>
+                    <p class="hint">확정 뒤 연한 변경은 사유가 필요하며 이력에 앞뒤 연수와 사유가 남습니다.</p>
+                </form>
+                <form method="post" th:action="${base + '/confirm'}" data-write="1" th:if="${caps.Confirm}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <p>보존연한과 결과 한 줄이 있어야 확정됩니다. 기산일은 최초 확정일입니다.</p>
+                    <button type="submit" class="btn btn-danger" id="btn-confirm">결과 확정</button>
+                </form>
+                <form method="post" th:action="${base + '/cancel'}" data-write="1" th:if="${caps.Cancel}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <label class="field">확정 취소 사유<input name="reason" required maxlength="240" /></label>
+                    <p class="hint">기존 조치와 이력은 유지됩니다. 이미 지운 파일과 본문은 복구되지 않습니다.</p>
+                    <button type="submit" class="btn btn-danger" id="btn-cancel">확정 취소</button>
+                </form>
+                <form method="post" th:action="${base + '/close'}" data-write="1" th:if="${caps.Close}">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <label class="check" th:if="${item.ActionCount == 0}"><input type="checkbox" name="noActionConfirmed" value="true" /> 조치요구 없음 확인</label>
+                    <p class="hint">미완료 조치가 있으면 종결되지 않습니다. 종결 후에도 파일과 본문은 연한까지 남습니다.</p>
+                    <button type="submit" class="btn btn-danger" id="btn-close">종결</button>
+                </form>
+                <form method="post" th:action="${item.Hold == 1} ? ${base + '/unhold'} : ${base + '/hold'}" data-write="1" class="inline-form">
+                    <input type="hidden" name="version" th:value="${item.Version}" />
+                    <label class="field grow"><span th:text="${item.Hold == 1} ? |삭제 보류 해제 사유 (보류 사유: ${item.HoldReason})| : '삭제 보류 사유'">사유</span>
+                        <input name="reason" required maxlength="240" /></label>
+                    <button type="submit" class="btn" th:text="${item.Hold == 1} ? '보류 해제' : '삭제 보류'"></button>
+                    <p class="hint">보류 중인 건은 연한이 지나도 지우지 않습니다.</p>
+                </form>
+            </section>
+            <section id="discipline" aria-labelledby="discipline-title">
+                <h2 id="discipline-title">연결된 징계기록</h2>
+                <p class="empty" th:if="${#lists.isEmpty(discipline)}">연결된 징계기록이 없습니다. <a th:href="|/discipline/new?caseRef=${item.DocumentNo}|">이 건에 징계기록 등재</a></p>
+                <th:block th:unless="${#lists.isEmpty(discipline)}">
+                <div class="table-wrap" tabindex="0">
+                    <table class="data">
+                        <thead><tr><th scope="col" class="num">순번</th><th scope="col">사번</th><th scope="col">성명</th><th scope="col">부서·직위</th><th scope="col" class="num">위반일자</th><th scope="col">징계종류</th><th scope="col" class="num">징계일자</th><th scope="col">상태</th></tr></thead>
+                        <tbody>
+                        <tr th:each="row : ${discipline}">
+                            <td class="num" th:text="${row.Seq}"></td>
+                            <td th:text="${row.EmployeeNo}"></td>
+                            <th scope="row"><a th:href="|/discipline/${row.DisciplineId}|" th:text="${row.PersonMasked}"></a></th>
+                            <td th:text="|${row.Department} ${row.Position}|"></td>
+                            <td class="num" th:text="${row.ViolationDate}"></td>
+                            <td th:text="${row.SanctionType}"></td>
+                            <td class="num" th:text="${row.SanctionDate}"></td>
+                            <td><span class="badge" th:data-state="${row.Status}"><span class="dot" aria-hidden="true"></span><span th:text="${row.Status}"></span></span></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><a th:href="|/discipline/new?caseRef=${item.DocumentNo}|">이 건에 징계기록 등재</a></p>
+                </th:block>
+            </section>
+        </div>
+        <aside class="history" aria-label="시간순 이력">
+            <h2>시간순 이력</h2>
+            <p class="hint">이력은 추가만 되며 화면에서 고치거나 지울 수 없습니다. 데이터 파일을 직접 고치면 훼손으로 표시됩니다.</p>
+            <ol class="timeline">
+                <li th:each="row : ${item.History}" th:id="|h-${row.Seq}|">
+                    <time th:text="${row.AtDisplay}"></time>
+                    <strong th:text="${row.Action}"></strong>
+                    <span th:if="${row.ActionSequence != null}" th:text="|조치 ${row.ActionSequence}|"></span>
+                    <span th:text="${row.Summary}"></span>
+                    <span th:text="${row.Actor ?: '프로그램'}"></span>
+                </li>
+            </ol>
+        </aside>
+    </div>
+</th:block>
+</th:block>
+</body>
+</html>

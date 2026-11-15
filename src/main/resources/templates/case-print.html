@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>인쇄 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<h1 th:if="${item == null}">건을 찾을 수 없음</h1>
+<article class="print-sheet" th:if="${item != null}">
+    <h1 th:text="${item.Title}"></h1>
+    <p th:text="|${item.Year} · ${item.Category} · ${item.DocumentNo} · ${item.DisplayState}|"></p>
+    <dl class="facts">
+        <dt>대상</dt><dd th:text="${item.Target}"></dd>
+        <dt>담당</dt><dd th:text="${item.Owner}"></dd>
+        <dt>서가</dt><dd th:text="${item.Shelf}"></dd>
+        <dt>철번호</dt><dd th:text="${item.BinderNo}"></dd>
+        <dt>결과 한 줄</dt><dd th:text="${item.SummaryLine}"></dd>
+        <dt>보존</dt><dd th:text="${item.RetentionYears == null} ? '없음' : |${item.RetentionYears}년 ${item.ExpiryDate ?: ''}|"></dd>
+    </dl>
+    <h2>조치</h2>
+    <ul><li th:each="a : ${item.Actions}" th:text="|${a.Sequence}. ${a.Title} · ${a.Type} · ${a.TargetDept} · ${a.ActionState} · 회신기한 ${a.ReplyDueOn}|"></li></ul>
+    <h2>자료</h2>
+    <ul><li th:each="f : ${item.Files}" th:text="|${f.DisplayName} · ${f.Kind} · ${f.StorageState == 'Present' ? '보관 중' : '삭제됨'}|"></li></ul>
+    <h2>이력</h2>
+    <ul><li th:each="h : ${item.History}" th:text="|${h.AtDisplay} · ${h.Action} · ${h.Summary}|"></li></ul>
+    <p class="hint">브라우저 인쇄 또는 PDF 저장용입니다. 본문 전체와 파일 내용은 싣지 않습니다.</p>
+</article>
+</th:block>
+</body>
+</html>

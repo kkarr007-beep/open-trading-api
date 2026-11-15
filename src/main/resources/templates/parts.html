@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="keep(skip)">
+    <input type="hidden" th:each="k : ${ {'text','year','category','status','overdue','dueSoon','pageSize','sort','dir'} }"
+           th:if="${!#strings.isEmpty(q[k]) and !#strings.contains(skip, '|' + k + '|')}" th:name="${k}" th:value="${q[k]}" />
+</th:block>
+</body>
+</html>
