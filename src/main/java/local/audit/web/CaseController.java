@@ -200,6 +200,14 @@ public class CaseController {
         return "search";
     }
 
+    /** 읽은 내용을 표·그림을 살린 모양으로 보여 준다. 미리보기 창 안에 들어간다. */
+    @GetMapping("/cases/{id}/files/{att}/view")
+    public ResponseEntity<byte[]> view(@PathVariable String id, @PathVariable String att, @RequestParam(required = false) String dl) {
+        if (dl != null) return text(id, att, dl);
+        Map<String, Object> a = cases.attachment(id, att);
+        return Web.html(local.audit.extract.Rich.page(a == null ? "읽은 내용" : (String) a.get("DisplayName"), cases.fileHtml(id, att)));
+    }
+
     @GetMapping("/files")
     public String fileSearch(@RequestParam Map<String, String> q, Model model) {
         model.addAttribute("q", q);

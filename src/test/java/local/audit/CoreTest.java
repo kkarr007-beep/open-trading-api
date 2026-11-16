@@ -191,6 +191,75 @@ class CoreTest {
     }
 
     @Test
+    void richViewKeepsTablesImagesAndTextShape() throws Exception {
+        Path docx = dir.resolve("r.docx");
+        Path png = dir.resolve("p.png");
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(4, 4, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        javax.imageio.ImageIO.write(img, "png", png.toFile());
+        try (ZipOutputStream z = new ZipOutputStream(Files.newOutputStream(docx))) {
+            z.putNextEntry(new ZipEntry("word/document.xml"));
+            z.write(("<w:document xmlns:w='w' xmlns:a='a' xmlns:r='r'><w:body>"
+                + "<w:p><w:pPr><w:jc w:val='center'/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val='32'/><w:spacing w:val='-10'/></w:rPr><w:t>큰 제목 &lt;b&gt;</w:t></w:r></w:p>"
+                + "<w:tbl><w:tr><w:tc><w:tcPr><w:gridSpan w:val='2'/></w:tcPr><w:p><w:r><w:t>합친 칸</w:t></w:r></w:p></w:tc></w:tr>"
+                + "<w:tr><w:tc><w:p><w:r><w:t>가</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>나</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+                + "<w:p><w:r><w:drawing><a:blip r:embed='rId5'/></w:drawing></w:r></w:p></w:body></w:document>").getBytes(StandardCharsets.UTF_8));
+            z.closeEntry();
+            z.putNextEntry(new ZipEntry("word/_rels/document.xml.rels"));
+            z.write("<Relationships><Relationship Id='rId5' Target='media/image1.png'/></Relationships>".getBytes(StandardCharsets.UTF_8));
+            z.closeEntry();
+            z.putNextEntry(new ZipEntry("word/media/image1.png"));
+            z.write(Files.readAllBytes(png));
+            z.closeEntry();
+        }
+        TextReader.Result r = reader.read(docx, "r.docx");
+        assertTrue(r.ok());
+        String html = r.html();
+        assertNotNull(html);
+        assertTrue(html.contains("text-align:center"), html);
+        assertTrue(html.contains("font-weight:700") && html.contains("font-size:16.0pt") && html.contains("letter-spacing:-0.5pt"), html);
+        assertTrue(html.contains("큰 제목 &lt;b&gt;"), "원문의 꺾쇠는 글자로만 들어간다");
+        assertTrue(html.contains("<td colspan=\"2\">") && html.contains("<table>"), html);
+        assertTrue(html.contains("<img alt=\"그림\" src=\"data:image/png;base64,"), html);
+        assertFalse(html.contains("<script"));
+
+        String fromText = local.audit.extract.Rich.fromText("머리\n사번\t성명\nA-1\t<홍>\n끝");
+        assertTrue(fromText.contains("<th>사번</th><th>성명</th>") && fromText.contains("<td>&lt;홍&gt;</td>"), fromText);
+
+        String id = newCase(null);
+        Op file = cases.addFile(id, null, "결과원문", "", "r.docx", Files.newInputStream(docx), null);
+        cases.awaitReads();
+        assertTrue(cases.fileHtml(id, file.extra).contains("<table>"));
+        assertTrue(cases.fillBodyFromFile(id, null, file.extra).ok);
+        assertEquals(true, cases.get(id).get("HasRichBody"));
+        assertTrue(cases.saveResult(id, null, "한 줄", "손으로 고친 본문").ok);
+        assertEquals(false, cases.get(id).get("HasRichBody"), "본문을 고치면 가져온 모양은 치운다");
+    }
+
+    @Test
+    void disciplineCsvImportAddsRowsSkipsDuplicatesAndReportsBadLines() {
+        String csv = "\uFEFF사번,성명,부서,위반일자,위반내용,징계종류,징계일자,상태\r\n"
+            + "A-1,홍길동,예시부서,2026-01-05,\"쉼표, 있는 내용\",감봉 1개월,2026.02.01,확정\r\n"
+            + "A-2,김예시,예시부서,20260110,예시 위반,견책,,\r\n"
+            + "A-3,박예시,예시부서,,날짜 없음,견책,,\r\n";
+        Op first = discipline.importRows(DisciplineService.parseCsv(csv));
+        assertTrue(first.ok, first.message);
+        assertTrue(first.message.startsWith("2건 등재") && first.message.contains("4번째 줄"), first.message);
+        List<Map<String, Object>> rows = discipline.list(null, null, null);
+        assertEquals(2, rows.size());
+        Map<String, Object> hong = rows.get(1);
+        assertEquals("감봉", hong.get("SanctionType"));
+        assertEquals("1개월", hong.get("SanctionTerm"));
+        assertEquals("확정", hong.get("Status"));
+        assertEquals("쉼표, 있는 내용", hong.get("ViolationText"));
+        assertEquals("2026-01-10", rows.get(0).get("ViolationDate"));
+        Op again = discipline.importRows(DisciplineService.parseCsv(csv));
+        assertTrue(again.message.contains("이미 있는 2건"), again.message);
+        assertEquals(2, discipline.list(null, null, null).size());
+        // 내보낸 CSV를 그대로 다시 넣어도 된다
+        assertTrue(discipline.importRows(DisciplineService.parseCsv(discipline.exportCsv())).message.contains("이미 있는 2건"));
+    }
+
+    @Test
     void analyzerFindsCaseFieldsActionsAndDisciplineRows() {
         Map<String, Object> s = DocAnalyzer.analyze("2026 예시 결과보고.docx", """
             업무진단 결과보고

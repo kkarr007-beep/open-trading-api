@@ -5,4 +5,4 @@ cd "$(dirname "$0")"
 case "$(uname -s)-$(uname -m)" in Darwin-arm64) P=mac-aarch64 ;; Darwin-*) P=mac ;; *) P=linux ;; esac
 [ -f target/fx/javafx-web.jar ] || ./packaging/fetch-fx.sh "$P" target/fx >/dev/null || echo "화면 엔진을 받지 못해 브라우저로 엽니다."
 LC_ALL="${LC_ALL:-C.UTF-8}" exec java --enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 \
-  -cp "target/audit-record.jar:target/fx/*" org.springframework.boot.loader.launch.JarLauncher "$@"
+  -cp "target/audit-record.jar:target/fx/*" local.audit.App "$@"

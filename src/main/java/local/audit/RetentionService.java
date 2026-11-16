@@ -76,6 +76,7 @@ public class RetentionService {
                 Db.update(conn, "UPDATE Fulfillments SET ReplyBody=NULL, CheckBody=NULL WHERE ActionId IN (SELECT ActionId FROM Actions WHERE CaseId=?)", caseId);
                 Db.update(conn, "DELETE FROM AttachmentText WHERE AttachmentId IN (SELECT AttachmentId FROM Attachments WHERE CaseId=?)", caseId);
                 Db.update(conn, "UPDATE Inbox SET Body=NULL, Suggestion=NULL WHERE AppliedCaseId=?", caseId);
+                Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", caseId);
                 Db.update(conn, "UPDATE Cases SET Body=NULL, BodiesClearedAt=COALESCE(BodiesClearedAt, ?), PurgedAt=?, Version=Version+1 WHERE CaseId=?",
                     at, complete ? at : null, caseId);
                 if (complete) Chain.append(conn, caseId, null, "자료삭제", "건", caseId, "보존 만료 삭제. 본문과 파일 " + count + "개");

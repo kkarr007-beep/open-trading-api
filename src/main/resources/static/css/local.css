@@ -84,3 +84,32 @@ body.guest { display: grid; grid-template-columns: 1fr; }
 .result-list strong { display: block; font-size: 14.5px; }
 .result-list span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 #preview-frame { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; }
+
+/* ── 목록으로 돌아가는 줄 ── */
+.backbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 12px clamp(16px, 2.4vw, 36px) 0; max-width: 1500px; }
+.backbar .btn { min-height: 32px; padding: 0 12px; font-size: 13px; }
+main { padding-top: 12px; }
+/* ── 가져온 내용: 화면 폭에 맞추기 ── */
+.stack, .stack > section, .detail-layout > *, .inbox-item, .inbox-body, .card, main { min-width: 0; }
+.stack > section, .card, .inbox-item { overflow-wrap: anywhere; }
+.body, pre.body, .read-preview { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; overflow-x: auto; }
+.read-preview { tab-size: 4; }
+textarea { max-width: 100%; box-sizing: border-box; }
+.path, .path-clip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.timeline li span, .entries li p { overflow-wrap: anywhere; }
+/* ── 표·그림을 살린 내용 ── */
+.rich { max-width: 100%; min-width: 0; overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; }
+.rich .para { margin: 0 0 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rich .gap { height: .7em; }
+.rich .tw { overflow-x: auto; margin: 8px 0; max-width: 100%; }
+.rich table { border-collapse: collapse; max-width: 100%; font-size: 13px; }
+.rich th, .rich td { border: 1px solid var(--line-strong, var(--line)); padding: 5px 8px; vertical-align: top; text-align: left; overflow-wrap: break-word; word-break: keep-all; min-width: 3.2em; }
+.rich td .para, .rich th .para { overflow-wrap: break-word; word-break: keep-all; }
+.rich th { background: var(--paper-2); font-weight: 650; }
+.rich img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 6px; }
+.rich .pic { color: var(--faint); font-size: 12px; }
+.rich .slide { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin: 0 0 12px; }
+.rich .slide-no { color: var(--faint); font-size: 11px; font-weight: 700; }
+dd > .rich, li > .rich, .rich-box > .rich { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; max-height: 520px; overflow: auto; }
+.rich-box { margin-top: 14px; }
+.rich-box > summary { cursor: pointer; font-weight: 650; font-size: 13.5px; margin-bottom: 8px; }

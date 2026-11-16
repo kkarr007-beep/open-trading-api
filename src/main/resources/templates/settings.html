@@ -22,7 +22,7 @@
     <div class="form-grid">
         <label class="field grow">살펴볼 폴더 (한 줄에 하나)
             <textarea name="watchFolders" class="folders" rows="3" maxlength="4000" th:text="${s.watchFolders}" placeholder="예: C:\Users\내이름\Downloads\감사"></textarea>
-            <span class="field-note">포털에서 내려받는 폴더를 적어 두면 내려받는 것만으로 수집됩니다. 이 프로그램의 수집함 폴더(<span th:text="${inboxFolder}"></span>)는 언제나 살펴봅니다. 여기 적은 폴더의 파일은 옮기거나 지우지 않습니다.</span>
+            <span class="field-note">포털에서 내려받는 폴더를 적어 두면 따로 옮기지 않아도 수집됩니다. 이 프로그램의 수집함 폴더(<span th:text="${inboxFolder}"></span>)는 언제나 살펴봅니다. 여기 적은 폴더의 파일은 옮기거나 지우지 않습니다.</span>
         </label>
         <label class="field grow">자동 등록
             <select name="autoMode">
@@ -35,13 +35,14 @@
         <label class="field">새 건의 기본 보존연한(년)<input name="defaultRetention" type="number" min="1" max="100" th:value="${s.defaultRetention}" placeholder="비우면 넣지 않음" /></label>
         <label class="field">회신기한 기본값(요구일 + 일)<input name="replyDays" type="number" min="1" max="365" required th:value="${s.replyDays}" /></label>
     </div>
+    <p><label class="check"><input type="checkbox" name="autoScan" value="1" th:checked="${autoScan}" /> 폴더를 15초마다 스스로 살펴보기 (끄면 수집함의 '지금 수집'을 누를 때만 가져옵니다)</label></p>
     <p><label class="check"><input type="checkbox" name="moveProcessed" value="1" th:checked="${s.moveProcessed}" /> 수집함 폴더의 파일은 등록한 뒤 '처리완료' 폴더로 옮기기</label></p>
 </section>
 <section class="card">
     <h2>문서 내용 읽기</h2>
     <p><label class="check"><input type="checkbox" name="office" value="1" th:checked="${s.office}" /> 암호화된 문서는 이 컴퓨터의 워드·엑셀·파워포인트·한글로 열어 읽기</label></p>
     <p class="hint">
-        문서보안(DRM)으로 암호화된 문서는 이 프로그램이 직접 풀지 않습니다. 포털에 로그인된 상태에서 사무용 프로그램이 문서를 읽기 전용으로 열고, 화면에 보이는 글자만 받아 옵니다. 로그인이 끊겨 있으면 읽지 못하고 수집함에 '암호문'으로 남으며, 10분마다 다시 읽습니다. 읽는 동안 사무용 프로그램 창이 잠깐 떴다 닫힐 수 있습니다.
+        문서보안(DRM)으로 암호화된 문서는 이 프로그램이 직접 풀지 않습니다. 포털에 로그인된 상태에서 사무용 프로그램이 문서를 읽기 전용으로 열고, 화면에 보이는 글자만 받아 옵니다. 로그인이 끊겨 있으면 읽지 못하고 수집함에 '암호문'으로 남으며, '다시 읽기'나 '지금 수집'을 누르면 다시 읽습니다. 읽는 동안 사무용 프로그램 창이 잠깐 떴다 닫힐 수 있습니다.
         <strong th:unless="${officeAvailable}">이 컴퓨터는 Windows가 아니어서 이 기능이 동작하지 않습니다.</strong>
     </p>
     <p><label class="check"><input type="checkbox" name="keepText" value="1" th:checked="${s.keepText}" /> 읽은 내용을 저장해 찾기에 쓰기</label></p>

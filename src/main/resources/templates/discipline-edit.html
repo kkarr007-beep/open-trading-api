@@ -3,7 +3,6 @@
 <head><title>징계기록 · 감사기록</title></head>
 <body>
 <th:block id="content">
-<p class="back"><a href="/discipline">징계기록 목록</a></p>
 <h1 th:if="${!fresh and item == null}">징계기록을 찾을 수 없음</h1>
 <th:block th:if="${fresh or item != null}" th:with="gone=${item != null and item.Status == '삭제됨'}">
     <div class="page-head">

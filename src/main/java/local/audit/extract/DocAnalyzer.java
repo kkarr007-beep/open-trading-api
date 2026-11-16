@@ -116,7 +116,7 @@ public final class DocAnalyzer {
         return null;
     }
 
-    static String dateText(String cell) {
+    public static String dateText(String cell) {
         LocalDate d = firstDate(cell);
         if (d != null) return d.toString();
         return cell != null && cell.strip().matches("\\d{4}-\\d{2}-\\d{2}") ? cell.strip() : "";
@@ -197,7 +197,13 @@ public final class DocAnalyzer {
         return list;
     }
 
-    static String sanction(String text) {
+    /** 징계대장의 머리글 줄이면 열 위치를, 아니면 null. */
+    public static Map<String, Integer> disciplineHeader(String line) {
+        Map<String, Integer> h = header(line, DISCIPLINE_COLS, 3);
+        return h != null && h.containsKey("personName") && h.containsKey("sanctionType") ? h : null;
+    }
+
+    public static String sanction(String text) {
         if (text == null) return "";
         for (String t : SANCTIONS) if (text.contains(t)) return t;
         return "";

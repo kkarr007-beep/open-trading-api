@@ -47,6 +47,8 @@ public class Settings {
 
     /** off: 수집만, attach: 맞는 건에 붙이기까지, full: 새 건 초안·조치요구·징계기록까지. */
     public String autoMode() { return get("autoMode", "full"); }
+    /** 폴더를 스스로 살펴볼지. 기본은 끔: '지금 수집'을 누를 때만 가져온다. */
+    public boolean autoScan() { return "1".equals(get("autoScan", "0")); }
     public boolean keepText() { return "1".equals(get("keepText", "1")); }
     public boolean autoBackup() { return "1".equals(get("autoBackup", "1")); }
     public boolean autoPurge() { return "1".equals(get("autoPurge", "0")); }

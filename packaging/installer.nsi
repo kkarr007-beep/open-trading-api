@@ -7,7 +7,7 @@ RequestExecutionLevel user
 !define APP_NAME "감사기록"
 !define APP_ID "AuditRecordLocal"
 !ifndef APP_VERSION
-  !define APP_VERSION "1.2.0"
+  !define APP_VERSION "1.3.0"
 !endif
 !ifndef STAGE
   !define STAGE "stage"
@@ -16,7 +16,7 @@ RequestExecutionLevel user
   !define OUTFILE "AuditRecord-Setup.exe"
 !endif
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
-!define RUN_ARGS '--enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -cp "$INSTDIR\audit-record.jar;$INSTDIR\fx\*" org.springframework.boot.loader.launch.JarLauncher "--audit.home=$PROFILE\${APP_NAME}"'
+!define RUN_ARGS '--enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -cp "$INSTDIR\audit-record.jar;$INSTDIR\fx\*" local.audit.App "--audit.home=$PROFILE\${APP_NAME}"'
 
 Name "${APP_NAME}"
 OutFile "${OUTFILE}"
@@ -55,6 +55,7 @@ Section "Install"
   ; 이전 판의 실행 환경이 남아 섞이지 않게 한다.
   RMDir /r "$INSTDIR\jre"
   RMDir /r "$INSTDIR\fx"
+  RMDir /r "$INSTDIR\lib"
   File "${STAGE}\audit-record.jar"
   File "audit-record.ico"
   File "${STAGE}\읽어보세요.txt"
@@ -62,6 +63,8 @@ Section "Install"
   File /r "${STAGE}\jre\*.*"
   SetOutPath "$INSTDIR\fx"
   File "${STAGE}\fx\*.jar"
+  SetOutPath "$INSTDIR\lib"
+  File "${STAGE}\lib\*.jar"
 
   CreateDirectory "$PROFILE\${APP_NAME}\inbox"
   SetOutPath "$INSTDIR"
@@ -86,6 +89,7 @@ Section "Uninstall"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   RMDir /r "$INSTDIR\jre"
   RMDir /r "$INSTDIR\fx"
+  RMDir /r "$INSTDIR\lib"
   Delete "$INSTDIR\audit-record.jar"
   Delete "$INSTDIR\audit-record.ico"
   Delete "$INSTDIR\읽어보세요.txt"

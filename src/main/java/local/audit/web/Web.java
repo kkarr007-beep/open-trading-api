@@ -26,8 +26,11 @@ public class Web {
     private final Chain chain;
     private final Settings settings;
     private final InboxService inbox;
+    private final String version;
 
-    public Web(Chain chain, Settings settings, InboxService inbox) {
+    public Web(Chain chain, Settings settings, InboxService inbox,
+               @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
+        this.version = version;
         this.chain = chain;
         this.settings = settings;
         this.inbox = inbox;
@@ -50,6 +53,12 @@ public class Web {
         model.addAttribute("nowDisplay", Kst.display(Kst.stamp()));
         model.addAttribute("flash", req.getParameter("flash"));
         model.addAttribute("searchQuery", "");
+        model.addAttribute("appVersion", version);
+        // 목록으로 돌아가는 단추
+        String listHref = path.matches("/cases/.+") ? "/cases" : path.matches("/discipline/.+") ? "/discipline" : null;
+        model.addAttribute("listHref", listHref);
+        model.addAttribute("listLabel", "/discipline".equals(listHref) ? "징계기록 목록" : "건 목록");
+        model.addAttribute("showCasesLink", listHref == null && !path.equals("/cases"));
     }
 
     /** 화면 스크립트가 보낸 저장 요청에는 JSON으로, 그 밖에는 화면 이동으로 답한다. */
@@ -79,6 +88,10 @@ public class Web {
     public static ResponseEntity<byte[]> csv(String name, String body) {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, disposition(false, name))
             .contentType(MediaType.parseMediaType("text/csv; charset=utf-8")).body(body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static ResponseEntity<byte[]> html(String page) {
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("text/html; charset=utf-8")).body(page.getBytes(StandardCharsets.UTF_8));
     }
 
     public static ResponseEntity<byte[]> plain(String name, String text, boolean download) {

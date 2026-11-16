@@ -43,7 +43,8 @@ public class TextReader {
     public static final int MAX_CHARS = 400_000;
     private static final long MAX_DIRECT_BYTES = 150L * 1024 * 1024;
 
-    public record Result(String state, String method, String note, String text, boolean encrypted) {
+    public record Result(String state, String method, String note, String text, boolean encrypted, String html) {
+        public Result(String state, String method, String note, String text, boolean encrypted) { this(state, method, note, text, encrypted, null); }
         public boolean ok() { return "읽음".equals(state); }
     }
 
@@ -68,7 +69,7 @@ public class TextReader {
                 if (text == null) return new Result("미지원", "", "내용을 읽지 않는 형식입니다.", "", false);
                 text = tidy(text);
                 if (text.isBlank()) return new Result("읽음", "직접", "글자가 없는 문서입니다(스캔본일 수 있음).", "", false);
-                return new Result("읽음", "직접", "", text, false);
+                return new Result("읽음", "직접", "", text, false, Rich.fromFile(file, ext));
             }
         } catch (Exception e) {
             log.info("직접 읽기 실패 {}: {}", name, e.toString());
@@ -156,7 +157,7 @@ public class TextReader {
         }
     }
 
-    static String decode(byte[] bytes) {
+    public static String decode(byte[] bytes) {
         int skip = bytes.length >= 3 && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF ? 3 : 0;
         if (bytes.length >= 2 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE)
             return new String(bytes, 2, bytes.length - 2, StandardCharsets.UTF_16LE);
@@ -238,7 +239,7 @@ public class TextReader {
     }
 
     /** 엑셀. 한 줄이 한 행, 칸은 탭으로 나눈다. 날짜 서식의 숫자는 날짜로 바꾼다. */
-    static String xlsx(Path file) throws Exception {
+    public static String xlsx(Path file) throws Exception {
         StringBuilder sb = new StringBuilder();
         try (ZipFile zip = new ZipFile(file.toFile())) {
             List<String> shared = new ArrayList<>();

@@ -9,6 +9,7 @@
         <p class="hint">등재 항목 그대로 한 줄에 담습니다. 목록의 성명은 일부를 가립니다. 징계대장 엑셀이나 의결서를 <a href="/inbox">수집함</a>에 넣으면 초안으로 등재됩니다.</p>
     </div>
     <div class="row-actions">
+        <button type="button" class="btn" data-dialog="import-dialog">파일로 일괄 등재</button>
         <a class="btn" href="/discipline/export">CSV 내려받기</a>
         <a class="btn btn-primary" href="/discipline/new">기록 등재</a>
     </div>
@@ -65,6 +66,28 @@
         </tbody>
     </table>
 </div>
+<dialog id="import-dialog" aria-labelledby="import-title">
+    <form method="post" action="/discipline/import" data-write="1" enctype="multipart/form-data">
+        <div class="dialog-head">
+            <h2 id="import-title">징계기록 일괄 등재</h2>
+            <button type="button" class="icon-btn" data-close aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <p class="hint">CSV 또는 엑셀(xlsx) 파일의 첫 줄에 항목 이름이 있어야 합니다: 사번, 성명, 부서, 직위, 위반일자, 위반내용, 관련규정, 징계종류, 징계일자, 징계기간, 결정기관, 근거문서번호, 상태, 비고, 감사번호. 성명·위반일자·위반내용·징계종류는 꼭 있어야 하고 열 순서는 달라도 됩니다. 이 화면의 'CSV 내려받기'로 받은 파일도 그대로 넣을 수 있습니다.</p>
+        <p class="hint">같은 사번·성명·위반일자·징계종류가 이미 있으면 건너뜁니다. 상태 칸이 '확정'이고 징계일자가 있으면 확정으로, 나머지는 초안으로 넣습니다.</p>
+        <div class="drop">
+            <p class="drop-copy"><strong>CSV 또는 xlsx 파일을 고르세요</strong></p>
+            <input type="file" name="upload" required accept=".csv,.xlsx,.txt,.tsv" aria-label="등재할 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <div class="row-actions">
+            <a class="btn" href="/discipline/template?dl=1">양식 받기</a>
+            <button type="button" class="btn" data-close>닫기</button>
+            <button type="submit" class="btn btn-primary">등재</button>
+        </div>
+    </form>
+</dialog>
 </th:block>
 </body>
 </html>

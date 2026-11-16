@@ -166,6 +166,103 @@ public class DisciplineService {
         });
     }
 
+    /** CSV 한 줄을 칸으로 나눈다. 따옴표 안의 쉼표와 줄바꿈을 지킨다. */
+    public static List<List<String>> parseCsv(String text) {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> row = new ArrayList<>();
+        StringBuilder cell = new StringBuilder();
+        boolean quoted = false;
+        String t = text.replace("\r\n", "\n").replace('\r', '\n');
+        if (t.startsWith("\uFEFF")) t = t.substring(1);
+        char sep = t.indexOf('\t') >= 0 && t.indexOf(',') < 0 ? '\t' : t.split("\n", 2)[0].chars().filter(c -> c == ';').count() > t.split("\n", 2)[0].chars().filter(c -> c == ',').count() ? ';' : ',';
+        for (int i = 0; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (quoted) {
+                if (c == '"' && i + 1 < t.length() && t.charAt(i + 1) == '"') { cell.append('"'); i++; }
+                else if (c == '"') quoted = false;
+                else cell.append(c);
+            } else if (c == '"' && cell.length() == 0) quoted = true;
+            else if (c == sep) { row.add(cell.toString()); cell.setLength(0); }
+            else if (c == '\n') { row.add(cell.toString()); cell.setLength(0); rows.add(row); row = new ArrayList<>(); }
+            else cell.append(c);
+        }
+        if (cell.length() > 0 || !row.isEmpty()) { row.add(cell.toString()); rows.add(row); }
+        return rows;
+    }
+
+    /**
+     * 표(줄마다 칸의 목록)에서 징계기록을 한꺼번에 등재한다. 첫 머리글 줄에서 열을 찾는다.
+     * 같은 사번·성명·위반일자·징계종류가 이미 있으면 건너뛴다. 모두 초안으로 넣고, 상태 칸이 '확정'이고 징계일자가 있으면 확정으로 넣는다.
+     */
+    public Op importRows(List<List<String>> rows) {
+        if (!chain.intact()) return Op.fail(503, CaseService.FROZEN);
+        Map<String, Integer> cols = null;
+        int statusCol = -1, caseCol = -1, yearCol = -1, added = 0, same = 0, line = 0;
+        List<String> problems = new ArrayList<>();
+        for (List<String> cells : rows) {
+            line++;
+            if (cells.stream().allMatch(String::isBlank)) continue;
+            if (cols == null) {
+                List<String> flat = new ArrayList<>();
+                for (String c : cells) flat.add(c.replaceAll("[\\t\\n]", " "));
+                cols = DocAnalyzer.disciplineHeader(String.join("\t", flat));
+                if (cols != null) {
+                    for (int i = 0; i < cells.size(); i++) {
+                        String h = cells.get(i).replaceAll("\\s", "");
+                        if (h.equals("상태")) statusCol = i;
+                        else if (h.matches("감사번호|감사건|감사건연결|문서번호\\(감사\\)")) caseCol = i;
+                        else if (h.equals("연도")) yearCol = i;
+                    }
+                }
+                continue;
+            }
+            Map<String, String> in = new java.util.HashMap<>();
+            for (Map.Entry<String, Integer> e : cols.entrySet())
+                in.put(e.getKey(), e.getValue() < cells.size() ? cells.get(e.getValue()).strip() : "");
+            String name = in.get("personName"), type = DocAnalyzer.sanction(in.get("sanctionType"));
+            if (Txt.blank(name) && Txt.blank(in.get("sanctionType"))) continue;
+            String status = statusCol >= 0 && statusCol < cells.size() ? cells.get(statusCol).strip() : "";
+            if (status.equals("삭제됨")) continue;
+            LocalDate vDate = Kst.date(in.get("violationDate")), sDate = Kst.date(in.get("sanctionDate"));
+            if (vDate == null) vDate = DocAnalyzer.firstDate(in.get("violationDate"));
+            if (sDate == null) sDate = DocAnalyzer.firstDate(in.get("sanctionDate"));
+            String why = Txt.blank(name) ? "성명 없음" : type.isEmpty() ? "징계종류를 알 수 없음(" + in.get("sanctionType") + ")"
+                : vDate == null ? "위반일자를 알 수 없음(" + in.get("violationDate") + ")" : Txt.blank(in.get("violationText")) ? "위반내용 없음" : null;
+            if (why != null) { if (problems.size() < 8) problems.add(line + "번째 줄: " + why); else if (problems.size() == 8) problems.add("…"); continue; }
+            String empNo = Txt.str(in.get("employeeNo"));
+            if (db.row("SELECT 1 FROM Discipline WHERE EmployeeNo=? AND PersonName=? AND ViolationDate=? AND SanctionType=?", Txt.fit(empNo, 40, false), Txt.fit(name, 40, false), vDate.toString(), type) != null) { same++; continue; }
+            // 징계종류 칸에 '감봉 1개월'처럼 기간이 함께 적힌 경우 기간으로 옮긴다.
+            String rest = in.get("sanctionType").replace(type, "").strip();
+            if (Txt.blank(in.get("sanctionTerm")) && !rest.isEmpty()) in.put("sanctionTerm", rest);
+            in.put("sanctionType", type);
+            in.put("violationDate", vDate.toString());
+            in.put("sanctionDate", sDate == null ? "" : sDate.toString());
+            Integer year = yearCol >= 0 && yearCol < cells.size() ? Txt.intOrNull(cells.get(yearCol)) : null;
+            in.put("year", Integer.toString(year != null && year >= 1990 && year <= 2100 ? year : vDate.getYear()));
+            in.put("status", status.equals("확정") && sDate != null ? "확정" : "초안");
+            in.put("caseRef", caseCol >= 0 && caseCol < cells.size() ? cells.get(caseCol).strip() : "");
+            in.put("personName", Txt.fit(name, 40, false));
+            in.put("employeeNo", Txt.fit(empNo, 40, false));
+            in.put("position", Txt.fit(in.get("position"), 40, false));
+            for (String k : List.of("department", "sanctionTerm", "decisionBody", "docNo")) in.put(k, Txt.fit(in.get(k), 80, false));
+            in.put("violationText", Txt.fit(in.get("violationText"), 500, true));
+            in.put("ruleText", Txt.fit(in.get("ruleText"), 240, true));
+            in.put("remark", Txt.fit(in.get("remark"), 500, true));
+            Op op = save(in);
+            if (!op.ok && !Txt.blank(in.get("caseRef"))) { in.put("caseRef", ""); in.put("remark", Txt.fit((in.get("remark") + " 감사 건 연결 안 됨").strip(), 500, true)); op = save(in); }
+            if (op.ok) added++;
+            else if (problems.size() < 8) problems.add(line + "번째 줄: " + op.message);
+        }
+        if (cols == null) return Op.bad("머리글 줄을 찾지 못했습니다. 첫 줄에 성명, 징계종류, 위반일자 같은 항목 이름이 있어야 합니다. '양식 받기'의 파일을 참고하세요.");
+        String message = added + "건 등재" + (same > 0 ? ", 이미 있는 " + same + "건은 건너뜀" : "") + (problems.isEmpty() ? "" : ". 넣지 못한 줄 — " + String.join(" / ", problems));
+        return added > 0 || problems.isEmpty() ? Op.ok(message) : Op.bad(message);
+    }
+
+    public static String templateCsv() {
+        return "\uFEFF사번,성명,부서,직위,위반일자,위반내용,관련규정,징계종류,징계일자,징계기간,결정기관,근거문서번호,상태,비고,감사번호\r\n"
+            + "A-1001,홍길동,예시부서,대리,2026-01-05,근태 기록 허위 입력(예시),취업규칙 제0조,견책,2026-02-01,,인사위원회,인사-2026-001,초안,,\r\n";
+    }
+
     public String exportCsv() {
         List<Map<String, Object>> rows = list(null, null, null);
         StringBuilder sb = new StringBuilder("﻿순번,사번,성명,부서,직위,위반일자,위반내용,관련규정,징계종류,징계일자,징계기간,결정기관,근거문서번호,상태,비고,등록일자,담당자\r\n");

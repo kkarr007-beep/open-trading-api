@@ -20,6 +20,8 @@ function Read-Word {
         $app.DisplayAlerts = 0
         # Open(FileName, ConfirmConversions, ReadOnly, AddToRecentFiles)
         $doc = $app.Documents.Open($Path, $false, $true, $false)
+        # 표는 칸을 탭으로 나눈 줄로 바꿔 받는다(읽기 전용으로 연 사본에서만 바뀌고 저장하지 않는다). 화면에서 다시 표로 그린다.
+        try { for ($i = $doc.Tables.Count; $i -ge 1; $i--) { [void]$doc.Tables.Item($i).ConvertToText(1, $true) } } catch { }
         try { return [string]$doc.Content.Text }
         finally { $doc.Close($false); Release $doc }
     } finally { $app.Quit(); Release $app }

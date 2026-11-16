@@ -47,7 +47,6 @@ public class InboxService {
     private final ObjectMapper json = new ObjectMapper();
     private final ReentrantLock scanLock = new ReentrantLock();
     private final Map<String, String> seen = new ConcurrentHashMap<>();
-    private final Map<String, Long> retryAt = new ConcurrentHashMap<>();
 
     public InboxService(Db db, Paths2 paths, Settings settings, TextReader reader, CaseService cases, DisciplineService discipline) {
         this.db = db;
@@ -72,10 +71,11 @@ public class InboxService {
         return list;
     }
 
+    /** 설정에서 켠 경우에만 스스로 살펴본다. 기본은 '지금 수집'을 누를 때만 가져온다. */
     @Scheduled(initialDelay = 8_000, fixedDelay = 15_000)
     public void tick() {
         try {
-            scan(false);
+            if (settings.autoScan()) scan(false);
         } catch (RuntimeException e) {
             log.warn("수집 실패: {}", e.toString());
         }
@@ -109,7 +109,7 @@ public class InboxService {
                     log.info("폴더를 읽지 못함 {}: {}", folder, e.toString());
                 }
             }
-            applied += retryUnread(force);
+            if (force) applied += retryUnread();
         } finally {
             scanLock.unlock();
         }
@@ -151,6 +151,7 @@ public class InboxService {
             INSERT INTO Inbox(InboxId, SourcePath, FileName, SizeBytes, ModifiedAt, Sha256, DetectedAt, State, Encrypted, ReadState, ReadMethod, ReadNote, Body, Suggestion)
             VALUES (?,?,?,?,?,?,?,'대기',?,?,?,?,?,?)""", id, file.toString(), name, size, modified, sha, Kst.stamp(),
             r.encrypted(), r.state(), r.method(), r.note(), r.text().isBlank() ? null : r.text(), toJson(suggestion)));
+        storeRich(id, r.html());
         return id;
     }
 
@@ -158,20 +159,31 @@ public class InboxService {
         try { return Files.getLastModifiedTime(file).toMillis(); } catch (IOException e) { return fallback; }
     }
 
-    /** 암호화되어 못 읽은 문서는 포털 로그인 뒤에 열릴 수 있으므로 10분마다 다시 읽어 본다. */
-    private int retryUnread(boolean force) {
+    /** 암호화되어 못 읽은 문서는 '지금 수집'을 누를 때 한 번 더 읽어 본다. 스스로 되풀이하지 않는다. */
+    private int retryUnread() {
         int applied = 0;
-        long now = System.currentTimeMillis();
         for (Map<String, Object> row : db.rows("SELECT InboxId FROM Inbox WHERE State='대기' AND ReadState='암호문'")) {
             String id = (String) row.get("InboxId");
-            Long next = retryAt.get(id);
-            if (!force && next != null && now < next) continue;
-            retryAt.put(id, now + 600_000);
-            if (next == null && !force) continue; // 방금 읽어 본 것
             reread(id);
             if (autoApply(id)) applied++;
         }
         return applied;
+    }
+
+    private void storeRich(String id, String html) {
+        db.tx(conn -> {
+            Db.update(conn, "DELETE FROM InboxRich WHERE InboxId=?", id);
+            if (!Txt.blank(html)) Db.update(conn, "INSERT INTO InboxRich(InboxId, Html) VALUES (?,?)", id, html);
+            return null;
+        });
+    }
+
+    /** 화면에 보여 줄 모양. */
+    public String html(String id) {
+        Map<String, Object> rich = db.row("SELECT Html FROM InboxRich WHERE InboxId=?", id);
+        if (rich != null) return (String) rich.get("Html");
+        String body = text(id);
+        return body == null ? null : local.audit.extract.Rich.fromText(body);
     }
 
     public Op reread(String id) {
@@ -186,6 +198,7 @@ public class InboxService {
         Map<String, Object> suggestion = suggest((String) row.get("FileName"), r.text());
         db.tx(conn -> Db.update(conn, "UPDATE Inbox SET Encrypted=?, ReadState=?, ReadMethod=?, ReadNote=?, Body=?, Suggestion=? WHERE InboxId=?",
             r.encrypted(), r.state(), r.method(), r.note(), r.text().isBlank() ? null : r.text(), toJson(suggestion), id));
+        storeRich(id, r.html());
         return r.ok() ? Op.ok("내용을 읽었습니다.") : Op.fail(409, Txt.blank(r.note()) ? "내용을 읽지 못했습니다." : r.note());
     }
 
@@ -302,6 +315,8 @@ public class InboxService {
         String kind = CaseService.KINDS.contains(plan.get("kind")) ? plan.get("kind") : "증빙";
         List<String> notes = new ArrayList<>();
         String caseId = null;
+        Map<String, Object> richRow = db.row("SELECT Html FROM InboxRich WHERE InboxId=?", id);
+        String html = richRow == null ? null : (String) richRow.get("Html");
         LocalDate today = Kst.today();
         String docDate = Txt.blank(s.get("docDate")) ? today.toString() : Txt.str(s.get("docDate"));
 
@@ -315,6 +330,7 @@ public class InboxService {
                 "", "", Txt.fit(summary, 160, false), "1".equals(plan.get("useBody")) ? Txt.fit(body, 20000, true) : "", settings.defaultRetention());
             if (!made.ok) return made;
             caseId = made.id;
+            if ("1".equals(plan.get("useBody")) && html != null) cases.setBodyHtml(caseId, html);
             notes.add("새 건 초안 " + made.extra);
         } else if (Txt.isId(target)) {
             caseId = target;
@@ -324,7 +340,7 @@ public class InboxService {
 
         if (caseId != null) {
             TextReader.Result pre = new TextReader.Result(Txt.str(row.get("ReadState")), Txt.str(row.get("ReadMethod")), Txt.str(row.get("ReadNote")),
-                body, Integer.valueOf(1).equals(row.get("Encrypted")));
+                body, Integer.valueOf(1).equals(row.get("Encrypted")), html);
             Op added;
             try (InputStream in = Files.newInputStream(file)) {
                 added = cases.addFile(caseId, null, kind, name, name, in, pre);
@@ -391,7 +407,7 @@ public class InboxService {
         String finalCase = caseId;
         db.tx(conn -> Db.update(conn, "UPDATE Inbox SET State='등록됨', AppliedCaseId=?, AppliedNote=?, Body=NULL, Suggestion=NULL, SourcePath=?, ModifiedAt=? WHERE InboxId=?",
             finalCase, note, settled.toString(), modifiedOf(settled, ((Number) row.get("ModifiedAt")).longValue()), id));
-        retryAt.remove(id);
+        storeRich(id, null);
         return Op.ok(note, caseId);
     }
 
@@ -419,6 +435,7 @@ public class InboxService {
 
     public Op exclude(String id) {
         int n = db.tx(conn -> Db.update(conn, "UPDATE Inbox SET State='제외', AppliedNote='등록하지 않음', Body=NULL, Suggestion=NULL WHERE InboxId=? AND State IN ('대기','실패')", id));
+        if (n == 1) storeRich(id, null);
         return n == 1 ? Op.ok("수집함에서 뺐습니다. 원래 파일은 그대로 있습니다.") : Op.fail(404, "수집 항목을 찾을 수 없음");
     }
 

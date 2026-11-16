@@ -111,6 +111,7 @@ public class OtherControllers {
         model.addAttribute("folders", inbox.folders());
         model.addAttribute("caseRefs", cases.caseRefs());
         model.addAttribute("autoMode", settings.autoMode());
+        model.addAttribute("autoScan", settings.autoScan());
         model.addAttribute("officeOn", settings.office() && office.available());
         model.addAttribute("kinds", CaseService.KINDS);
         return "inbox";
@@ -143,6 +144,44 @@ public class OtherControllers {
             default -> Op.fail(404, "없는 작업입니다.");
         };
         return Web.reply(req, op, null);
+    }
+
+    @GetMapping("/inbox/{id}/view")
+    public ResponseEntity<byte[]> inboxView(@PathVariable String id, @RequestParam(required = false) String dl) {
+        if (dl != null) return inboxText(id, dl);
+        return Web.html(local.audit.extract.Rich.page("읽은 내용", inbox.html(id)));
+    }
+
+    @GetMapping("/discipline/template")
+    public ResponseEntity<byte[]> disciplineTemplate() {
+        return Web.csv("징계기록-양식.csv", DisciplineService.templateCsv());
+    }
+
+    /** CSV나 엑셀(xlsx) 파일로 징계기록을 한꺼번에 등재한다. */
+    @PostMapping("/discipline/import")
+    public ResponseEntity<?> disciplineImport(@RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
+        if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("CSV 또는 엑셀(xlsx) 파일을 고르세요."), null);
+        String name = String.valueOf(upload.getOriginalFilename()).toLowerCase();
+        List<List<String>> rows;
+        try {
+            if (name.endsWith(".xlsx")) {
+                java.nio.file.Path tmp = java.nio.file.Files.createTempFile(paths.tmp, "import", ".xlsx");
+                try {
+                    upload.transferTo(tmp);
+                    rows = new java.util.ArrayList<>();
+                    for (String line : local.audit.extract.TextReader.xlsx(tmp).split("\n")) rows.add(java.util.Arrays.asList(line.split("\t", -1)));
+                } finally {
+                    java.nio.file.Files.deleteIfExists(tmp);
+                }
+            } else if (name.endsWith(".csv") || name.endsWith(".txt") || name.endsWith(".tsv")) {
+                rows = DisciplineService.parseCsv(local.audit.extract.TextReader.decode(upload.getBytes()));
+            } else {
+                return Web.reply(req, Op.bad("CSV 또는 엑셀(xlsx) 파일만 받습니다. 암호화된 엑셀은 수집함에 넣으세요."), null);
+            }
+        } catch (Exception e) {
+            return Web.reply(req, Op.bad("파일을 읽지 못했습니다. 암호화된 파일이면 수집함에 넣으세요."), null);
+        }
+        return Web.reply(req, discipline.importRows(rows), null);
     }
 
     @GetMapping("/inbox/{id}/text")
@@ -197,6 +236,7 @@ public class OtherControllers {
             "keepText", settings.keepText(), "autoPurge", settings.autoPurge(), "office", settings.office(), "moveProcessed", settings.moveProcessed(),
             "defaultRetention", settings.get("defaultRetention", ""), "replyDays", settings.replyDays()));
         model.addAttribute("autoBackup", settings.autoBackup());
+        model.addAttribute("autoScan", settings.autoScan());
         model.addAttribute("home", paths.home.toString());
         model.addAttribute("inboxFolder", paths.inbox.toString());
         model.addAttribute("officeAvailable", office.available());
@@ -225,7 +265,7 @@ public class OtherControllers {
         settings.set("autoMode", p.get("autoMode"));
         settings.set("defaultRetention", ret == null ? "" : ret.toString());
         settings.set("replyDays", days.toString());
-        for (String key : List.of("keepText", "autoPurge", "office", "moveProcessed", "autoBackup")) settings.set(key, "1".equals(p.get(key)) ? "1" : "0");
+        for (String key : List.of("keepText", "autoPurge", "office", "moveProcessed", "autoBackup", "autoScan")) settings.set(key, "1".equals(p.get(key)) ? "1" : "0");
         return Web.reply(req, Op.ok("설정을 저장했습니다."), null);
     }
 }

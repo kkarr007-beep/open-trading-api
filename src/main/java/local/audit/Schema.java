@@ -13,6 +13,8 @@ final class Schema {
                     if (!sql.isBlank()) st.execute(sql);
                 }
             }
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM pragma_table_info('AttachmentText') WHERE name='Html'") == 0)
+                Db.update(conn, "ALTER TABLE AttachmentText ADD COLUMN Html TEXT NULL");
             return null;
         });
         try {
@@ -175,6 +177,8 @@ final class Schema {
           State TEXT NOT NULL,
           Note TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS CaseRich (CaseId TEXT PRIMARY KEY, Html TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS InboxRich (InboxId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase);
         CREATE INDEX IF NOT EXISTS IX_Actions_Due ON Actions(ReplyDueOn, ActionState);
         CREATE INDEX IF NOT EXISTS IX_History_Case ON History(CaseId, Seq);

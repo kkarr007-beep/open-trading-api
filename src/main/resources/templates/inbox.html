@@ -7,7 +7,7 @@
     <div>
         <p class="kicker">자동 수집</p>
         <h1>수집함</h1>
-        <p class="hint">아래 폴더에 문서를 넣어 두면 15초 안에 가져와 내용을 읽고, 읽은 내용에 맞춰 건에 붙이거나 초안을 만듭니다. 자동으로 만드는 것은 모두 초안이며 확정은 직접 합니다.</p>
+        <p class="hint">아래 폴더에 문서를 넣어 두고 <strong>지금 수집</strong>을 누르면 가져와 내용을 읽고, 읽은 내용에 맞춰 건에 붙이거나 초안을 만듭니다. 만드는 것은 모두 초안이며 확정은 직접 합니다.</p>
     </div>
     <form method="post" action="/inbox/scan" data-write="1" class="row-actions"><button type="submit" class="btn btn-primary">지금 수집</button></form>
 </div>
@@ -23,6 +23,7 @@
         <p class="hint">
             자동 등록:
             <strong th:text="${autoMode == 'full'} ? '새 건 초안·조치요구·회신·징계기록까지' : (${autoMode == 'attach'} ? '맞는 건에 붙이기까지' : '끔 (수집만)')"></strong> ·
+            폴더 살펴보기: <strong th:text="${autoScan} ? '자동(15초마다)' : '지금 수집을 누를 때만'"></strong> ·
             암호화 문서 읽기: <strong th:text="${officeOn} ? '사무용 프로그램으로 열어 읽음' : '사용 안 함'"></strong> ·
             <a href="/settings">설정에서 바꾸기</a>
         </p>
@@ -53,12 +54,12 @@
             <p class="banner warn" th:if="${row.State == '실패'}" th:text="${row.AppliedNote}"></p>
             <p class="banner warn" th:if="${!#strings.isEmpty(row.ReadNote) and row.ReadState != '읽음'}">
                 <strong th:text="${row.ReadNote}"></strong>
-                포털에 로그인한 뒤 '다시 읽기'를 누르세요. 10분마다 자동으로도 다시 읽습니다. 읽지 못해도 건을 골라 원문만 붙일 수 있습니다.
+                포털에 로그인한 뒤 '다시 읽기'나 '지금 수집'을 누르세요. 스스로 되풀이해 읽지는 않습니다. 읽지 못해도 건을 골라 원문만 붙일 수 있습니다.
             </p>
             <p class="hint path-clip" th:title="${row.SourcePath}" th:text="${row.SourcePath}"></p>
             <th:block th:if="${row.HasText}">
                 <pre class="read-preview" th:text="${row.Preview}"></pre>
-                <p><a th:href="|/inbox/${row.InboxId}/text|" data-preview="text" th:data-title="|${row.FileName} — 읽은 내용|" data-meta="" data-tile="TXT" data-tile-kind="txt">읽은 내용 전체 보기</a></p>
+                <p><a class="btn" th:href="|/inbox/${row.InboxId}/view|" data-preview="text" th:data-title="|${row.FileName} — 읽은 내용|" data-meta="표와 그림을 살린 모양" data-tile="DOC" data-tile-kind="doc">읽은 내용 전체 보기 (표·그림 포함)</a></p>
             </th:block>
             <form method="post" th:action="|/inbox/${row.InboxId}/apply|" data-write="1" th:if="${row.State == '대기'}">
                 <div class="form-grid">

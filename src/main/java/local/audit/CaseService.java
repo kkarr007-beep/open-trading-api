@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Service;
 
+import local.audit.extract.Rich;
 import local.audit.extract.TextReader;
 
 /** 감사 건: 건, 결과, 조치요구, 이행, 자료, 이력. */
@@ -182,6 +183,8 @@ public class CaseService {
         return withCase(caseId, version, (conn, row) -> {
             if (!"초안".equals(row.get("Phase"))) throw Op.abort("확정된 결과 본문은 확정 취소 뒤에만 고칠 수 있습니다.");
             if (contentLocked(row)) throw Op.abort(409, LOCKED);
+            // 본문 글자를 고쳤으면 가져온 원문 모양은 더 맞지 않으므로 치운다.
+            if (!text.equals(Txt.str(row.get("Body")))) Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", caseId);
             bump(conn, caseId, "SummaryLine=?, Body=?", line, text.isEmpty() ? null : text);
             log(conn, caseId, "수정", "결과", caseId, "결과 저장");
             return Op.ok("저장했습니다.");
@@ -344,7 +347,7 @@ public class CaseService {
             r.encrypted(), r.state(), r.method(), r.note(), attachmentId);
         Db.update(conn, "DELETE FROM AttachmentText WHERE AttachmentId=?", attachmentId);
         if (r.ok() && !r.text().isBlank() && settings.keepText())
-            Db.update(conn, "INSERT INTO AttachmentText(AttachmentId, Body) VALUES (?,?)", attachmentId, r.text());
+            Db.update(conn, "INSERT INTO AttachmentText(AttachmentId, Body, Html) VALUES (?,?,?)", attachmentId, r.text(), r.html());
     }
 
     private void queueRead(String attachmentId) {
@@ -392,6 +395,24 @@ public class CaseService {
         return row == null ? null : (String) row.get("Body");
     }
 
+    /** 화면에 보여 줄 모양. 표·그림을 살린 것이 있으면 그것을, 없으면 글자에서 만든다. */
+    public String fileHtml(String caseId, String attachmentId) {
+        Map<String, Object> row = db.row("""
+            SELECT t.Body, t.Html FROM AttachmentText t JOIN Attachments a ON a.AttachmentId=t.AttachmentId
+            WHERE a.CaseId=? AND a.AttachmentId=?""", caseId, attachmentId);
+        if (row == null) return null;
+        return row.get("Html") != null ? (String) row.get("Html") : Rich.fromText((String) row.get("Body"));
+    }
+
+    /** 가져온 원문 모양을 건의 결과 본문 옆에 둔다. */
+    public void setBodyHtml(String caseId, String html) {
+        db.tx(conn -> {
+            Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", caseId);
+            if (!Txt.blank(html)) Db.update(conn, "INSERT INTO CaseRich(CaseId, Html) VALUES (?,?)", caseId, html);
+            return null;
+        });
+    }
+
     public Map<String, Object> attachment(String caseId, String attachmentId) {
         return db.row("SELECT * FROM Attachments WHERE CaseId=? AND AttachmentId=?", caseId, attachmentId);
     }
@@ -404,6 +425,9 @@ public class CaseService {
             if (!"초안".equals(row.get("Phase"))) throw Op.abort("확정된 결과 본문은 확정 취소 뒤에만 고칠 수 있습니다.");
             if (contentLocked(row)) throw Op.abort(409, LOCKED);
             bump(conn, caseId, "Body=?", Txt.fit(text, 20000, true));
+            Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", caseId);
+            Map<String, Object> rich = Db.row(conn, "SELECT Html FROM AttachmentText WHERE AttachmentId=?", attachmentId);
+            if (rich != null && rich.get("Html") != null) Db.update(conn, "INSERT INTO CaseRich(CaseId, Html) VALUES (?,?)", caseId, rich.get("Html"));
             log(conn, caseId, "수정", "결과", caseId, "자료에서 읽은 내용으로 결과 본문 채움");
             return Op.ok("읽은 내용을 결과 본문에 넣었습니다. 내용을 확인하세요.");
         });
@@ -517,9 +541,17 @@ public class CaseService {
                 LocalDate dueOn = Kst.date(a.get("ReplyDueOn"));
                 a.put("Overdue", !finished && dueOn != null && dueOn.isBefore(today));
                 List<Map<String, Object>> entries = Db.rows(conn, "SELECT * FROM Fulfillments WHERE ActionId=? ORDER BY At", a.get("ActionId"));
-                for (Map<String, Object> e : entries) e.put("AtDisplay", Kst.display((String) e.get("At")));
+                for (Map<String, Object> e : entries) {
+                    e.put("AtDisplay", Kst.display((String) e.get("At")));
+                    e.put("ReplyView", Rich.fromText((String) e.get("ReplyBody")));
+                    e.put("CheckView", Rich.fromText((String) e.get("CheckBody")));
+                }
                 a.put("Entries", entries);
+                a.put("ContentView", Rich.fromText((String) a.get("Content")));
             }
+            Map<String, Object> rich = Db.row(conn, "SELECT Html FROM CaseRich WHERE CaseId=?", caseId);
+            c.put("HasRichBody", rich != null);
+            c.put("BodyView", rich != null ? rich.get("Html") : Rich.fromText((String) c.get("Body")));
             c.put("Actions", actions);
             c.put("ActionCount", actions.size());
             c.put("DoneActions", done);

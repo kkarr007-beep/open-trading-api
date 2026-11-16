@@ -32,7 +32,7 @@
 <p class="empty" th:if="${#lists.isEmpty(files)}">조건에 맞는 자료가 없습니다.</p>
 <ul class="file-list" th:unless="${#lists.isEmpty(files)}">
     <li class="file-row" th:each="f : ${files}" th:with="href=|/cases/${f.CaseId}/files/${f.AttachmentId}|">
-        <a class="file-hit" th:href="${f.HasText and f.OpenKind == 'download'} ? ${href + '/text'} : ${href}"
+        <a class="file-hit" th:href="${f.HasText and f.OpenKind == 'download'} ? ${href + '/view'} : ${href}"
            th:data-preview="${f.HasText and f.OpenKind == 'download'} ? 'text' : ${f.OpenKind}" th:data-title="${f.DisplayName}"
            th:data-meta="|${f.Kind} · ${f.SizeText} · ${f.RegisteredAtDisplay}|" th:data-tile="${f.TileLabel}" th:data-tile-kind="${f.Tile}">
             <span class="file-ico" th:classappend="|ico-${f.Tile}|" aria-hidden="true" th:text="${f.TileLabel}">FILE</span>

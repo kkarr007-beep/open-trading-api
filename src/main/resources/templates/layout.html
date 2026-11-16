@@ -47,11 +47,17 @@
             </div>
             <a class="user-menu-link" href="/settings" title="설정">
                 <span class="avatar" aria-hidden="true" th:text="${ownerInitial}">나</span>
-                <span class="who"><strong th:text="${ownerName}">나</strong><span>이 컴퓨터 전용</span></span>
+                <span class="who"><strong th:text="${ownerName}">나</strong><span th:text="|이 컴퓨터 전용 · ${appVersion}판|">이 컴퓨터 전용</span></span>
             </a>
         </div>
     </aside>
     <div class="workspace">
+        <div class="backbar no-print">
+            <button type="button" class="btn btn-quiet" data-back>← 이전 화면</button>
+            <a class="btn" th:if="${listHref != null}" th:href="${listHref}" th:text="|← ${listLabel}으로|">← 목록으로</a>
+            <a class="btn btn-quiet" th:if="${showCasesLink}" href="/cases">건 목록</a>
+            <a class="btn btn-quiet" th:if="${nav != 'todo'}" href="/todo">할 일</a>
+        </div>
         <main id="main">
             <div class="banner danger" role="alert" th:unless="${integrityOk}">
                 <strong>이력 훼손 — 기록의 신뢰성을 확인할 수 없습니다.</strong>

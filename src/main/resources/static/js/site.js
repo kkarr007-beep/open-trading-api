@@ -417,3 +417,10 @@
   window.addEventListener("audit-app-ready", dateHints);
   new MutationObserver(dateHints).observe(document.querySelector("main") || document.body, { childList: true });
 })();
+
+// 이전 화면으로
+document.addEventListener("click", function (event) {
+  if (!event.target.closest("[data-back]")) return;
+  event.preventDefault();
+  if (history.length > 1) history.back(); else location.href = "/todo";
+});
