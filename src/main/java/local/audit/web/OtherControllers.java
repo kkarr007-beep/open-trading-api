@@ -39,9 +39,12 @@ public class OtherControllers {
     private final Paths2 paths;
     private final OfficeBridge office;
     private final LegacyImport legacy;
+    private final org.springframework.context.ConfigurableApplicationContext context;
 
     public OtherControllers(CaseService cases, DisciplineService discipline, InboxService inbox, RetentionService retention,
-                            Settings settings, Chain chain, Paths2 paths, OfficeBridge office, LegacyImport legacy) {
+                            Settings settings, Chain chain, Paths2 paths, OfficeBridge office, LegacyImport legacy,
+                            org.springframework.context.ConfigurableApplicationContext context) {
+        this.context = context;
         this.cases = cases;
         this.discipline = discipline;
         this.inbox = inbox;
@@ -157,6 +160,17 @@ public class OtherControllers {
         model.addAttribute("home", paths.home.toString());
         model.addAttribute("holds", cases.caseRefs());
         return "admin";
+    }
+
+    /** 이미 켜져 있는지 알아볼 때 쓴다. */
+    @GetMapping("/ping")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public String ping() { return "audit-record"; }
+
+    @PostMapping("/admin/quit")
+    public ResponseEntity<?> quit(HttpServletRequest req) {
+        local.audit.App.quit(context);
+        return Web.reply(req, Op.ok("프로그램을 끝냅니다. 이 창은 닫아도 됩니다."), null);
     }
 
     @PostMapping("/admin/{what}")

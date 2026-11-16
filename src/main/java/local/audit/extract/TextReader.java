@@ -164,7 +164,14 @@ public class TextReader {
             return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes, skip, bytes.length - skip)).toString();
         } catch (CharacterCodingException e) {
-            return new String(bytes, Charset.forName("x-windows-949"));
+            for (String name : new String[] { "x-windows-949", "EUC-KR" }) {
+                try {
+                    return new String(bytes, Charset.forName(name));
+                } catch (RuntimeException unsupported) {
+                    // 이 런타임에 없는 문자표면 다음 것으로
+                }
+            }
+            return new String(bytes, StandardCharsets.ISO_8859_1);
         }
     }
 

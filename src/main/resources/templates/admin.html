@@ -69,6 +69,11 @@
     <p><span class="path" th:text="${home}"></span> <button type="button" class="btn btn-quiet" th:data-copy="${home}">위치 복사</button></p>
     <p class="hint">data(데이터 파일), files(자료 원문), inbox(수집함), backup(백업) 폴더가 이 아래에 있습니다. 데이터 파일을 직접 열어 고치지 마세요.</p>
 </section>
+<section class="card">
+    <h2>프로그램 끝내기</h2>
+    <p class="hint">전용 창으로 쓰는 경우에는 창을 닫으면 프로그램도 끝납니다. 브라우저로 열어 쓰는 경우에는 여기서 끝냅니다.</p>
+    <form method="post" action="/admin/quit" data-write="1"><button type="submit" class="btn">프로그램 끝내기</button></form>
+</section>
 </th:block>
 </body>
 </html>
