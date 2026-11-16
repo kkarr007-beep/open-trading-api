@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>전체 찾기 · 감사기록</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">전체 찾기</p>
+        <h1 th:text="${#strings.isEmpty(searchQuery)} ? '찾을 말을 적으세요' : |'${searchQuery}' 찾은 결과|"></h1>
+        <p class="hint">건의 제목·대상·문서번호·본문, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
+    </div>
+</div>
+<th:block th:unless="${#strings.isEmpty(searchQuery)}">
+<section aria-labelledby="s-cases">
+    <h2 id="s-cases">건 <span class="count" th:text="${#lists.size(caseHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(caseHits)}">맞는 건이 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="c : ${caseHits}"><a th:href="|/cases/${c.CaseId}|">
+            <strong th:text="${c.Title}"></strong>
+            <span th:text="|${c.DocumentNo} · ${c.Year} ${c.Category} · ${c.Target} · ${c.DisplayState}|"></span>
+            <span th:unless="${#strings.isEmpty(c.SummaryLine)}" th:text="${c.SummaryLine}"></span>
+        </a></li>
+    </ul>
+    <p th:if="${#lists.size(caseHits) >= 25}"><a th:href="@{/cases(text=${searchQuery})}">건 목록에서 모두 보기</a></p>
+</section>
+<section aria-labelledby="s-files">
+    <h2 id="s-files">자료 <span class="count" th:text="${#lists.size(fileHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(fileHits)}">맞는 자료가 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="f : ${fileHits}"><a th:href="|/cases/${f.CaseId}#files|">
+            <strong th:text="${f.DisplayName}"></strong>
+            <span th:text="|${f.Kind} · ${f.DocumentNo} ${f.CaseTitle} · ${f.RegisteredAtDisplay}|"></span>
+            <span th:if="${f.Snippet != null}" th:text="${f.Snippet}"></span>
+        </a></li>
+    </ul>
+</section>
+<section aria-labelledby="s-people">
+    <h2 id="s-people">징계기록 <span class="count" th:text="${#lists.size(peopleHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(peopleHits)}">맞는 징계기록이 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="d : ${peopleHits}"><a th:href="|/discipline/${d.DisciplineId}|">
+            <strong th:text="|순번 ${d.Seq} · ${d.PersonMasked} · ${d.SanctionType}|"></strong>
+            <span th:text="|${d.Department} ${d.Position} · 위반일자 ${d.ViolationDate} · ${d.Status}|"></span>
+        </a></li>
+    </ul>
+</section>
+</th:block>
+</th:block>
+</body>
+</html>

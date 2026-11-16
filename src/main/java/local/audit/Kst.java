@@ -32,10 +32,14 @@ public final class Kst {
         }
     }
 
+    /** 2026-12-31, 2026.12.31, 2026/12/31, 20261231, 2026년 12월 31일을 모두 받는다. */
     public static LocalDate date(Object text) {
         if (text == null) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("^(\\d{4})\\s*[-./년]?\\s*(\\d{1,2})\\s*[-./월]?\\s*(\\d{1,2})\\s*일?\\.?$").matcher(text.toString().strip());
+        if (!m.matches()) return null;
         try {
-            return LocalDate.parse(text.toString().trim());
+            return LocalDate.of(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
         } catch (RuntimeException e) {
             return null;
         }

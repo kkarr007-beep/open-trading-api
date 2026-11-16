@@ -262,7 +262,7 @@ public class CaseService {
             String actionId = Txt.newId();
             Db.update(conn, """
                 INSERT INTO Actions(ActionId, CaseId, Sequence, Title, Type, TargetDept, RequestedOn, ReplyDueOn, Content, ActionState)
-                VALUES (?,?,?,?,?,?,?,?,?,'요구중')""", actionId, caseId, seq, t, type, d, requestedOn.strip(), dueOn.strip(), c.isEmpty() ? null : c);
+                VALUES (?,?,?,?,?,?,?,?,?,'요구중')""", actionId, caseId, seq, t, type, d, Kst.date(requestedOn).toString(), Kst.date(dueOn).toString(), c.isEmpty() ? null : c);
             bump(conn, caseId, "확정".equals(row.get("Phase")) ? "Phase='조치중'" : "");
             log(conn, caseId, "조치요구", "조치", actionId, "조치요구 " + seq + " 추가");
             return Op.ok("저장했습니다.").extra(actionId);
@@ -700,6 +700,7 @@ public class CaseService {
         for (Map<String, Object> f : rows) {
             decorateFile(f);
             String full = (String) f.remove("FullText");
+            f.put("Snippet", null);
             if (!Txt.blank(body) && full != null) {
                 int at = full.toLowerCase().indexOf(body.strip().toLowerCase());
                 if (at >= 0) {

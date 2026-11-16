@@ -157,6 +157,7 @@ public class OtherControllers {
         model.addAttribute("backups", retention.recentBackups());
         model.addAttribute("backupFolder", settings.get("backupFolder", paths.backup.toString()));
         model.addAttribute("codes", cases.categoryCodes());
+        model.addAttribute("autoBackup", settings.autoBackup());
         model.addAttribute("home", paths.home.toString());
         model.addAttribute("holds", cases.caseRefs());
         return "admin";
@@ -165,7 +166,9 @@ public class OtherControllers {
     /** 이미 켜져 있는지 알아볼 때 쓴다. */
     @GetMapping("/ping")
     @org.springframework.web.bind.annotation.ResponseBody
-    public String ping() { return "audit-record"; }
+    public String ping(@RequestParam(required = false) String show) {
+        return show != null && local.audit.App.bringToFront() ? "audit-record shown" : "audit-record";
+    }
 
     @PostMapping("/admin/quit")
     public ResponseEntity<?> quit(HttpServletRequest req) {
@@ -193,6 +196,7 @@ public class OtherControllers {
             "ownerName", settings.owner(), "watchFolders", String.join("\n", settings.watchFolders()), "autoMode", settings.autoMode(),
             "keepText", settings.keepText(), "autoPurge", settings.autoPurge(), "office", settings.office(), "moveProcessed", settings.moveProcessed(),
             "defaultRetention", settings.get("defaultRetention", ""), "replyDays", settings.replyDays()));
+        model.addAttribute("autoBackup", settings.autoBackup());
         model.addAttribute("home", paths.home.toString());
         model.addAttribute("inboxFolder", paths.inbox.toString());
         model.addAttribute("officeAvailable", office.available());
@@ -221,7 +225,7 @@ public class OtherControllers {
         settings.set("autoMode", p.get("autoMode"));
         settings.set("defaultRetention", ret == null ? "" : ret.toString());
         settings.set("replyDays", days.toString());
-        for (String key : List.of("keepText", "autoPurge", "office", "moveProcessed")) settings.set(key, "1".equals(p.get(key)) ? "1" : "0");
+        for (String key : List.of("keepText", "autoPurge", "office", "moveProcessed", "autoBackup")) settings.set(key, "1".equals(p.get(key)) ? "1" : "0");
         return Web.reply(req, Op.ok("설정을 저장했습니다."), null);
     }
 }

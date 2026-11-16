@@ -41,6 +41,7 @@ public class RetentionService {
     public void tick() {
         try {
             if (settings.autoPurge()) purgeDue();
+            autoBackup();
         } catch (RuntimeException e) {
             log.warn("보존 삭제 처리 실패: {}", e.toString());
         }
@@ -102,12 +103,39 @@ public class RetentionService {
         }
     }
 
+    public static final int AUTO_BACKUP_KEEP = 7;
+
+    /** 하루에 한 번, 기록이 있을 때만. 자동 백업은 최근 7개만 남긴다. 직접 만든 백업은 지우지 않는다. */
+    void autoBackup() {
+        if (!settings.autoBackup() || !chain.intact()) return;
+        if (db.read(c -> Db.intOf(c, "SELECT (SELECT COUNT(*) FROM Cases) + (SELECT COUNT(*) FROM Discipline)")) == 0) return;
+        String today = Kst.today().toString();
+        if (today.equals(settings.get("lastAutoBackup", ""))) return;
+        String folder = settings.get("backupFolder", paths.backup.toString());
+        Op op = backup(folder, true);
+        settings.set("lastAutoBackup", today);
+        if (!op.ok) { log.warn("자동 백업 실패: {}", op.message); return; }
+        try (Stream<Path> list = Files.list(Path.of(folder))) {
+            List<Path> autos = list.filter(p -> Files.isDirectory(p) && p.getFileName().toString().matches("감사기록-백업-\\d{8}-\\d{6}-자동"))
+                .sorted().toList();
+            for (int i = 0; i < autos.size() - AUTO_BACKUP_KEEP; i++) {
+                try (Stream<Path> walk = Files.walk(autos.get(i))) {
+                    for (Path p : walk.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            log.info("옛 자동 백업 정리 건너뜀: {}", e.toString());
+        }
+    }
+
+    public Op backup(String folder) { return backup(folder, false); }
+
     /** data 파일과 files 폴더를 지정한 폴더 아래 날짜 이름으로 복사한다. 인터넷으로 보내지 않는다. */
-    public Op backup(String folder) {
+    public Op backup(String folder, boolean auto) {
         Path root = Txt.blank(folder) ? paths.backup : Path.of(folder.strip()).toAbsolutePath().normalize();
         if (root.startsWith(paths.files) || root.startsWith(paths.data)) return Op.bad("data, files 폴더 안에는 백업하지 않습니다.");
         String id = Kst.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        Path dest = root.resolve("감사기록-백업-" + id);
+        Path dest = root.resolve("감사기록-백업-" + id + (auto ? "-자동" : ""));
         try {
             Files.createDirectories(dest.resolve("data"));
             Path dbCopy = dest.resolve("data").resolve("audit.db");
@@ -127,10 +155,10 @@ public class RetentionService {
             }
             int count = n;
             db.tx(conn -> {
-                Db.update(conn, "INSERT INTO Backups(BackupId, At, Location, State, Note) VALUES (?,?,?,?,?)", id, Kst.stamp(), dest.toString(), "완료", "파일 " + count + "개");
-                return Chain.append(conn, null, settings.owner(), "백업", "백업", id, "백업 완료. 파일 " + count + "개");
+                Db.update(conn, "INSERT INTO Backups(BackupId, At, Location, State, Note) VALUES (?,?,?,?,?)", id, Kst.stamp(), dest.toString(), "완료", (auto ? "자동 · " : "") + "파일 " + count + "개");
+                return Chain.append(conn, null, auto ? null : settings.owner(), "백업", "백업", id, (auto ? "자동 백업 완료. 파일 " : "백업 완료. 파일 ") + count + "개");
             });
-            settings.set("backupFolder", root.toString());
+            if (!auto) settings.set("backupFolder", root.toString());
             return Op.ok("백업을 마쳤습니다: " + dest);
         } catch (IOException | RuntimeException e) {
             db.tx(conn -> Db.update(conn, "INSERT OR REPLACE INTO Backups(BackupId, At, Location, State, Note) VALUES (?,?,?,?,?)", id, Kst.stamp(), dest.toString(), "실패", "복사 중 오류"));

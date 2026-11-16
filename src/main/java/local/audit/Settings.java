@@ -48,6 +48,7 @@ public class Settings {
     /** off: 수집만, attach: 맞는 건에 붙이기까지, full: 새 건 초안·조치요구·징계기록까지. */
     public String autoMode() { return get("autoMode", "full"); }
     public boolean keepText() { return "1".equals(get("keepText", "1")); }
+    public boolean autoBackup() { return "1".equals(get("autoBackup", "1")); }
     public boolean autoPurge() { return "1".equals(get("autoPurge", "0")); }
     public boolean office() { return "1".equals(get("office", "1")); }
     public boolean moveProcessed() { return "1".equals(get("moveProcessed", "1")); }

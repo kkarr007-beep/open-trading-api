@@ -12,26 +12,28 @@
 </head>
 <body th:classappend="${integrityOk} ? '' : 'frozen-integrity'">
     <a class="skip" href="#main">본문으로 건너뛰기</a>
-    <button type="button" class="scrim" aria-label="메뉴 닫기"></button>
-    <header class="top" id="app-nav">
+    <aside class="side" id="app-nav">
         <a class="brand" href="/todo">
             <span class="brand-mark" aria-hidden="true">감</span>
             <span>감사기록</span>
         </a>
-        <button type="button" class="nav-toggle" aria-controls="menu" aria-expanded="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <span class="sr">메뉴</span>
-        </button>
+        <form method="get" action="/search" class="side-search" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <input name="q" th:value="${searchQuery}" placeholder="전체 찾기" maxlength="120" autocomplete="off" spellcheck="false" aria-label="전체 찾기" data-global-search />
+            <kbd>Ctrl K</kbd>
+        </form>
         <nav id="menu" aria-label="업무 화면">
-            <a href="/todo" th:aria-current="${nav == 'todo'} ? 'page'">할 일</a>
-            <a href="/inbox" th:aria-current="${nav == 'inbox'} ? 'page'">수집함<span class="count" th:if="${inboxPending > 0}" th:text="${inboxPending}">0</span></a>
-            <a href="/cases" th:aria-current="${nav == 'cases'} ? 'page'">건 목록</a>
-            <a href="/files" th:aria-current="${nav == 'files'} ? 'page'">자료</a>
-            <a href="/discipline" th:aria-current="${nav == 'discipline'} ? 'page'">징계기록</a>
-            <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'">관리</a>
-            <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'">설정</a>
+            <p class="side-label">업무</p>
+            <a href="/todo" th:aria-current="${nav == 'todo'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>할 일</span></a>
+            <a href="/inbox" th:aria-current="${nav == 'inbox'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 6.5 5h11L20 13.5V19H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13.5h5a3 3 0 0 0 6 0h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>수집함</span><span class="count" th:if="${inboxPending > 0}" th:text="${inboxPending}">0</span></a>
+            <a href="/cases" th:aria-current="${nav == 'cases'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 9h6M9 13h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>건 목록</span></a>
+            <a href="/files" th:aria-current="${nav == 'files'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h6l2 2h8v9H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>자료</span></a>
+            <a href="/discipline" th:aria-current="${nav == 'discipline'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 19c.8-3.2 3.3-5 6.5-5s5.700 1.800 6.500 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>징계기록</span></a>
+            <p class="side-label">프로그램</p>
+            <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.500 19 6.500v5c0 4.300-2.900 7.400-7 9-4.100-1.600-7-4.700-7-9v-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>관리</span></a>
+            <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3.500v3M12 17.500v3M3.500 12h3M17.500 12h3M6 6l2.100 2.100M15.900 15.900 18 18M18 6l-2.100 2.100M8.100 15.900 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>설정</span></a>
         </nav>
-        <div class="bar-end">
+        <div class="side-end">
             <div class="theme" role="group" aria-label="화면 테마">
                 <button type="button" class="theme-btn" data-theme-set="light" aria-pressed="false" aria-label="라이트" title="라이트">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -48,7 +50,7 @@
                 <span class="who"><strong th:text="${ownerName}">나</strong><span>이 컴퓨터 전용</span></span>
             </a>
         </div>
-    </header>
+    </aside>
     <div class="workspace">
         <main id="main">
             <div class="banner danger" role="alert" th:unless="${integrityOk}">

@@ -12,6 +12,7 @@
 <section class="card" id="backup">
     <h2>백업</h2>
     <p class="hint">데이터 파일과 files 폴더를 이 컴퓨터나 연결된 디스크의 폴더로 복사합니다. 인터넷으로 보내지 않습니다. 백업에는 원문과 읽어 둔 내용이 모두 들어 있으니 보관 위치에 유의하세요.</p>
+    <p th:text="${autoBackup} ? '자동 백업: 켜짐 — 하루에 한 번, 최근 7개를 남깁니다.' : '자동 백업: 꺼짐'"></p>
     <form method="post" action="/admin/backup" data-write="1" class="inline-form">
         <label class="field grow">백업할 폴더<input name="folder" th:value="${backupFolder}" maxlength="400" /></label>
         <button type="submit" class="btn btn-primary">지금 백업</button>

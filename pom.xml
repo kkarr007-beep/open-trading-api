@@ -10,11 +10,14 @@
   </parent>
   <groupId>local.audit</groupId>
   <artifactId>audit-record</artifactId>
-  <version>1.0.0</version>
+  <version>1.2.0</version>
   <name>audit-record</name>
   <description>감사기록 - 개인용 로컬 프로그램</description>
   <properties>
-    <java.version>17</java.version>
+    <java.version>21</java.version>
+    <javafx.version>23.0.2</javafx.version>
+    <!-- 컴파일할 때만 쓴다. 실행할 때의 화면 엔진은 packaging/fetch-fx.sh가 모아 모듈 경로로 준다. -->
+    <fx.platform>linux</fx.platform>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
@@ -46,6 +49,47 @@
       <artifactId>hwplib</artifactId>
       <version>1.1.8</version>
     </dependency>
+    <!-- 자체 창: 화면 엔진(JavaFX WebView). 실행 파일에는 넣지 않고 fx 폴더로 따로 둔다 -->
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-base</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>${fx.platform}</classifier>
+      <scope>provided</scope>
+      <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-graphics</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>${fx.platform}</classifier>
+      <scope>provided</scope>
+      <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-controls</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>${fx.platform}</classifier>
+      <scope>provided</scope>
+      <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-media</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>${fx.platform}</classifier>
+      <scope>provided</scope>
+      <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-web</artifactId>
+      <version>${javafx.version}</version>
+      <classifier>${fx.platform}</classifier>
+      <scope>provided</scope>
+      <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -58,6 +102,9 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <excludeGroupIds>org.openjfx</excludeGroupIds>
+        </configuration>
       </plugin>
     </plugins>
   </build>

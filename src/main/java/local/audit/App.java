@@ -23,6 +23,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class App {
+    /** 자체 창이 떠 있는지. 화면 엔진이 없는 환경에서는 Desktop 클래스를 건드리지 않도록 여기에 둔다. */
+    static volatile boolean desktopActive;
+    static volatile java.util.function.BooleanSupplier showWindow = () -> false;
+
+    /** 이미 켜져 있을 때 창을 앞으로 가져온다. 창이 없으면 false. */
+    public static boolean bringToFront() { return desktopActive && showWindow.getAsBoolean(); }
+
     private final Environment env;
     private final Paths2 paths;
     private final ConfigurableApplicationContext context;
@@ -34,30 +41,45 @@ public class App {
     }
 
     public static void main(String[] args) {
-        String port = "47321";
-        for (String a : args) if (a.startsWith("--server.port=")) port = a.substring("--server.port=".length());
+        String port = "47321", mode = "app";
+        Path home = Path.of("var");
+        for (String a : args) {
+            if (a.startsWith("--server.port=")) port = a.substring(14);
+            else if (a.startsWith("--audit.window=")) mode = a.substring(15);
+            else if (a.startsWith("--audit.open-browser=false")) mode = "none";
+            else if (a.startsWith("--audit.home=") && a.length() > 13) home = Path.of(a.substring(13));
+            else if (a.startsWith("--audit.snapshot=")) System.setProperty("audit.snapshot", a.substring(17));
+            else if (a.startsWith("--audit.snapshot-js=")) System.setProperty("audit.snapshot-js", a.substring(20));
+            else if (a.startsWith("--audit.snapshot-url=")) System.setProperty("audit.snapshot-url", a.substring(21));
+        }
+        home = home.toAbsolutePath().normalize();
         String url = "http://127.0.0.1:" + port;
-        if (alreadyRunning(url)) {
-            // 이미 켜져 있으면 창만 하나 더 띄우고 끝낸다.
-            Path home = null;
-            for (String a : args) if (a.startsWith("--audit.home=") && a.length() > 13) home = Path.of(a.substring(13));
-            Process window = openWindow(url, (home == null ? Path.of("var") : home).toAbsolutePath().resolve("window"), null);
-            if (window == null) openBrowser(url);
+        String running = ping(url + "/ping?show=1");
+        if (running.startsWith("audit-record")) {
+            // 이미 켜져 있다. 자체 창이 있으면 앞으로 나왔고, 없으면 화면만 다시 띄운다.
+            if (!running.contains("shown") && !"none".equals(mode) && openWindow(url, home.resolve("window"), null) == null) openBrowser(url);
             return;
+        }
+        if ("app".equals(mode)) {
+            try {
+                if (Desktop.launch(args, url, home)) return;
+            } catch (Throwable noEngine) {
+                // 화면 엔진이 함께 있지 않으면 Edge·Chrome 창이나 기본 브라우저로 연다.
+            }
         }
         SpringApplication.run(App.class, args);
     }
 
-    static boolean alreadyRunning(String url) {
+    static String ping(String url) {
         try {
-            HttpURLConnection c = (HttpURLConnection) URI.create(url + "/ping").toURL().openConnection(java.net.Proxy.NO_PROXY);
+            HttpURLConnection c = (HttpURLConnection) URI.create(url).toURL().openConnection(java.net.Proxy.NO_PROXY);
             c.setConnectTimeout(700);
-            c.setReadTimeout(1500);
+            c.setReadTimeout(2000);
             try (var in = c.getInputStream()) {
-                return new String(in.readAllBytes()).startsWith("audit-record");
+                return new String(in.readAllBytes());
             }
         } catch (IOException | RuntimeException e) {
-            return false;
+            return "";
         }
     }
 
@@ -65,6 +87,7 @@ public class App {
     public void ready() {
         String url = "http://127.0.0.1:" + env.getProperty("local.server.port", env.getProperty("server.port", "47321"));
         System.out.println("감사기록이 켜졌습니다: " + url);
+        if (desktopActive) return; // 자체 창이 화면을 맡는다
         String mode = env.getProperty("audit.window", "app");
         if ("false".equalsIgnoreCase(env.getProperty("audit.open-browser", "true")) || "none".equals(mode)) return;
         Process window = "app".equals(mode) ? openWindow(url, paths.home.resolve("window"), env.getProperty("audit.browser-path", "")) : null;

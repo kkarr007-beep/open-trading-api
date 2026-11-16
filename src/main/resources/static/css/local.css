@@ -21,3 +21,66 @@ textarea.folders { min-height: 90px; font-family: inherit; }
 .folder-row .btn { flex: 0 0 auto; }
 #preview-dialog { width: min(920px, 94vw); }
 #preview-frame { width: 100%; height: 62vh; }
+
+/* ── 데스크톱 앱 틀: 왼쪽 메뉴 ───────────────────────────────────────── */
+body { display: grid; grid-template-columns: 244px minmax(0, 1fr); align-items: start; }
+.side {
+  position: sticky; top: 0; height: 100vh; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 12px 14px;
+  background: color-mix(in srgb, var(--paper) 72%, var(--bg));
+  border-right: 1px solid var(--line);
+  z-index: 30;
+}
+.side .brand { padding: 2px 8px 4px; font-size: 1.06rem; }
+.side-search {
+  display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--paper);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.side-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.side-search svg { width: 16px; height: 16px; color: var(--muted); flex: 0 0 auto; }
+.side-search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; min-height: 0; padding: 0; box-shadow: none; }
+.side-search kbd { flex: 0 0 auto; font: 600 10.5px var(--font); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; white-space: nowrap; }
+.side nav { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.side-label { margin: 12px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--faint); }
+.side-label:first-child { margin-top: 2px; }
+.side nav a {
+  display: flex; align-items: center; gap: 11px; min-height: 38px; padding: 0 10px;
+  border-radius: 10px; color: var(--muted); font-size: 14px; font-weight: 600; text-decoration: none;
+  transition: background .15s ease, color .15s ease;
+}
+.side nav a svg { width: 19px; height: 19px; flex: 0 0 auto; }
+.side nav a:hover { background: var(--bg-accent); color: var(--ink); text-decoration: none; }
+.side nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-deep); }
+.side nav a .count { margin-left: auto; background: var(--accent); color: #fff; border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; font-size: 11.5px; font-weight: 700; }
+.side-end { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.side-end .theme { justify-self: start; }
+.side-end .user-menu-link { padding: 6px 8px; }
+.workspace { min-height: 100vh; }
+main { padding-top: 26px; }
+.sticky-tools { top: 0; }
+body.guest { display: grid; grid-template-columns: 1fr; }
+@media (max-width: 980px) {
+  body { grid-template-columns: 68px minmax(0, 1fr); }
+  .side { padding: 14px 8px; align-items: center; }
+  .side .brand span:last-child, .side-search, .side-label, .side nav a span:not(.count), .side-end .who, .side-end .theme { display: none; }
+  .side nav a { justify-content: center; padding: 0; width: 44px; position: relative; }
+  .side nav a .count { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
+}
+@media print {
+  body { display: block; }
+  .side { display: none !important; }
+}
+/* 스크롤 막대를 얇게 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--muted) 70%, transparent); background-clip: padding-box; border: 2px solid transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+/* 전체 찾기 결과 */
+.result-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.result-list li a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper); color: var(--ink); text-decoration: none; }
+.result-list li a:hover { border-color: var(--accent); text-decoration: none; }
+.result-list strong { display: block; font-size: 14.5px; }
+.result-list span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+#preview-frame { background: #ffffff; border: 1px solid var(--line); border-radius: 10px; }

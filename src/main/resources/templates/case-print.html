@@ -4,6 +4,7 @@
 <body>
 <th:block id="content">
 <h1 th:if="${item == null}">건을 찾을 수 없음</h1>
+<p class="row-actions no-print" th:if="${item != null}"><a class="btn" th:href="|/cases/${item.CaseId}|">건으로 돌아가기</a> <button type="button" class="btn btn-primary" data-print>인쇄</button></p>
 <article class="print-sheet" th:if="${item != null}">
     <h1 th:text="${item.Title}"></h1>
     <p th:text="|${item.Year} · ${item.Category} · ${item.DocumentNo} · ${item.DisplayState}|"></p>

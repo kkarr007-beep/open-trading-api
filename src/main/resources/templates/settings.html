@@ -48,6 +48,11 @@
     <p class="hint">저장한 내용은 암호화되지 않은 글자로 이 컴퓨터의 데이터 파일에 들어갑니다. 끄면 읽은 내용은 등록 항목을 찾는 데만 쓰고 자료에는 남기지 않습니다(새 건 결과 본문에 넣기를 고른 경우는 본문에 남습니다). 보존 만료나 파일 삭제 때 함께 지워집니다.</p>
 </section>
 <section class="card">
+    <h2>자동 백업</h2>
+    <p><label class="check"><input type="checkbox" name="autoBackup" value="1" th:checked="${autoBackup}" /> 하루에 한 번 자동으로 백업하고 최근 7개만 남기기</label></p>
+    <p class="hint">프로그램을 켠 날 한 번, 관리 화면에 적힌 백업 폴더로 복사합니다. 자동 백업만 7개를 넘으면 오래된 것부터 지우고, 직접 만든 백업은 지우지 않습니다. 인터넷으로 보내지 않습니다.</p>
+</section>
+<section class="card">
     <h2>보존 만료</h2>
     <p><label class="check"><input type="checkbox" name="autoPurge" value="1" th:checked="${s.autoPurge}" /> 보존연한이 지난 건의 본문과 파일을 자동으로 삭제</label></p>
     <p class="hint">켜면 프로그램이 켜져 있는 동안 한 시간마다 만료분을 지웁니다. 지운 것은 되돌릴 수 없습니다. 꺼 두면 관리 화면에서 직접 실행할 때만 지웁니다.</p>

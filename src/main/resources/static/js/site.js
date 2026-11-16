@@ -325,3 +325,95 @@
     if (img) img.removeAttribute("src");
   }, true);
 })();
+
+// ── 자체 창에서 쓰는 기능: 저장 창, 복사, 인쇄, 전체 찾기 ──
+(function () {
+  function app() { return window.auditApp || null; }
+  function toast(message) {
+    var host = document.querySelector(".toasts");
+    if (!host) return;
+    var node = document.createElement("div");
+    node.className = "toast ok";
+    node.setAttribute("role", "status");
+    var text = document.createElement("p");
+    text.textContent = message || "";
+    node.appendChild(text);
+    host.appendChild(node);
+    setTimeout(function () { node.remove(); }, 4600);
+  }
+  window.auditToast = toast;
+
+  function isDownload(url) {
+    try {
+      var u = new URL(url, location.href);
+      return u.searchParams.has("dl") || /\/export$/.test(u.pathname);
+    } catch (e) { return false; }
+  }
+
+  document.addEventListener("click", function (event) {
+    var printer = event.target.closest("[data-print]");
+    if (printer) {
+      event.preventDefault();
+      if (app()) app().print(); else window.print();
+      return;
+    }
+    var copy = event.target.closest("[data-copy]");
+    if (copy && app()) {
+      app().copy(copy.getAttribute("data-copy") || "");
+      return;
+    }
+    if (!app()) return;
+    var link = event.target.closest("a[href]");
+    if (!link) return;
+    // 창 안에서는 PDF를 펼치지 못하므로 이 컴퓨터의 프로그램으로 연다.
+    if (link.getAttribute("data-preview") === "pdf") {
+      var m = /\/cases\/([0-9a-f]{32})\/files\/([0-9a-f]{32})/.exec(link.getAttribute("href") || "");
+      if (m) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var data = new FormData();
+        data.append("attachmentId", m[2]);
+        fetch("/cases/" + m[1] + "/open", { method: "POST", headers: { "X-Audit-Fetch": "1" }, body: data })
+          .then(function (r) { return r.json(); }).then(function (p) { toast(p.message); }).catch(function () { toast("열지 못했습니다."); });
+        return;
+      }
+    }
+    if (isDownload(link.href)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      app().download(link.href);
+    }
+  }, true);
+
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!app() || !(form instanceof HTMLFormElement)) return;
+    if ((form.method || "get").toLowerCase() !== "get" || !/\/export$/.test(form.getAttribute("action") || "")) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    app().download(form.getAttribute("action") + "?" + new URLSearchParams(new FormData(form)).toString());
+  }, true);
+
+  // 전체 찾기로 건너뛰기
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+    var box = document.querySelector("[data-global-search]");
+    if (!box) return;
+    event.preventDefault();
+    box.focus();
+    box.select();
+  });
+
+  // 날짜 칸에 달력이 뜨지 않는 창에서는 적는 꼴을 알려 준다.
+  function dateHints() {
+    var probe = document.createElement("input");
+    probe.setAttribute("type", "date");
+    if (probe.type === "date") return;
+    document.querySelectorAll("input[type=date]").forEach(function (input) {
+      if (!input.placeholder) input.placeholder = "예: 2026-12-31";
+    });
+  }
+  dateHints();
+  window.addEventListener("audit-app-ready", dateHints);
+  new MutationObserver(dateHints).observe(document.querySelector("main") || document.body, { childList: true });
+})();

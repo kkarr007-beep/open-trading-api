@@ -39,7 +39,7 @@
             <span class="file-copy">
                 <span class="file-name" th:text="${f.DisplayName}"></span>
                 <span class="file-meta" th:text="|${f.Kind} · ${f.SizeText} · ${f.RegisteredAtDisplay} · ${f.DocumentNo} ${f.CaseTitle}|"></span>
-                <span class="snippet" th:if="${f['Snippet']}" th:text="${f['Snippet']}"></span>
+                <span class="snippet" th:if="${f.Snippet}" th:text="${f.Snippet}"></span>
             </span>
         </a>
         <div class="file-side">

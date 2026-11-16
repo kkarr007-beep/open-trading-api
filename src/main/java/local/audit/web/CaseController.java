@@ -180,6 +180,26 @@ public class CaseController {
         return Web.plain(a == null ? "내용.txt" : Txt.stem((String) a.get("DisplayName")) + "-읽은내용.txt", cases.fileText(id, att), dl != null);
     }
 
+    /** 전체 찾기: 건, 자료(파일명과 읽은 내용), 징계기록을 한 번에 찾는다. */
+    @GetMapping("/search")
+    @SuppressWarnings("unchecked")
+    public String search(@RequestParam(required = false) String q, Model model) {
+        String term = q == null ? "" : q.strip();
+        model.addAttribute("searchQuery", term);
+        model.addAttribute("nav", "search");
+        if (term.isEmpty()) return "search";
+        List<Map<String, Object>> found = (List<Map<String, Object>>) cases.list(null, null, null, false, false, term, "year", "desc", 1, 25).get("Items");
+        java.util.Map<String, Map<String, Object>> filesById = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> f : cases.searchFiles(null, null, null, term)) filesById.put((String) f.get("AttachmentId"), f);
+        for (Map<String, Object> f : cases.searchFiles(term, null, null, null)) filesById.putIfAbsent((String) f.get("AttachmentId"), f);
+        List<Map<String, Object>> fileHits = new java.util.ArrayList<>(filesById.values());
+        List<Map<String, Object>> people = discipline.list(term, null, null);
+        model.addAttribute("caseHits", found);
+        model.addAttribute("fileHits", fileHits.size() > 30 ? fileHits.subList(0, 30) : fileHits);
+        model.addAttribute("peopleHits", people.size() > 30 ? people.subList(0, 30) : people);
+        return "search";
+    }
+
     @GetMapping("/files")
     public String fileSearch(@RequestParam Map<String, String> q, Model model) {
         model.addAttribute("q", q);

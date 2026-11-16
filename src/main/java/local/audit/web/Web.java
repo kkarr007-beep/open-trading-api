@@ -49,6 +49,7 @@ public class Web {
         model.addAttribute("autoPurge", settings.autoPurge());
         model.addAttribute("nowDisplay", Kst.display(Kst.stamp()));
         model.addAttribute("flash", req.getParameter("flash"));
+        model.addAttribute("searchQuery", "");
     }
 
     /** 화면 스크립트가 보낸 저장 요청에는 JSON으로, 그 밖에는 화면 이동으로 답한다. */
