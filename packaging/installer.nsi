@@ -2,6 +2,7 @@
 ; 관리자 권한 없이 현재 사용자에게만 설치한다. Java를 따로 설치하지 않아도 되도록 실행 환경을 함께 넣는다.
 Unicode true
 SetCompressor /SOLID lzma
+SetCompressorDictSize 64
 RequestExecutionLevel user
 
 !define APP_NAME "감사 포털"

@@ -2,22 +2,16 @@
 
 ## 처음 설치 (감사 포털 1.5.0판)
 
-1. `Setup-0.bin`부터 `Setup-5.bin`까지 6개와 `join-small.cmd`를 **같은 폴더**에 받습니다.
-2. `join-small.cmd`를 실행하면 그 폴더에 `AuditRecord-Setup.exe`가 만들어집니다.
-3. `AuditRecord-Setup.exe`를 실행해 설치합니다. 바탕화면과 시작 메뉴에 **감사 포털** 아이콘이 생깁니다.
+1. `AuditRecord-Setup.exe`(약 98MB)를 받습니다. 파일 이름을 누른 뒤 오른쪽 위 **Download raw file** 단추로 받습니다.
+2. 받은 파일을 실행해 설치합니다. 바탕화면과 시작 메뉴에 **감사 포털** 아이콘이 생깁니다.
+   서명이 없어 Windows에서 경고가 뜨면 「추가 정보」 → 「실행」을 누릅니다.
 
 이미 1.3.0판(감사기록)을 쓰고 있어도 이 설치 파일로 덮어 설치하면 됩니다. 기록과 자료(사용자 폴더\감사기록)는 그대로 쓰고, 예전 '감사기록' 바로가기는 치웁니다.
 
-합친 파일이 맞는지 보려면 명령 프롬프트에서 `certutil -hashfile AuditRecord-Setup.exe SHA256`을 실행해 아래 값과 같은지 봅니다.
+받은 파일이 맞는지 보려면 명령 프롬프트에서 `certutil -hashfile AuditRecord-Setup.exe SHA256`을 실행해 아래 값과 같은지 봅니다.
 
 ```text
-6df3f1454dfc165a5d858967c277c3673918d2791ffd8790f65dec3f79460358
-```
-
-`join-small.cmd`가 막히면 그 폴더에서 명령 프롬프트를 열고 아래를 입력합니다.
-
-```bash
-copy /b Setup-0.bin+Setup-1.bin+Setup-2.bin+Setup-3.bin+Setup-4.bin+Setup-5.bin AuditRecord-Setup.exe
+2431fc4c3163bd6c2d0dca253dc979cc33dccf7fb17d0731dc930a69ccfa1415
 ```
 
 ## 1.5.0판으로 바꾸기 (감사 포털 · 업무 일정·사규)
