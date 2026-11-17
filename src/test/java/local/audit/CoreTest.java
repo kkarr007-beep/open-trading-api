@@ -406,4 +406,28 @@ class CoreTest {
         assertEquals(0, lib.total());
         assertFalse(java.nio.file.Files.exists(stored));
     }
+
+    @Test
+    void librarySubCategoriesListUnderParentAndKeepOldCategories() throws Exception {
+        // 1.7.0판 표(ParentId 없음)에 분류가 하나 있던 상태에서 올라오는 경우
+        db.tx(conn -> {
+            local.audit.Db.update(conn, "DROP TABLE LibCategories");
+            local.audit.Db.update(conn, "CREATE TABLE LibCategories (Id TEXT PRIMARY KEY, Name TEXT NOT NULL, Ord INTEGER NOT NULL DEFAULT 0)");
+            local.audit.Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord) VALUES ('old1','보고서',1)");
+            return null;
+        });
+        LibraryService lib = new LibraryService(db, files, reader);
+        assertEquals(1, lib.tree().size());
+        assertEquals("보고서", lib.tree().get(0).get("Name"));
+        assertTrue(lib.category("save", Map.of("name", "주간 보고", "parentId", "old1")).ok);
+        assertFalse(lib.category("save", Map.of("name", "주간 보고", "parentId", "old1")).ok);
+        String sub = (String) ((List<Map<String, Object>>) lib.tree().get(0).get("children")).get(0).get("Id");
+        Op added = lib.add(sub, "주간 회의 결과", "", "", "a.txt", new java.io.ByteArrayInputStream("내용".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertTrue(added.ok, added.message);
+        lib.awaitReads();
+        assertEquals(1, lib.list("old1", "", 1, 20).get("total"));
+        assertEquals("보고서 › 주간 보고", lib.get(added.id).get("Category"));
+        assertEquals(1, ((Number) lib.tree().get(0).get("Docs")).intValue());
+        assertFalse(lib.category("delete", Map.of("id", "old1")).ok);
+    }
 }

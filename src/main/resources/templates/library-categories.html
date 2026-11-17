@@ -5,27 +5,53 @@
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1>자료 분류 관리</h1>
-        <p class="hint">순서는 숫자가 작은 것이 앞입니다. 자료가 있는 분류는 지울 수 없습니다.</p>
+        <h1>분류 추가·관리</h1>
+        <p class="hint">분류는 왼쪽 메뉴에 바로 나옵니다. 분류마다 하위 분류를 계속 넣을 수 있고, 하위 분류는 다른 분류 밑으로 옮길 수 있습니다.
+            순서는 숫자가 작은 것이 앞입니다. 자료나 하위 분류가 있는 분류는 지울 수 없습니다.</p>
     </div>
 </div>
 <section class="card">
-    <div class="inline-row" th:each="c : ${cats}">
-        <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
-            <input type="hidden" name="id" th:value="${c.Id}" />
-            <label class="field">이름<input name="name" required maxlength="40" th:value="${c.Name}" /></label>
-            <label class="field">순서<input name="ord" type="number" min="0" max="999" th:value="${c.Ord}" style="width:90px" /></label>
-            <button type="submit" class="btn">저장</button>
-        </form>
-        <span class="pill" th:text="|자료 ${c.Docs}건|"></span>
-        <form method="post" action="/library/categories/delete" data-write="1" th:if="${c.Docs == 0}" th:data-confirm="|'${c.Name}' 분류를 지울까요?|">
-            <input type="hidden" name="id" th:value="${c.Id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
-    </div>
-    <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row" style="margin-top:14px">
-        <label class="field">새 분류<input name="name" required maxlength="40" placeholder="예: 감사 결과 공문" /></label>
+    <h2>새 분류 추가</h2>
+    <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
+        <label class="field">분류 이름<input name="name" required maxlength="40" placeholder="예: 예산·결산" /></label>
         <label class="field">순서<input name="ord" type="number" min="0" max="999" style="width:90px" /></label>
         <button type="submit" class="btn btn-primary">추가</button>
     </form>
+</section>
+<section class="card lib-cat" th:each="s : ${tree}" th:id="|c-${s.Id}|">
+    <div class="inline-row">
+        <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
+            <input type="hidden" name="id" th:value="${s.Id}" />
+            <label class="field">분류<input name="name" required maxlength="40" th:value="${s.Name}" /></label>
+            <label class="field">순서<input name="ord" type="number" min="0" max="999" th:value="${s.Ord}" style="width:90px" /></label>
+            <button type="submit" class="btn">저장</button>
+        </form>
+        <span class="pill" th:text="|자료 ${s.Docs}건|"></span>
+        <a class="btn btn-quiet" th:href="@{/library(cat=${s.Id})}">자료 보기</a>
+        <form method="post" action="/library/categories/delete" data-write="1" th:if="${s.Docs == 0}" th:data-confirm="|'${s.Name}' 분류를 지울까요?|">
+            <input type="hidden" name="id" th:value="${s.Id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </div>
+    <div class="lib-sub">
+        <div class="inline-row" th:each="c : ${s.children}">
+            <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
+                <input type="hidden" name="id" th:value="${c.Id}" />
+                <label class="field">하위 분류<input name="name" required maxlength="40" th:value="${c.Name}" /></label>
+                <label class="field">위 분류<select name="parentId">
+                    <option value="">(분류로 올리기)</option>
+                    <option th:each="o : ${tree}" th:value="${o.Id}" th:text="${o.Name}" th:selected="${o.Id == s.Id}"></option></select></label>
+                <label class="field">순서<input name="ord" type="number" min="0" max="999" th:value="${c.Ord}" style="width:90px" /></label>
+                <button type="submit" class="btn">저장</button>
+            </form>
+            <span class="pill" th:text="|자료 ${c.Docs}건|"></span>
+            <form method="post" action="/library/categories/delete" data-write="1" th:if="${c.Docs == 0}" th:data-confirm="|'${c.Name}' 하위 분류를 지울까요?|">
+                <input type="hidden" name="id" th:value="${c.Id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+        </div>
+        <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
+            <input type="hidden" name="parentId" th:value="${s.Id}" />
+            <label class="field">새 하위 분류<input name="name" required maxlength="40" th:placeholder="|${s.Name} 밑에 넣을 이름|" /></label>
+            <button type="submit" class="btn btn-primary">하위 분류 추가</button>
+        </form>
+    </div>
 </section>
 </th:block>
 </body>

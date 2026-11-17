@@ -32,7 +32,11 @@
             <button type="button" class="icon-btn" data-close aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
         <div class="form-grid">
             <label class="field grow">제목<input name="title" required maxlength="200" th:value="${d.Title}" /></label>
-            <label class="field">분류<select name="categoryId"><option th:each="c : ${cats}" th:value="${c.Id}" th:text="${c.Name}" th:selected="${c.Id == d.CategoryId}"></option></select></label>
+            <label class="field">분류<select name="categoryId">
+                <th:block th:each="s : ${tree}">
+                    <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${d.CategoryId == s.Id}"></option>
+                    <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${d.CategoryId == c.Id}"></option>
+                </th:block></select></label>
             <label class="field grow">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
             <label class="field grow">메모<textarea name="note" rows="3" maxlength="2000" th:text="${d.Note}"></textarea></label>
         </div>

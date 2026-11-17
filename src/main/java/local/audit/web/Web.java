@@ -29,12 +29,15 @@ public class Web {
     private final String version;
     private final local.audit.work.WorkService work;
     private final local.audit.CaseService cases;
+    private final local.audit.LibraryService library;
 
     public Web(Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
+               local.audit.LibraryService library,
                @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
         this.version = version;
         this.work = work;
         this.cases = cases;
+        this.library = library;
         this.chain = chain;
         this.settings = settings;
         this.inbox = inbox;
@@ -59,6 +62,8 @@ public class Web {
         if (path.startsWith("/board")) navKey = "board";
         model.addAttribute("navKey", navKey);
         model.addAttribute("caseCategories", cases.categories());
+        model.addAttribute("libTree", library.tree());
+        model.addAttribute("libCat", path.equals("/library") ? Txt.str(req.getParameter("cat")) : "");
         String navGroup = path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
             : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board"
             : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";

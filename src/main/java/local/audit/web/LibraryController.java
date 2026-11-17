@@ -34,7 +34,12 @@ public class LibraryController {
     @GetMapping("/library")
     public String list(@RequestParam(required = false) String cat, @RequestParam(required = false) String q,
                        @RequestParam(required = false) Integer page, Model model) {
-        model.addAttribute("cats", lib.categories());
+        List<Map<String, Object>> tree = lib.tree();
+        String sec = lib.sectionOf(cat);
+        model.addAttribute("tree", tree);
+        model.addAttribute("sec", sec);
+        model.addAttribute("secNode", tree.stream().filter(t -> sec.equals(t.get("Id"))).findFirst().orElse(null));
+        model.addAttribute("catPath", lib.path(cat));
         model.addAttribute("total", lib.total());
         model.addAttribute("cat", Txt.str(cat));
         model.addAttribute("q", Txt.str(q));
@@ -44,21 +49,23 @@ public class LibraryController {
 
     @GetMapping("/library/new")
     public String fresh(@RequestParam(required = false) String cat, Model model) {
-        model.addAttribute("cats", lib.categories());
+        model.addAttribute("tree", lib.tree());
         model.addAttribute("cat", Txt.str(cat));
         return "library-new";
     }
 
     @GetMapping("/library/categories")
     public String categories(Model model) {
-        model.addAttribute("cats", lib.categories());
+        model.addAttribute("tree", lib.tree());
         return "library-categories";
     }
 
     @GetMapping("/library/{id}")
     public String view(@PathVariable String id, Model model) {
-        model.addAttribute("d", Txt.isId(id) ? lib.get(id) : null);
-        model.addAttribute("cats", lib.categories());
+        Map<String, Object> d = Txt.isId(id) ? lib.get(id) : null;
+        model.addAttribute("d", d);
+        model.addAttribute("tree", lib.tree());
+        if (d != null) model.addAttribute("libCat", d.get("CategoryId"));
         return "library-view";
     }
 

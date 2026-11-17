@@ -5,8 +5,8 @@
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1>자료</h1>
-        <p class="hint" th:text="|자료 ${total}건. 분류별로 쌓아 두고 제목·파일 이름·태그·메모·문서 내용으로 찾습니다. 등재하면 내용을 자동으로 읽어 원본 모양(표·합친 칸·그림·서식)으로 보여 줍니다.|"></p>
+        <h1 th:text="${#strings.isEmpty(catPath)} ? '자료' : ${catPath}">자료</h1>
+        <p class="hint" th:text="|업무 자료 ${total}건. 분류별로 쌓아 두고 제목·파일 이름·태그·메모·문서 내용으로 찾습니다. 등재하면 내용을 자동으로 읽어 원본 모양(표·합친 칸·그림·서식)으로 보여 줍니다.|"></p>
     </div>
     <div class="row-actions">
         <button type="button" class="btn" data-print>인쇄</button>
@@ -15,7 +15,12 @@
 </div>
 <nav class="section-tabs" aria-label="자료 분류">
     <a th:href="@{/library(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'" th:text="|전체 ${total}|"></a>
-    <a th:each="c : ${cats}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${cat == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
+    <a th:each="c : ${tree}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${sec == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
+</nav>
+<nav class="section-tabs sub-tabs" aria-label="하위 분류" th:if="${secNode != null and !#lists.isEmpty(secNode.children)}">
+    <a th:href="@{/library(cat=${secNode.Id},q=${q})}" th:aria-current="${cat == secNode.Id} ? 'page'" th:text="|${secNode.Name} 전체|"></a>
+    <a th:each="c : ${secNode.children}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${cat == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
+    <a class="add-tab" th:href="|/library/categories#c-${secNode.Id}|">+ 하위 분류</a>
 </nav>
 <form method="get" action="/library" class="toolbar" style="margin-bottom:12px">
     <input type="hidden" name="cat" th:value="${cat}" />

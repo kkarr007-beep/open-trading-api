@@ -541,3 +541,10 @@ body { display: grid; grid-template-columns: 236px minmax(0, 1fr); grid-template
 .drn, .drt, .drc { min-height: 34px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
 .drc { width: 100%; line-height: 1.6; }
 .dbtn { margin-left: auto; display: inline-flex; gap: 2px; flex-wrap: wrap; }
+/* 자료 분류: 왼쪽 메뉴의 분류·하위 분류 */
+.sn-group a .sn-n { margin-left: auto; font-style: normal; font-size: 12px; color: var(--faint); font-weight: 600; }
+.sn-group a.sn-sub { padding-left: 40px; font-size: 13.5px; }
+.sn-title.sn-gap { margin-top: 16px; }
+.section-tabs.sub-tabs { margin-top: -4px; font-size: 13.5px; }
+.section-tabs .add-tab { color: var(--accent); }
+.lib-cat .lib-sub { margin: 10px 0 0 22px; padding-left: 14px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
