@@ -730,3 +730,12 @@ details > summary { cursor: pointer; }
 .rule-chips a.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-deep); }
 .rule-chips b { margin-left: auto; font-variant-numeric: tabular-nums; }
 .rule-chips small { color: var(--faint); font-size: 11px; }
+/* 양식 묶음 밖의 입력칸(표 안 점수 칸 등)도 같은 모양·다크 모드 */
+main table input:not([type=checkbox]):not([type=radio]):not([type=file]), main table select, main table textarea {
+  color: var(--ink); background-color: var(--paper); border: 1px solid var(--line-strong); border-radius: 6px;
+}
+main table input[type=number], main table input[type=text], main table select { min-height: 30px; padding: 2px 8px; font: inherit; font-size: 13px; }
+main table input:not([type=checkbox]):not([type=radio]):not([type=file]):focus-visible, main table select:focus-visible, main table textarea:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+main input[type=checkbox], main input[type=radio] { accent-color: var(--accent); }
