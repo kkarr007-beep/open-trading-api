@@ -17,6 +17,7 @@ final class Schema {
                 Db.update(conn, "ALTER TABLE AttachmentText ADD COLUMN Html TEXT NULL");
             return null;
         });
+        dropCategoryCheck(db);
         try {
             db.read(conn -> {
                 try (Statement st = conn.createStatement()) { st.execute("PRAGMA journal_mode=WAL"); }
@@ -27,12 +28,43 @@ final class Schema {
         }
     }
 
+    /**
+     * 1.6.0판까지 건 표에는 구분이 '업무진단·준법감사'만 들어가도록 묶여 있었다. 업무 구분을 더 넣을 수 있게 그 묶음을 푼다.
+     * 내용은 그대로 옮기고, 이력(지문)은 건드리지 않는다.
+     */
+    static void dropCategoryCheck(Db db) {
+        try (java.sql.Connection conn = db.open(); Statement st = conn.createStatement()) {
+            java.util.Map<String, Object> row = Db.row(conn, "SELECT sql FROM sqlite_master WHERE type='table' AND name='Cases'");
+            String sql = row == null ? "" : String.valueOf(row.get("sql"));
+            if (!sql.contains("CHECK (Category IN")) return;
+            String fresh = sql.replaceFirst("CREATE TABLE Cases", "CREATE TABLE Cases_new").replaceAll("\\s*CHECK \\(Category IN \\([^)]*\\)\\)", "");
+            st.execute("PRAGMA foreign_keys=OFF");
+            conn.setAutoCommit(false);
+            try {
+                st.execute(fresh);
+                st.execute("INSERT INTO Cases_new SELECT * FROM Cases");
+                st.execute("DROP TABLE Cases");
+                st.execute("ALTER TABLE Cases_new RENAME TO Cases");
+                st.execute("CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase)");
+                conn.commit();
+            } catch (java.sql.SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+                st.execute("PRAGMA foreign_keys=ON");
+            }
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException("건 표를 고치지 못했습니다: " + e.getMessage(), e);
+        }
+    }
+
     static final String SQL = """
         CREATE TABLE IF NOT EXISTS Meta (Key TEXT PRIMARY KEY, Value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS Cases (
           CaseId TEXT PRIMARY KEY,
           Year INTEGER NOT NULL,
-          Category TEXT NOT NULL CHECK (Category IN ('업무진단','준법감사')),
+          Category TEXT NOT NULL,
           Title TEXT NOT NULL,
           Target TEXT NOT NULL,
           Owner TEXT NOT NULL DEFAULT '',
@@ -201,6 +233,31 @@ final class Schema {
           Owner TEXT PRIMARY KEY,
           Html TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS LibCategories (
+          Id TEXT PRIMARY KEY,
+          Name TEXT NOT NULL,
+          Ord INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS LibDocs (
+          Id TEXT PRIMARY KEY,
+          CategoryId TEXT NOT NULL,
+          Title TEXT NOT NULL,
+          FileName TEXT NOT NULL,
+          StoragePath TEXT NOT NULL,
+          SizeBytes INTEGER NOT NULL DEFAULT 0,
+          Sha256 TEXT NOT NULL DEFAULT '',
+          Tags TEXT NOT NULL DEFAULT '',
+          Note TEXT NOT NULL DEFAULT '',
+          RegisteredAt TEXT NOT NULL,
+          ReadState TEXT NOT NULL DEFAULT '',
+          ReadNote TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS LibText (
+          Id TEXT PRIMARY KEY,
+          Body TEXT NOT NULL,
+          Html TEXT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_Lib_Cat ON LibDocs(CategoryId, RegisteredAt);
         CREATE INDEX IF NOT EXISTS IX_Work_Kind ON WorkItems(Kind, Due);
         CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase);
         CREATE INDEX IF NOT EXISTS IX_Actions_Due ON Actions(ReplyDueOn, ActionState);

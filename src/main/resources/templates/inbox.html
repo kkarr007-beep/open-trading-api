@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>수집함 · 감사 포털</title></head>
+<head><title>수집함 · Portal</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
@@ -79,7 +79,7 @@
                     <label class="field">대상<input name="targetName" maxlength="120" th:value="${s['target']}" /></label>
                     <label class="field">연도<input name="year" type="number" min="1990" max="2100" th:value="${s['year']}" /></label>
                     <label class="field">구분
-                        <select name="category"><option th:each="c : ${ {'업무진단','준법감사'} }" th:text="${c}" th:selected="${s['category'] == c}"></option></select>
+                        <select name="category"><option th:each="c : ${caseCategories}" th:text="${c}" th:selected="${s['category'] == c}"></option></select>
                     </label>
                     <label class="field grow">결과 한 줄<input name="summary" maxlength="160" th:value="${s['summary']}" /></label>
                 </div>

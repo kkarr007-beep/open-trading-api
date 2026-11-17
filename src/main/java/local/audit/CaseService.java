@@ -30,7 +30,51 @@ public class CaseService {
     public static final String REASON = "사유를 입력하세요. 사유는 이력에 남습니다.";
     public static final String FROZEN = "이력 훼손 — 기록의 신뢰성을 확인할 수 없어 변경을 멈췄습니다. 관리 화면에서 조사 후 해제하세요.";
     public static final String BAD = "입력값을 확인하세요.";
+    /** 기본 구분. 관리 화면에서 더 넣을 수 있다. */
     public static final List<String> CATEGORIES = java.util.Arrays.asList("업무진단", "준법감사");
+
+    /** 쓰는 구분 전체(구분코드 순). */
+    public List<String> categories() {
+        List<String> out = new java.util.ArrayList<>();
+        for (Map<String, Object> r : db.rows("SELECT Category FROM CategoryCodes ORDER BY Code")) out.add((String) r.get("Category"));
+        return out;
+    }
+
+    boolean isCategory(String c) {
+        return c != null && db.row("SELECT 1 AS X FROM CategoryCodes WHERE Category=?", c) != null;
+    }
+
+    static boolean isCategory(Connection conn, String c) throws SQLException {
+        return c != null && Db.row(conn, "SELECT 1 AS X FROM CategoryCodes WHERE Category=?", c) != null;
+    }
+
+    /** 구분을 새로 넣는다. 코드는 숫자 두 자리, 이름과 코드 모두 겹치면 안 된다. */
+    public Op addCategory(String name, String code) {
+        String n = Txt.clean(name, 20, false), c = code == null ? "" : code.strip();
+        if (Txt.blank(n)) return Op.bad("업무 구분 이름을 적으세요.");
+        if (!c.matches("\\d{2}")) return Op.bad("구분코드는 숫자 두 자리입니다.");
+        return db.run(conn -> {
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM CategoryCodes WHERE Category=?", n) > 0) throw Op.abort("이미 있는 업무 구분입니다.");
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM CategoryCodes WHERE Code=?", c) > 0) throw Op.abort("이미 쓰는 구분코드입니다.");
+            Db.update(conn, "INSERT INTO CategoryCodes(Category, Code, Used) VALUES (?,?,0)", n, c);
+            log(conn, null, "추가", "구분코드", n, n + " " + c + " 추가");
+            return Op.ok("업무 구분 '" + n + "'(" + c + ")을 넣었습니다.");
+        });
+    }
+
+    /** 아직 번호를 발급하지 않고 건도 없는 구분만 뺀다. */
+    public Op removeCategory(String name) {
+        return db.run(conn -> {
+            Map<String, Object> row = Db.row(conn, "SELECT Code, Used FROM CategoryCodes WHERE Category=?", name);
+            if (row == null) throw Op.abort(404, "업무 구분을 찾을 수 없습니다.");
+            if (flag(row, "Used") || Db.intOf(conn, "SELECT COUNT(*) FROM Cases WHERE Category=?", name) > 0)
+                throw Op.abort("이미 번호를 발급했거나 건이 있는 구분은 뺄 수 없습니다.");
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM CategoryCodes") <= 1) throw Op.abort("구분이 하나는 있어야 합니다.");
+            Db.update(conn, "DELETE FROM CategoryCodes WHERE Category=?", name);
+            log(conn, null, "삭제", "구분코드", name, name + " " + row.get("Code") + " 뺌");
+            return Op.ok("업무 구분 '" + name + "'을 뺐습니다.");
+        });
+    }
     public static final List<String> KINDS = java.util.Arrays.asList("결과원문", "증빙", "회신첨부");
     public static final List<String> ACTION_TYPES = java.util.Arrays.asList("지적", "개선요구", "권고");
 
@@ -104,7 +148,7 @@ public class CaseService {
     }
 
     public String peekDocumentNo(int year, String category) {
-        if (year < 1990 || year > 2100 || !CATEGORIES.contains(category)) return "";
+        if (year < 1990 || year > 2100 || !isCategory(category)) return "";
         return db.read(conn -> {
             Map<String, Object> code = Db.row(conn, "SELECT Code FROM CategoryCodes WHERE Category=?", category);
             if (code == null) return "";
@@ -124,7 +168,7 @@ public class CaseService {
     public List<Map<String, Object>> categoryCodes() { return db.rows("SELECT Category, Code, Used FROM CategoryCodes ORDER BY Code"); }
 
     public Op setCategoryCode(String category, String code) {
-        if (!CATEGORIES.contains(category)) return Op.bad("구분코드는 업무진단과 준법감사만 다룹니다.");
+        if (!isCategory(category)) return Op.bad("없는 업무 구분입니다.");
         String next = code == null ? "" : code.strip();
         if (!next.matches("\\d{2}")) return Op.bad("구분코드는 숫자 두 자리입니다.");
         return db.run(conn -> {
@@ -146,7 +190,7 @@ public class CaseService {
         String t = Txt.clean(title, 120, false), tg = Txt.clean(target, 120, false);
         String sh = Txt.clean(shelf, 80, false), bi = Txt.clean(binder, 80, false);
         String su = Txt.clean(summary, 160, false), bo = Txt.clean(body, 20000, true);
-        if (year < 1990 || year > 2100 || !CATEGORIES.contains(category) || Txt.blank(t) || Txt.blank(tg)
+        if (year < 1990 || year > 2100 || !isCategory(category) || Txt.blank(t) || Txt.blank(tg)
             || sh == null || bi == null || su == null || bo == null || (retention != null && (retention < 1 || retention > 100)))
             return Op.bad(BAD);
         return db.run(conn -> {
@@ -166,7 +210,7 @@ public class CaseService {
                        String owner, String shelf, String binder) {
         String t = Txt.clean(title, 120, false), tg = Txt.clean(target, 120, false), ow = Txt.clean(owner, 40, false);
         String sh = Txt.clean(shelf, 80, false), bi = Txt.clean(binder, 80, false);
-        if (year < 1990 || year > 2100 || !CATEGORIES.contains(category) || Txt.blank(t) || Txt.blank(tg) || ow == null || sh == null || bi == null)
+        if (year < 1990 || year > 2100 || !isCategory(category) || Txt.blank(t) || Txt.blank(tg) || ow == null || sh == null || bi == null)
             return Op.bad(BAD);
         return withCase(caseId, version, (conn, row) -> {
             if (row.get("PurgedAt") != null) throw Op.abort(409, LOCKED);
@@ -507,6 +551,52 @@ public class CaseService {
         return op;
     }
 
+    /**
+     * 고른 건을 통째로 지운다: 건, 조치요구·이행 기록, 자료 파일과 읽은 내용, 편집기 내용.
+     * 지운 사실·제목·문서번호·사유는 이력에 남기고(이력 지문은 그대로 이어짐), 징계기록·수집함에서는 연결만 푼다.
+     * 삭제 보류 중인 건은 지우지 않는다.
+     */
+    public Op deleteCases(List<String> ids, String reason) {
+        if (!chain.intact()) return Op.fail(503, FROZEN);
+        String why = Txt.clean(reason, 240, false);
+        if (Txt.blank(why)) return Op.bad(REASON);
+        if (ids == null || ids.isEmpty()) return Op.bad("지울 건을 고르세요.");
+        List<String> paths = new java.util.ArrayList<>();
+        int[] done = { 0 };
+        List<String> held = new java.util.ArrayList<>();
+        Op op = db.run(conn -> {
+            for (String id : ids) {
+                if (!Txt.isId(id)) continue;
+                Map<String, Object> c = Db.row(conn, "SELECT Title, DocumentNo, Hold FROM Cases WHERE CaseId=?", id);
+                if (c == null) continue;
+                if (flag(c, "Hold")) { held.add(Txt.str(c.get("Title"))); continue; }
+                for (Map<String, Object> a : Db.rows(conn, "SELECT StoragePath FROM Attachments WHERE CaseId=? AND StoragePath IS NOT NULL", id))
+                    paths.add((String) a.get("StoragePath"));
+                Db.update(conn, "DELETE FROM RichText WHERE Owner IN (SELECT 'entry:' || f.FulfillmentId FROM Fulfillments f JOIN Actions a ON a.ActionId=f.ActionId WHERE a.CaseId=?)", id);
+                Db.update(conn, "DELETE FROM RichText WHERE Owner IN (SELECT 'action:' || ActionId FROM Actions WHERE CaseId=?)", id);
+                Db.update(conn, "DELETE FROM Fulfillments WHERE ActionId IN (SELECT ActionId FROM Actions WHERE CaseId=?)", id);
+                Db.update(conn, "DELETE FROM Actions WHERE CaseId=?", id);
+                Db.update(conn, "DELETE FROM AttachmentText WHERE AttachmentId IN (SELECT AttachmentId FROM Attachments WHERE CaseId=?)", id);
+                Db.update(conn, "DELETE FROM Attachments WHERE CaseId=?", id);
+                Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", id);
+                Db.update(conn, "UPDATE Inbox SET AppliedCaseId=NULL WHERE AppliedCaseId=?", id);
+                Db.update(conn, "UPDATE Discipline SET CaseId=NULL WHERE CaseId=?", id);
+                log(conn, id, "건삭제", "건", id, "건 삭제: " + c.get("DocumentNo") + " " + c.get("Title") + ". 사유: " + why);
+                Db.update(conn, "DELETE FROM Cases WHERE CaseId=?", id);
+                done[0]++;
+            }
+            if (done[0] == 0 && held.isEmpty()) throw Op.abort(404, "지울 건을 찾지 못했습니다.");
+            return Op.ok("");
+        });
+        if (!op.ok) return op;
+        int failed = 0;
+        for (String p : paths) if (!files.delete(p)) failed++;
+        String msg = "건 " + done[0] + "개를 지웠습니다. 지운 사실과 사유는 이력에 남았습니다.";
+        if (!held.isEmpty()) msg += " 삭제 보류 중이라 지우지 않은 건: " + String.join(", ", held) + ".";
+        if (failed > 0) msg += " 열려 있어 지우지 못한 파일 " + failed + "개는 프로그램을 닫은 뒤 files 폴더에서 지우세요.";
+        return done[0] == 0 ? Op.bad(msg) : Op.ok(msg);
+    }
+
     public Op setHold(String caseId, Integer version, String reason) {
         String why = Txt.clean(reason, 240, false);
         if (Txt.blank(why)) return Op.bad(REASON);
@@ -658,7 +748,7 @@ public class CaseService {
             FROM Cases c WHERE 1=1""");
         List<Object> args = new ArrayList<>();
         if (year != null) { sql.append(" AND c.Year=?"); args.add(year); }
-        if (CATEGORIES.contains(category)) { sql.append(" AND c.Category=?"); args.add(category); }
+        if (!Txt.blank(category) && isCategory(category)) { sql.append(" AND c.Category=?"); args.add(category); }
         if ("자료삭제됨".equals(status)) sql.append(" AND c.PurgedAt IS NOT NULL");
         else if (java.util.Arrays.asList("초안", "확정", "조치중", "종결").contains(status)) { sql.append(" AND c.PurgedAt IS NULL AND c.Phase=?"); args.add(status); }
         if (!Txt.blank(text)) {

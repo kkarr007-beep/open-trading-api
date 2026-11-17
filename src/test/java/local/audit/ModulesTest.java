@@ -2,6 +2,7 @@ package local.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -429,5 +430,25 @@ class ModulesTest {
         assertTrue(work.update(n.id, Map.of("content", "가", "contentHtml", "<table><tr><td>가<table><tr><td>나</td></tr></table></td></tr></table><script>x</script>")).ok);
         assertTrue(work.contentHtml(work.get(n.id)).contains("<td>가<table>"));
         assertFalse(work.contentHtml(work.get(n.id)).contains("script"));
+    }
+
+    @Test
+    void registerAsksBeforeSameNameAndAddsRevision() {
+        List<Map<String, Object>> arts = RuleService.cleanArticles(rules.preview("제1조(목적) 이 규칙은 보안을 정한다.\n제2조(정의) 용어는 다음과 같다."));
+        assertEquals(2, arts.size());
+        Op first = rules.addArticles(Map.of("title", "보안규칙", "label", "제정"), arts);
+        assertTrue(first.ok, first.message);
+        List<Map<String, Object>> again = RuleService.cleanArticles(rules.preview("제1조(목적) 이 규칙은 정보보안을 정한다."));
+        Op ask = rules.addArticles(Map.of("title", " 보안규칙 "), again);
+        assertFalse(ask.ok);
+        assertEquals(409, ask.status);
+        assertEquals(first.id, ask.extra);
+        Op rev = rules.addArticles(Map.of("title", "보안규칙", "mode", "revise", "label", "개정 1", "note", "용어 정비"), again);
+        assertTrue(rev.ok, rev.message);
+        assertEquals(first.id, rev.id);
+        assertEquals(2, ((List<?>) rules.reg(first.id).get("versions")).size());
+        Op sep = rules.addArticles(Map.of("title", "보안규칙", "mode", "separate"), RuleService.cleanArticles(rules.preview("제1조(목적) 따로.")));
+        assertTrue(sep.ok);
+        assertNotEquals(first.id, sep.id);
     }
 }

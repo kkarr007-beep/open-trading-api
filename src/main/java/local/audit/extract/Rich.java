@@ -26,8 +26,11 @@ public final class Rich {
     private Rich() { }
 
     private static final int MAX_HTML = 6_000_000;
-    private static final int MAX_IMAGE = 1_500_000;
-    private static final int MAX_IMAGES_TOTAL = 4_500_000;
+    /** 그림 한 장의 원본 한도. 넘거나 브라우저가 못 여는 형식이면 줄여서 다시 담는다. */
+    private static final int MAX_IMAGE = 30_000_000;
+    /** 화면에 담는 그림 전체 한도(줄인 뒤 기준). */
+    private static final int MAX_IMAGES_TOTAL = 24_000_000;
+    private static final int IMAGE_EDGE = 1400;
 
     public static String esc(String s) {
         if (s == null) return "";
@@ -77,8 +80,9 @@ public final class Rich {
         return sb.toString();
     }
 
-    /** 평문 docx, pptx, hwpx만. 다른 형식이나 실패는 null을 돌려주고, 부르는 쪽이 fromText를 쓴다. */
+    /** 평문 docx, pptx, hwpx, hwp만. 다른 형식이나 실패는 null을 돌려주고, 부르는 쪽이 fromText를 쓴다. */
     public static String fromFile(Path file, String ext) {
+        if (".hwp".equals(ext)) return HwpHtml.convert(file);
         try (ZipFile zip = new ZipFile(file.toFile())) {
             Walker w = new Walker(zip);
             switch (ext) {
@@ -91,9 +95,9 @@ public final class Rich {
                     }
                     int n = 0;
                     for (String name : slides.keySet()) {
-                        w.out.append("<section class=\"slide\"><div class=\"slide-no\">").append(++n).append("</div>");
+                        w.root.append("<section class=\"slide\"><div class=\"slide-no\">").append(++n).append("</div>");
                         w.run(name, name.replace("ppt/slides/", "ppt/slides/_rels/") + ".rels", "ppt/slides/", Mode.PPTX);
-                        w.out.append("</section>");
+                        w.root.append("</section>");
                     }
                 }
                 case ".hwpx" -> {
@@ -107,7 +111,7 @@ public final class Rich {
                 }
                 default -> { return null; }
             }
-            String html = w.out.toString();
+            String html = w.root.toString();
             return html.isBlank() || html.length() > MAX_HTML ? null : html;
         } catch (Exception e) {
             return null;
@@ -118,7 +122,12 @@ public final class Rich {
 
     private static final class Walker {
         final ZipFile zip;
-        final StringBuilder out = new StringBuilder();
+        /** 문서 전체. 표 칸 안에 있을 때는 out이 그 칸의 글을 가리킨다. */
+        final StringBuilder root = new StringBuilder();
+        StringBuilder out = root;
+        final Deque<StringBuilder> outs = new ArrayDeque<>();
+        final Deque<Table> tables = new ArrayDeque<>();
+        final Deque<Cell> cells = new ArrayDeque<>();
         final Map<String, String> charStyles = new HashMap<>();
         final Map<String, String> paraAligns = new HashMap<>();
         int imageBytes;
@@ -218,21 +227,22 @@ public final class Rich {
 
         void image(String entryName) {
             ZipEntry entry = entryName == null ? null : zip.getEntry(entryName);
-            String lower = entryName == null ? "" : entryName.toLowerCase();
-            String type = lower.endsWith(".png") ? "image/png" : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "image/jpeg"
-                : lower.endsWith(".gif") ? "image/gif" : lower.endsWith(".bmp") ? "image/bmp" : null;
-            if (entry == null || type == null || entry.getSize() > MAX_IMAGE || imageBytes > MAX_IMAGES_TOTAL) {
-                out.append("<span class=\"pic\">[그림]</span>");
-                return;
-            }
+            if (entry == null || entry.getSize() > MAX_IMAGE) { out.append(picNote(entryName)); return; }
             try (InputStream in = zip.getInputStream(entry)) {
                 byte[] bytes = in.readNBytes(MAX_IMAGE + 1);
-                if (bytes.length > MAX_IMAGE) { out.append("<span class=\"pic\">[그림]</span>"); return; }
-                imageBytes += bytes.length;
-                out.append("<img alt=\"그림\" src=\"data:").append(type).append(";base64,").append(Base64.getEncoder().encodeToString(bytes)).append("\">");
+                if (bytes.length > MAX_IMAGE) { out.append(picNote(entryName)); return; }
+                out.append(imgTag(bytes, entryName));
             } catch (Exception e) {
-                out.append("<span class=\"pic\">[그림]</span>");
+                out.append(picNote(entryName));
             }
+        }
+
+        /** 그림을 화면에 넣는다. 크거나 브라우저가 못 여는 형식(BMP·TIFF 등)은 줄이거나 바꿔서 담는다. */
+        String imgTag(byte[] bytes, String name) {
+            String[] enc = Rich.encodeImage(bytes, name);
+            if (enc == null || imageBytes + enc[1].length() > MAX_IMAGES_TOTAL) return picNote(name);
+            imageBytes += enc[1].length();
+            return "<img alt=\"그림\" src=\"data:" + enc[0] + ";base64," + enc[1] + "\">";
         }
 
         String hwpxImage(String id) {
@@ -255,7 +265,7 @@ public final class Rich {
             String runStyle = "", paraStyle = "";
             StringBuilder para = new StringBuilder();
             Deque<String> open = new ArrayDeque<>();
-            while (xr.hasNext() && out.length() < MAX_HTML) {
+            while (xr.hasNext() && root.length() < MAX_HTML) {
                 int ev = xr.next();
                 if (ev == XMLStreamConstants.START_ELEMENT) {
                     String n = xr.getLocalName();
@@ -305,13 +315,34 @@ public final class Rich {
                         case "br", "lineBreak" -> para.append("<br>");
                         case "tbl" -> {
                             flush(para, paraStyle, false);
-                            out.append("<div class=\"tw\"><table>");
+                            tables.push(new Table(mode));
                             open.push("tbl");
                         }
-                        case "tr" -> out.append("<tr>");
-                        case "tc" -> { out.append("<td>"); open.push("tc"); }
-                        case "gridSpan" -> span("colspan", attr(xr, "val"));
-                        case "cellSpan" -> { span("colspan", attr(xr, "colSpan")); span("rowspan", attr(xr, "rowSpan")); }
+                        case "tr" -> { if (!tables.isEmpty()) tables.peek().rows.add(new java.util.ArrayList<>()); }
+                        case "tc" -> {
+                            if (tables.isEmpty()) break;
+                            Table t = tables.peek();
+                            if (t.rows.isEmpty()) t.rows.add(new java.util.ArrayList<>());
+                            Cell c = new Cell();
+                            if (mode == Mode.PPTX) {
+                                c.colspan = (int) Math.max(1, Math.min(200, num(attr(xr, "gridSpan"), 1)));
+                                c.rowspan = (int) Math.max(1, Math.min(200, num(attr(xr, "rowSpan"), 1)));
+                                c.skip = "1".equals(attr(xr, "hMerge")) || "1".equals(attr(xr, "vMerge"));
+                            }
+                            t.rows.get(t.rows.size() - 1).add(c);
+                            cells.push(c);
+                            outs.push(out);
+                            out = c.html;
+                            open.push("tc");
+                        }
+                        case "gridSpan" -> { if (mode == Mode.DOCX && !cells.isEmpty()) cells.peek().colspan = (int) Math.max(1, Math.min(200, num(attr(xr, "val"), 1))); }
+                        case "vMerge" -> { if (mode == Mode.DOCX && !cells.isEmpty()) cells.peek().vmerge = "restart".equals(attr(xr, "val")) ? "restart" : "cont"; }
+                        case "cellSpan" -> {
+                            if (!cells.isEmpty()) {
+                                cells.peek().colspan = (int) Math.max(1, Math.min(200, num(attr(xr, "colSpan"), 1)));
+                                cells.peek().rowspan = (int) Math.max(1, Math.min(200, num(attr(xr, "rowSpan"), 1)));
+                            }
+                        }
                         case "blip" -> {
                             StringBuilder keep = new StringBuilder(para);
                             flush(para, paraStyle, false);
@@ -339,23 +370,24 @@ public final class Rich {
                             if (paraOpen) flush(para, paraStyle, true);
                             paraOpen = false;
                         }
-                        case "tc" -> { out.append("</td>"); if (!open.isEmpty()) open.pop(); }
-                        case "tr" -> out.append("</tr>");
-                        case "tbl" -> { out.append("</table></div>"); if (!open.isEmpty()) open.pop(); }
+                        case "tc" -> {
+                            if (cells.isEmpty()) break;
+                            if (paraOpen && para.length() > 0) flush(para, paraStyle, false);
+                            cells.pop();
+                            out = outs.isEmpty() ? root : outs.pop();
+                            if (!open.isEmpty()) open.pop();
+                        }
+                        case "tr" -> { }
+                        case "tbl" -> {
+                            if (tables.isEmpty()) break;
+                            out.append(tables.pop().html());
+                            if (!open.isEmpty()) open.pop();
+                        }
                         default -> { }
                     }
                 }
             }
             xr.close();
-        }
-
-        /** 방금 연 칸(td)에 합친 칸 수를 적는다. */
-        void span(String name, String value) {
-            int n = (int) num(value, 1);
-            if (n < 2 || n > 200) return;
-            int at = out.lastIndexOf("<td");
-            if (at >= 0 && out.indexOf(">", at) == out.length() - 1 && out.indexOf(name, at) < 0)
-                out.insert(out.length() - 1, " " + name + "=\"" + n + "\"");
         }
 
         void flush(StringBuilder para, String style, boolean keepEmpty) {
@@ -365,6 +397,94 @@ public final class Rich {
             }
             out.append(style.isEmpty() ? "<div class=\"para\">" : "<div class=\"para\" style=\"" + style + "\">").append(para).append("</div>");
             para.setLength(0);
+        }
+    }
+
+    /** 표 칸 하나: 글, 합친 칸 수, 워드의 세로 합치기 표시. */
+    static final class Cell {
+        final StringBuilder html = new StringBuilder();
+        int colspan = 1, rowspan = 1;
+        String vmerge;
+        boolean skip;
+    }
+
+    /** 표 하나. 칸을 다 모은 뒤 합친 칸을 원본처럼 계산해 HTML로 낸다. 표 안의 표도 칸 글 안에 그대로 들어간다. */
+    static final class Table {
+        final Mode mode;
+        final java.util.List<java.util.List<Cell>> rows = new java.util.ArrayList<>();
+        Table(Mode mode) { this.mode = mode; }
+
+        String html() {
+            // 워드: 세로 합치기(vMerge)를 같은 열의 첫 칸 rowspan으로 바꾼다
+            Map<Integer, Cell> restart = new HashMap<>();
+            for (java.util.List<Cell> row : rows) {
+                int col = 0;
+                for (Cell c : row) {
+                    if ("cont".equals(c.vmerge)) {
+                        Cell top = restart.get(col);
+                        if (top != null) { top.rowspan++; c.skip = true; }
+                    } else if ("restart".equals(c.vmerge)) restart.put(col, c);
+                    else restart.remove(col);
+                    col += c.colspan;
+                }
+            }
+            StringBuilder sb = new StringBuilder("<div class=\"tw\"><table>");
+            for (java.util.List<Cell> row : rows) {
+                sb.append("<tr>");
+                for (Cell c : row) {
+                    if (c.skip) continue;
+                    sb.append("<td");
+                    if (c.colspan > 1) sb.append(" colspan=\"").append(c.colspan).append('"');
+                    if (c.rowspan > 1) sb.append(" rowspan=\"").append(c.rowspan).append('"');
+                    sb.append('>').append(c.html).append("</td>");
+                }
+                sb.append("</tr>");
+            }
+            return sb.append("</table></div>").toString();
+        }
+    }
+
+    static String picNote(String name) {
+        String ext = name == null ? "" : Txt_ext(name);
+        boolean vector = ext.equals(".wmf") || ext.equals(".emf") || ext.equals(".svg");
+        return "<span class=\"pic\">[그림" + (vector ? " (" + ext.substring(1).toUpperCase() + " 형식 — 원본 '열기'로 보세요)" : "") + "]</span>";
+    }
+
+    private static String Txt_ext(String name) {
+        int d = name.lastIndexOf('.');
+        return d < 0 ? "" : name.substring(d).toLowerCase();
+    }
+
+    /**
+     * 그림 바이트를 화면용으로. PNG·JPEG·GIF는 작으면 그대로, 크면 긴 변 1400px로 줄인다.
+     * BMP·TIFF처럼 브라우저가 못 여는 형식은 PNG·JPEG로 바꾼다. 읽지 못하면 null.
+     */
+    public static String[] encodeImage(byte[] bytes, String name) {
+        String ext = name == null ? "" : Txt_ext(name);
+        String direct = bytes.length > 4 && (bytes[0] & 0xff) == 0x89 && bytes[1] == 'P' ? "image/png"
+            : bytes.length > 3 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 ? "image/jpeg"
+            : bytes.length > 3 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F' ? "image/gif" : null;
+        if (direct != null && bytes.length <= 700_000) return new String[] { direct, Base64.getEncoder().encodeToString(bytes) };
+        try {
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new ByteArrayInputStream(bytes));
+            if (img == null) return direct != null && bytes.length <= 3_000_000 ? new String[] { direct, Base64.getEncoder().encodeToString(bytes) } : null;
+            int w = img.getWidth(), h = img.getHeight();
+            double k = Math.min(1.0, (double) IMAGE_EDGE / Math.max(w, h));
+            int nw = Math.max(1, (int) Math.round(w * k)), nh = Math.max(1, (int) Math.round(h * k));
+            boolean alpha = img.getColorModel().hasAlpha();
+            java.awt.image.BufferedImage dst = new java.awt.image.BufferedImage(nw, nh,
+                alpha ? java.awt.image.BufferedImage.TYPE_INT_ARGB : java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = dst.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            if (!alpha) { g.setColor(java.awt.Color.WHITE); g.fillRect(0, 0, nw, nh); }
+            g.drawImage(img, 0, 0, nw, nh, null);
+            g.dispose();
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            String type = alpha ? "png" : "jpeg";
+            javax.imageio.ImageIO.write(dst, type, bo);
+            return new String[] { "image/" + type, Base64.getEncoder().encodeToString(bo.toByteArray()) };
+        } catch (Exception | Error e) {
+            return null;
         }
     }
 

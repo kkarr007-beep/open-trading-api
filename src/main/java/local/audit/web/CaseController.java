@@ -36,9 +36,12 @@ public class CaseController {
     private final local.audit.work.WorkService work;
     private final local.audit.rule.RuleService rules;
     private final local.audit.RichTexts rich;
+    private final local.audit.LibraryService library;
 
     public CaseController(CaseService cases, DisciplineService discipline, FileStore files,
-                          local.audit.work.WorkService work, local.audit.rule.RuleService rules, local.audit.RichTexts rich) {
+                          local.audit.work.WorkService work, local.audit.rule.RuleService rules, local.audit.RichTexts rich,
+                          local.audit.LibraryService library) {
+        this.library = library;
         this.rich = rich;
         this.work = work;
         this.rules = rules;
@@ -113,6 +116,12 @@ public class CaseController {
     public String print(@PathVariable String id, Model model) {
         model.addAttribute("item", cases.get(id));
         return "case-print";
+    }
+
+    /** 건 목록에서 고른 건을 사유와 함께 지운다. */
+    @PostMapping("/cases/delete")
+    public ResponseEntity<?> deleteCases(@RequestParam(required = false) java.util.List<String> id, @RequestParam(required = false) String reason, HttpServletRequest req) {
+        return Web.reply(req, cases.deleteCases(id, reason), null);
     }
 
     @PostMapping("/cases/{id}/{what}")
@@ -222,6 +231,7 @@ public class CaseController {
         model.addAttribute("W", work);
         model.addAttribute("ruleHits", rules.search(term, null, 30));
         model.addAttribute("ruleTerms", String.join("|", local.audit.rule.RuleService.terms(term)));
+        model.addAttribute("libHits", library.search(term, 30));
         return "search";
     }
 

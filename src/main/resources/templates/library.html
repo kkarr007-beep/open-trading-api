@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>자료 · Portal</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>자료</h1>
+        <p class="hint" th:text="|자료 ${total}건. 분류별로 쌓아 두고 제목·파일 이름·태그·메모·문서 내용으로 찾습니다. 등재하면 내용을 자동으로 읽어 원본 모양(표·합친 칸·그림·서식)으로 보여 줍니다.|"></p>
+    </div>
+    <div class="row-actions">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <a class="btn btn-primary" th:href="@{/library/new(cat=${cat})}">자료 등재</a>
+    </div>
+</div>
+<nav class="section-tabs" aria-label="자료 분류">
+    <a th:href="@{/library(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'" th:text="|전체 ${total}|"></a>
+    <a th:each="c : ${cats}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${cat == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
+</nav>
+<form method="get" action="/library" class="toolbar" style="margin-bottom:12px">
+    <input type="hidden" name="cat" th:value="${cat}" />
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">자료 찾기</span>
+            <input name="q" th:value="${q}" placeholder="제목·파일 이름·태그·메모·문서 내용으로 찾기 (여러 낱말은 모두 맞는 것)" maxlength="120" data-search-focus />
+        </label>
+        <button class="btn btn-primary" type="submit">찾기</button>
+        <a class="btn" th:unless="${#strings.isEmpty(q)}" th:href="@{/library(cat=${cat})}">찾기 지우기</a>
+    </div>
+</form>
+<p class="count-line" th:text="|${v.total}건 · ${v.page}/${v.pages}쪽|"></p>
+<p class="empty" th:if="${v.total == 0}">자료가 없습니다. '자료 등재'로 문서를 넣으세요.</p>
+<ul class="file-list" th:unless="${v.total == 0}">
+    <li class="file-row" th:each="d : ${v.items}">
+        <a class="file-hit" th:href="|/library/${d.Id}|">
+            <span class="file-ico ico-doc" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
+            <span class="file-copy">
+                <span class="file-name" th:text="${d.Title}"></span>
+                <span class="file-meta" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · ${d.RegisteredDisplay}${#strings.isEmpty(d.Tags) ? '' : ' · #' + d.Tags}|"></span>
+                <span class="snippet" th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></span>
+            </span>
+        </a>
+        <div class="file-side">
+            <span class="read-tag" th:data-read="${d.ReadState}" th:text="|내용 ${d.ReadState}|"></span>
+            <a class="icon-btn" th:href="|/library/${d.Id}/file?dl=1|" aria-label="내려받기" title="내려받기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+        </div>
+    </li>
+</ul>
+<p class="row-actions" th:if="${v.pages > 1}">
+    <a class="btn" th:if="${v.page > 1}" th:href="@{/library(cat=${cat},q=${q},page=${v.page - 1})}">← 더 최근</a>
+    <a class="btn" th:if="${v.page < v.pages}" th:href="@{/library(cat=${cat},q=${q},page=${v.page + 1})}">이전 자료 →</a>
+</p>
+</th:block>
+</body>
+</html>

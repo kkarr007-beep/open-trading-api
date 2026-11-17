@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>경영 현황판 · Portal</title></head>
+<body>
+<th:block id="content">
+<iframe class="board-frame" src="/board/app" title="경영 현황판"></iframe>
+<p class="hint no-print" style="margin-top:6px">경영 현황판의 입력·설정은 Portal 데이터 파일에 저장되고 관리 화면의 백업에 함께 들어갑니다. 예전 현황판 파일에 있던 내용은 그쪽 '백업·복원'으로 내보낸 뒤 이 화면의 '백업·복원'에서 불러오세요.</p>
+</th:block>
+</body>
+</html>

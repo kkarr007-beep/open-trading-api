@@ -350,13 +350,64 @@ public class RuleService {
         if (body.isBlank()) return Op.bad("사규 글을 붙여 넣거나 파일을 고르세요.");
         if (body.length() > 3_000_000) return Op.bad("글이 너무 깁니다.");
         List<Map<String, Object>> arts = RuleParser.parse(body);
+        return addArticles(p, arts);
+    }
+
+    /** 같은 이름의 사규. 등록할 때 개정 버전으로 넣을지 묻는 데 쓴다. */
+    public Map<String, Object> sameTitle(String title) {
+        String n = Rules.nk(title);
+        if (n.isEmpty()) return null;
+        for (Map<String, Object> r : regs()) if (Rules.nk(Rules.str(r, "title")).equals(n)) return r;
+        return null;
+    }
+
+    /** 미리보기에서 사람이 고친 조 목록을 받아 다듬는다. */
+    public static List<Map<String, Object>> cleanArticles(List<Map<String, Object>> in) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        if (in == null) return out;
+        for (Map<String, Object> a : in) {
+            if (a == null || out.size() >= 3000) continue;
+            Map<String, Object> x = new LinkedHashMap<>();
+            String id = Rules.str(a, "id");
+            x.put("id", id.matches("[A-Za-z0-9_]{1,40}") ? id : Rules.uid("a"));
+            x.put("number", Txt.fit(Rules.str(a, "number"), 60, false));
+            x.put("title", Txt.fit(Rules.str(a, "title"), 120, false));
+            x.put("chapter", Txt.fit(Rules.str(a, "chapter"), 120, false));
+            if (!Rules.str(a, "section").isEmpty()) x.put("section", Txt.fit(Rules.str(a, "section"), 120, false));
+            x.put("content", Txt.fit(Rules.str(a, "content"), 400_000, true));
+            x.put("tags", new java.util.ArrayList<>());
+            x.put("difficult", false);
+            x.put("crossRefs", new java.util.ArrayList<>());
+            if (Rules.bool(a, "supp")) x.put("supp", true);
+            if (Rules.bool(a, "attach")) x.put("attach", true);
+            if (Rules.str(x, "number").isEmpty() && Rules.str(x, "content").isBlank()) continue;
+            out.add(x);
+        }
+        return out;
+    }
+
+    /**
+     * 조 목록으로 등록·개정한다. mode: (비움) 같은 이름이 있으면 묻기 · revise 같은 이름 사규의 개정판 · separate 따로 등록.
+     * 같은 이름이 있는데 mode가 비어 있으면 409로 알려 준다(extra에 그 사규 ID).
+     */
+    public Op addArticles(Map<String, String> p, List<Map<String, Object>> arts) {
         if (arts.isEmpty()) return Op.bad("조문을 찾지 못했습니다.");
+        if (Txt.blank(p.get("reviseOf"))) {
+            Map<String, Object> dup = sameTitle(p.get("title"));
+            String mode = Txt.str(p.get("mode"));
+            if (dup != null && mode.isEmpty())
+                return Op.fail(409, "같은 이름의 사규 「" + Rules.str(dup, "title") + "」가 있습니다 (판 " + Rules.maps(dup, "versions").size() + "개).").extra(Rules.str(dup, "id"));
+            if (dup != null && "revise".equals(mode)) {
+                p = new java.util.HashMap<>(p);
+                p.put("reviseOf", Rules.str(dup, "id"));
+            }
+        }
         Map<String, Object> ver = new LinkedHashMap<>();
         ver.put("id", Rules.uid("v"));
         String label = Txt.fit(p.get("label"), 60, false);
         String eff = Kst.date(p.get("effectiveDate")) == null ? Kst.today().toString() : Kst.date(p.get("effectiveDate")).toString();
         ver.put("effectiveDate", eff);
-        ver.put("note", Txt.fit(p.get("note"), 500, true));
+        ver.put("note", Txt.fit(Txt.blank(p.get("note")) ? p.get("reason") : p.get("note"), 500, true));
         ver.put("createdAt", Kst.stamp());
         ver.put("articles", arts);
         String target = Txt.str(p.get("reviseOf"));

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>건 목록 · 감사 포털</title></head>
+<head><title>건 목록 · Portal</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
@@ -29,7 +29,7 @@
     <label class="field">구분
         <select name="category" aria-label="구분">
             <option value="">전체</option>
-            <option th:each="c : ${ {'업무진단','준법감사'} }" th:text="${c}" th:selected="${q['category'] == c}"></option>
+            <option th:each="c : ${caseCategories}" th:text="${c}" th:selected="${q['category'] == c}"></option>
         </select>
     </label>
     <label class="field">상태
@@ -57,10 +57,18 @@
     <span th:unless="${filtered}"> 또는 <a href="/inbox">수집함</a>에 문서를 넣으면 초안이 만들어집니다.</span>
 </p>
 <th:block th:unless="${result.Total == 0}">
+<form id="case-delete" method="post" action="/cases/delete" data-write="1" class="card inline-form inline-row no-print"
+      data-confirm="고른 건을 통째로 지웁니다. 조치요구·이행 기록, 자료 파일, 읽은 내용이 함께 지워지고 되돌릴 수 없습니다. 지울까요?">
+    <strong>고른 건 삭제</strong>
+    <label class="field wide">사유 (이력에 남습니다)<input name="reason" required maxlength="240" placeholder="예: 중복 등록, 잘못 등록한 건" /></label>
+    <button type="submit" class="btn btn-danger">고른 건 삭제</button>
+    <span class="hint" style="margin:0">삭제 보류 중인 건은 지우지 않습니다.</span>
+</form>
 <div class="table-wrap" tabindex="0" aria-label="표 가로 이동">
     <table class="data">
         <thead>
             <tr>
+                <th scope="col" class="no-print"><input type="checkbox" form="case-delete" data-check-all="id" aria-label="이 쪽 모두 고르기" /></th>
                 <th scope="col" th:each="col : ${ {'year|연도','category|구분','title|제목','target|대상','state|상태','due|회신기한','ret|보존연한','expiry|만료·보류','doc|문서번호','shelf|서가·철번호'} }"
                     th:with="key=${#strings.substringBefore(col,'|')}, label=${#strings.substringAfter(col,'|')}, sortable=${#lists.contains({'year','title','due','expiry'}, #strings.substringBefore(col,'|'))}">
                     <form method="get" action="/cases" th:if="${sortable}">
@@ -75,6 +83,7 @@
         </thead>
         <tbody>
         <tr th:each="row : ${result.Items}">
+            <td class="no-print"><input type="checkbox" name="id" form="case-delete" th:value="${row.CaseId}" th:disabled="${row.Hold == 1}" th:aria-label="|${row.Title} 고르기|" /></td>
             <td class="num" th:text="${row.Year}"></td>
             <td th:text="${row.Category}"></td>
             <th scope="row"><a th:href="|/cases/${row.CaseId}|" th:text="${row.Title}"></a></th>

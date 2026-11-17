@@ -335,4 +335,75 @@ class CoreTest {
         assertEquals("Deleted", db.row("SELECT StorageState FROM Attachments WHERE AttachmentId=?", att2).get("StorageState"));
         assertTrue(chain.verify(), "이력 지문이 그대로 맞아야 함");
     }
+
+    @Test
+    void newCategoriesWorkAfterUpgradingOldTable() throws Exception {
+        String first = newCase(5);
+        // 1.6.0판까지의 건 표(구분 두 가지로 묶임)를 만들어 둔다
+        db.tx(conn -> {
+            try (java.sql.Statement st = conn.createStatement()) {
+                String sql = (String) Db.row(conn, "SELECT sql FROM sqlite_master WHERE name='Cases'").get("sql");
+                st.execute("ALTER TABLE Cases RENAME TO Cases_old");
+                st.execute(sql.replace("Category TEXT NOT NULL,", "Category TEXT NOT NULL CHECK (Category IN ('업무진단','준법감사')),"));
+                st.execute("INSERT INTO Cases SELECT * FROM Cases_old");
+                st.execute("DROP TABLE Cases_old");
+            }
+            return null;
+        });
+        assertTrue(((String) db.row("SELECT sql FROM sqlite_master WHERE name='Cases'").get("sql")).contains("CHECK (Category IN"));
+        Db again = new Db(paths);
+        assertFalse(((String) again.row("SELECT sql FROM sqlite_master WHERE name='Cases'").get("sql")).contains("CHECK (Category IN"));
+        assertNotNull(again.row("SELECT CaseId FROM Cases WHERE CaseId=?", first), "기존 건은 그대로");
+        assertTrue(cases.addCategory("내부통제점검", "03").ok);
+        assertFalse(cases.addCategory("다른것", "03").ok, "코드 중복");
+        assertTrue(cases.categories().contains("내부통제점검"));
+        assertEquals("2026-03-01", cases.peekDocumentNo(2026, "내부통제점검"));
+        Op op = cases.register(2026, "내부통제점검", "통제 점검", "예시조직", "", "", "한 줄", "본문", 5);
+        assertTrue(op.ok, op.message);
+        assertFalse(cases.removeCategory("내부통제점검").ok, "번호를 발급한 구분은 못 뺌");
+        assertTrue(cases.addCategory("임시", "09").ok);
+        assertTrue(cases.removeCategory("임시").ok);
+        assertTrue(chain.verify());
+    }
+
+    @Test
+    void selectedCasesAreDeletedWholeWithReason() throws Exception {
+        String a = newCase(5), b = newCase(5), held = newCase(5);
+        Op f = cases.addFile(a, null, "증빙", "", "x.txt", new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)), null);
+        assertTrue(f.ok);
+        cases.awaitReads();
+        cases.addAction(a, null, "지적", "지적", "예시조직", "2026-11-01", "2026-11-10", "조치");
+        cases.confirm(held, null);
+        cases.setHold(held, null, "분쟁 중");
+        assertFalse(cases.deleteCases(List.of(a), "").ok, "사유 필요");
+        Op op = cases.deleteCases(List.of(a, b, held), "중복 등록");
+        assertTrue(op.ok, op.message);
+        assertTrue(op.message.contains("2개"), op.message);
+        assertNull(db.row("SELECT 1 AS X FROM Cases WHERE CaseId=?", a));
+        assertNull(db.row("SELECT 1 AS X FROM Attachments WHERE CaseId=?", a));
+        assertNull(db.row("SELECT 1 AS X FROM Actions WHERE CaseId=?", a));
+        assertNotNull(db.row("SELECT 1 AS X FROM Cases WHERE CaseId=?", held), "보류 건은 남음");
+        assertNotNull(db.row("SELECT 1 AS X FROM History WHERE CaseId=? AND Action='건삭제'", a), "이력에 남음");
+        assertTrue(chain.verify());
+    }
+
+    @Test
+    void libraryStoresReadsFindsAndDeletes() throws Exception {
+        LibraryService lib = new LibraryService(db, files, reader);
+        String cat = (String) lib.categories().get(0).get("Id");
+        Op added = lib.add(cat, "", "보안", "", "정보보안 지침.txt",
+            new java.io.ByteArrayInputStream("제1조 비밀번호는 분기마다 바꾼다.".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertTrue(added.ok, added.message);
+        lib.awaitReads();
+        Map<String, Object> d = lib.get(added.id);
+        assertEquals("읽음", d.get("ReadState"));
+        Map<String, Object> found = lib.list("", "비밀번호 분기", 1, 20);
+        assertEquals(1, found.get("total"));
+        assertEquals(0, lib.list("", "없는말", 1, 20).get("total"));
+        java.nio.file.Path stored = lib.file(added.id);
+        assertTrue(java.nio.file.Files.exists(stored));
+        assertTrue(lib.delete(added.id).ok);
+        assertEquals(0, lib.total());
+        assertFalse(java.nio.file.Files.exists(stored));
+    }
 }

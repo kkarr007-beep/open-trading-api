@@ -13,6 +13,7 @@
             <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
         </label>
     </form>
+    <div class="row-actions no-print"><button type="button" class="btn" data-print>인쇄</button></div>
 </div>
 <div th:replace="~{work-parts :: quick(${owner})}"></div>
 <div class="board">

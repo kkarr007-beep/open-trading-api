@@ -7,7 +7,7 @@
     <div>
         <p class="kicker">전체 찾기</p>
         <h1 th:text="${#strings.isEmpty(searchQuery)} ? '찾을 말을 적으세요' : |'${searchQuery}' 찾은 결과|"></h1>
-        <p class="hint">업무·일정, 사규 조문, 감사 건, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
+        <p class="hint">업무·일정, 사규 조문, 자료, 감사 건, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
     </div>
 </div>
 <th:block th:unless="${#strings.isEmpty(searchQuery)}">
@@ -21,6 +21,17 @@
         </a></li>
     </ul>
     <p th:if="${#lists.size(workHits) >= 30}"><a th:href="@{/work/list(text=${searchQuery},scope='all')}">업무 목록에서 모두 보기</a></p>
+</section>
+<section aria-labelledby="s-lib">
+    <h2 id="s-lib">자료 <span class="count" th:text="${#lists.size(libHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(libHits)}">맞는 자료가 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="d : ${libHits}"><a th:href="|/library/${d.Id}|">
+            <strong th:text="${d.Title}"></strong>
+            <span th:text="|${d.Category} · ${d.FileName} · ${d.RegisteredDisplay}|"></span>
+            <span th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></span>
+        </a></li>
+    </ul>
 </section>
 <section aria-labelledby="s-rules">
     <h2 id="s-rules">사규 조문 <span class="count" th:text="${#lists.size(ruleHits)}">0</span></h2>

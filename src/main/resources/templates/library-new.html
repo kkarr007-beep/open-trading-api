@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>자료 등재 · Portal</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>자료 등재</h1>
+        <p class="hint">여러 파일을 한 번에 올릴 수 있습니다. 한글(hwp·hwpx), 워드, 엑셀, 파워포인트, PDF, 그림, txt를 읽어 원본 모양으로 보여 줍니다. 문서보안이 걸린 문서는 이 컴퓨터의 프로그램으로 열어 읽습니다.</p>
+    </div>
+</div>
+<section class="card">
+    <form method="post" action="/library/upload" data-write="1" enctype="multipart/form-data">
+        <div class="drop">
+            <p class="drop-copy"><strong>파일을 고르거나 끌어 놓으세요</strong> (여러 개 가능)</p>
+            <input type="file" name="upload" multiple required aria-label="등재할 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+            <label class="field">분류<select name="categoryId" required><option th:each="c : ${cats}" th:value="${c.Id}" th:text="${c.Name}" th:selected="${cat == c.Id}"></option></select></label>
+            <label class="field grow">제목 <span class="field-note">파일 하나일 때만 씁니다. 비우면 파일 이름</span><input name="title" maxlength="200" /></label>
+            <label class="field grow">태그 <span class="field-note">쉼표로 나눕니다. 찾기에 씁니다</span><input name="tags" maxlength="300" placeholder="예: 개인정보, 2026, 점검" /></label>
+            <label class="field grow">메모<textarea name="note" rows="2" maxlength="2000"></textarea></label>
+        </div>
+        <button type="submit" class="btn btn-primary">등재</button>
+    </form>
+</section>
+</th:block>
+</body>
+</html>

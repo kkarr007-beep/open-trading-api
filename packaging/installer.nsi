@@ -1,16 +1,16 @@
-﻿; 감사 포털 설치 파일. Linux나 Windows의 makensis로 만든다 (packaging/build-installer.sh).
+﻿; 경영진단 Portal 설치 파일. Linux나 Windows의 makensis로 만든다 (packaging/build-installer.sh).
 ; 관리자 권한 없이 현재 사용자에게만 설치한다. Java를 따로 설치하지 않아도 되도록 실행 환경을 함께 넣는다.
 Unicode true
 SetCompressor /SOLID lzma
 SetCompressorDictSize 64
 RequestExecutionLevel user
 
-!define APP_NAME "감사 포털"
+!define APP_NAME "경영진단 Portal"
 ; 기록과 자료 폴더. 1.3.0판부터 쓰던 이름을 그대로 둔다(이름을 바꾸면 기존 기록을 못 찾는다).
 !define DATA_DIR "감사기록"
 !define APP_ID "AuditRecordLocal"
 !ifndef APP_VERSION
-  !define APP_VERSION "1.6.0"
+  !define APP_VERSION "1.7.0"
 !endif
 !ifndef STAGE
   !define STAGE "stage"
@@ -36,7 +36,7 @@ VIAddVersionKey "LegalCopyright" ""
 !define MUI_ICON "audit-record.ico"
 !define MUI_UNICON "audit-record.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TEXT "이 컴퓨터에서 혼자 쓰는 감사 포털(업무 일정·감사·사규)을 설치합니다.$\r$\n$\r$\n· 관리자 권한이 필요 없습니다.$\r$\n· Java를 따로 설치하지 않아도 됩니다.$\r$\n· 기록과 자료는 '$PROFILE\${DATA_DIR}' 폴더에 저장되며, 프로그램을 지워도 남습니다.$\r$\n$\r$\n감사 포털이 켜져 있으면 먼저 닫아 주세요."
+!define MUI_WELCOMEPAGE_TEXT "이 컴퓨터에서 혼자 쓰는 경영진단 Portal(업무 일정·감사기록·사규·자료·경영 현황판)을 설치합니다.$\r$\n$\r$\n· 관리자 권한이 필요 없습니다.$\r$\n· Java를 따로 설치하지 않아도 됩니다.$\r$\n· 기록과 자료는 '$PROFILE\${DATA_DIR}' 폴더에 저장되며, 프로그램을 지워도 남습니다.$\r$\n$\r$\n경영진단 Portal이 켜져 있으면 먼저 닫아 주세요."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchApp
 !define MUI_FINISHPAGE_RUN_TEXT "${APP_NAME} 실행"
@@ -73,6 +73,8 @@ Section "Install"
   ; 1.3.0판 이전 이름의 바로가기를 치운다.
   Delete "$DESKTOP\감사기록.lnk"
   RMDir /r "$SMPROGRAMS\감사기록"
+  Delete "$DESKTOP\감사 포털.lnk"
+  RMDir /r "$SMPROGRAMS\감사 포털"
   SetOutPath "$INSTDIR"
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\jre\bin\javaw.exe" '${RUN_ARGS}' "$INSTDIR\audit-record.ico" 0 SW_SHOWNORMAL "" "${APP_NAME}"
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
@@ -94,6 +96,8 @@ Section "Uninstall"
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$DESKTOP\감사기록.lnk"
   RMDir /r "$SMPROGRAMS\감사기록"
+  Delete "$DESKTOP\감사 포털.lnk"
+  RMDir /r "$SMPROGRAMS\감사 포털"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   RMDir /r "$INSTDIR\jre"
   RMDir /r "$INSTDIR\fx"

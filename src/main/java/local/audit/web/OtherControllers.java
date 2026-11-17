@@ -225,6 +225,8 @@ public class OtherControllers {
             case "verify" -> chain.verify() ? Op.ok("이력 지문이 모두 맞습니다.") : Op.fail(409, "이력이 맞지 않습니다. 데이터 파일이 직접 고쳐졌을 수 있습니다.");
             case "reseal" -> chain.reseal(settings.owner(), p.get("reason"));
             case "code" -> cases.setCategoryCode(p.get("category"), p.get("code"));
+            case "code-add" -> cases.addCategory(p.get("category"), p.get("code"));
+            case "code-remove" -> cases.removeCategory(p.get("category"));
             case "import" -> legacy.run(p.get("folder"));
             default -> Op.fail(404, "없는 작업입니다.");
         };

@@ -1,5 +1,5 @@
 @echo off
-rem 감사 포털 빌드 (Windows). JDK 21 이상과 Maven이 필요합니다.
+rem 경영진단 Portal 빌드 (Windows). JDK 21 이상과 Maven이 필요합니다.
 cd /d "%~dp0"
 call mvn -q -DskipTests package
 if errorlevel 1 ( echo 빌드에 실패했습니다. & pause & exit /b 1 )

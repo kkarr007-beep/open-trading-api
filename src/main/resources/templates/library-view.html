@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>자료 보기 · Portal</title></head>
+<body>
+<th:block id="content">
+<h1 th:if="${d == null}">자료를 찾을 수 없음</h1>
+<th:block th:if="${d != null}">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · 등재 ${d.RegisteredDisplay}|"></p>
+        <h1 th:text="${d.Title}">자료</h1>
+        <p class="hint" th:unless="${#strings.isEmpty(d.Tags)}" th:text="|#${d.Tags}|"></p>
+    </div>
+    <div class="row-actions">
+        <a class="btn btn-primary" th:href="|/library/${d.Id}/file?dl=1|">원본 내려받기</a>
+        <button type="button" class="btn" data-print>인쇄</button>
+        <form method="post" th:action="|/library/${d.Id}/reread|" data-write="1"><button type="submit" class="btn">내용 다시 읽기</button></form>
+        <button type="button" class="btn" data-dialog="meta-dialog">정보 고치기</button>
+        <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일과 읽은 내용이 함께 지워집니다.|"><button type="submit" class="btn btn-danger">삭제</button></form>
+    </div>
+</div>
+<p class="banner info" th:if="${d.ReadState == '읽는 중'}">내용을 읽는 중입니다. 잠시 뒤 새로 고침(F5) 하세요.</p>
+<p class="banner warn" th:if="${d.ReadState != '읽음' and d.ReadState != '읽는 중'}" th:text="|내용을 읽지 못했습니다 (${d.ReadState}). ${d.ReadNote} 원본을 내려받아 보세요.|"></p>
+<section class="card" th:unless="${#strings.isEmpty(d.Note)}"><h2>메모</h2><p style="white-space:pre-wrap" th:text="${d.Note}"></p></section>
+<section class="card" th:if="${d.Html != null}">
+    <h2>내용 <span class="sub">원본 모양으로 읽은 내용 · 편집하지 않습니다</span></h2>
+    <div class="rich doc-view" th:utext="${d.Html}"></div>
+</section>
+<dialog id="meta-dialog" aria-labelledby="meta-title">
+    <form method="post" th:action="|/library/${d.Id}/meta|" data-write="1">
+        <div class="dialog-head"><h2 id="meta-title">자료 정보</h2>
+            <button type="button" class="icon-btn" data-close aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+        <div class="form-grid">
+            <label class="field grow">제목<input name="title" required maxlength="200" th:value="${d.Title}" /></label>
+            <label class="field">분류<select name="categoryId"><option th:each="c : ${cats}" th:value="${c.Id}" th:text="${c.Name}" th:selected="${c.Id == d.CategoryId}"></option></select></label>
+            <label class="field grow">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
+            <label class="field grow">메모<textarea name="note" rows="3" maxlength="2000" th:text="${d.Note}"></textarea></label>
+        </div>
+        <div class="row-actions"><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn btn-primary">저장</button></div>
+    </form>
+</dialog>
+</th:block>
+</th:block>
+</body>
+</html>

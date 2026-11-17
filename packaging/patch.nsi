@@ -1,10 +1,11 @@
-﻿; 감사 포털 패치. 이미 설치된 프로그램의 실행 파일(audit-record.jar) 하나만 바꾼다. 기록과 자료는 건드리지 않는다.
+﻿; 경영진단 Portal 패치. 이미 설치된 프로그램의 실행 파일(audit-record.jar) 하나만 바꾼다. 기록과 자료는 건드리지 않는다.
 ; 1.3.0판(이름: 감사기록)에 적용하면 바로가기와 제거 프로그램을 새 이름으로 바꾼다. 기록 폴더 이름은 그대로 둔다.
 Unicode true
 SetCompressor /SOLID lzma
 RequestExecutionLevel user
-!define APP_NAME "감사 포털"
+!define APP_NAME "경영진단 Portal"
 !define OLD_NAME "감사기록"
+!define OLD_NAME2 "감사 포털"
 !define DATA_DIR "감사기록"
 !define APP_ID "AuditRecordLocal"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
@@ -32,6 +33,8 @@ Section "Patch"
   ; 바로가기를 새 이름으로 바꾼다. 실행 인자(기록 폴더)는 그대로다.
   Delete "$DESKTOP\${OLD_NAME}.lnk"
   RMDir /r "$SMPROGRAMS\${OLD_NAME}"
+  Delete "$DESKTOP\${OLD_NAME2}.lnk"
+  RMDir /r "$SMPROGRAMS\${OLD_NAME2}"
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$0\jre\bin\javaw.exe" '--enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -cp "$0\audit-record.jar;$0\fx\*" local.audit.App "--audit.home=$PROFILE\${DATA_DIR}"' "$0\audit-record.ico" 0 SW_SHOWNORMAL "" "${APP_NAME}"
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$0\jre\bin\javaw.exe" '--enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -cp "$0\audit-record.jar;$0\fx\*" local.audit.App "--audit.home=$PROFILE\${DATA_DIR}"' "$0\audit-record.ico" 0 SW_SHOWNORMAL "" "${APP_NAME}"
@@ -50,6 +53,8 @@ SectionEnd
 Section "Uninstall"
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$DESKTOP\${OLD_NAME}.lnk"
+  Delete "$DESKTOP\${OLD_NAME2}.lnk"
+  RMDir /r "$SMPROGRAMS\${OLD_NAME2}"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   RMDir /r "$SMPROGRAMS\${OLD_NAME}"
   RMDir /r "$INSTDIR\jre"

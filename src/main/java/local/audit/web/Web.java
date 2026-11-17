@@ -28,11 +28,13 @@ public class Web {
     private final InboxService inbox;
     private final String version;
     private final local.audit.work.WorkService work;
+    private final local.audit.CaseService cases;
 
-    public Web(Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work,
+    public Web(Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
                @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
         this.version = version;
         this.work = work;
+        this.cases = cases;
         this.chain = chain;
         this.settings = settings;
         this.inbox = inbox;
@@ -44,7 +46,7 @@ public class Web {
         String path = req.getRequestURI();
         String nav = path.startsWith("/cases") ? "cases" : path.startsWith("/files") ? "files" : path.startsWith("/discipline") ? "discipline"
             : path.startsWith("/inbox") ? "inbox" : path.startsWith("/admin") ? "admin" : path.startsWith("/settings") ? "settings"
-            : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") ? "module" : path.startsWith("/search") ? "search" : "todo";
+            : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") || path.startsWith("/library") || path.startsWith("/board") ? "module" : path.startsWith("/search") ? "search" : "todo";
         model.addAttribute("nav", nav);
         // 업무 일정·사규 메뉴의 현재 위치: work, work/list, rules, rules/search …
         String navKey = "";
@@ -53,9 +55,12 @@ public class Web {
         if (path.startsWith("/work/item/")) navKey = "work/list";
         if (path.startsWith("/work/report")) navKey = "work/insight";
         if (path.equals("/import")) navKey = "import";
+        if (path.startsWith("/library")) navKey = path.equals("/library/new") ? "library/new" : path.equals("/library/categories") ? "library/categories" : "library";
+        if (path.startsWith("/board")) navKey = "board";
         model.addAttribute("navKey", navKey);
+        model.addAttribute("caseCategories", cases.categories());
         String navGroup = path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
-            : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules"
+            : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board"
             : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";
         model.addAttribute("navGroup", navGroup);
         model.addAttribute("workUrgent", work.urgentCount());

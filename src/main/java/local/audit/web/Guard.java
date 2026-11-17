@@ -51,8 +51,11 @@ public class Guard extends OncePerRequestFilter {
         res.setHeader("X-Content-Type-Options", "nosniff");
         res.setHeader("Referrer-Policy", "no-referrer");
         res.setHeader("X-Frame-Options", "SAMEORIGIN");
-        res.setHeader("Content-Security-Policy",
-            "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'");
+        // 경영 현황판 화면(받은 단일 HTML)은 글 안의 스크립트로 돈다. 그 화면에만 허락하고, 바깥 주소는 여전히 막는다.
+        boolean board = "/board/app".equals(req.getRequestURI());
+        res.setHeader("Content-Security-Policy", board
+            ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"
+            : "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'");
         chain.doFilter(req, res);
     }
 }

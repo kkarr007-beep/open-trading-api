@@ -208,6 +208,65 @@ public class RuleController {
         return Web.reply(req, op, op.ok ? "/rules/" + op.id : null);
     }
 
+    // ───── 등록: 파일 읽기 → 분석 미리보기 → 고쳐서 확정 ─────
+
+    /** 올린 파일을 읽어 글과 모양(HTML)을 돌려준다. 화면이 모양을 사규 글 꼴(표 안의 표 포함)로 바꾼 뒤 /rules/parse로 보낸다. */
+    @PostMapping("/rules/analyze")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public ResponseEntity<Map<String, Object>> analyze(@RequestParam(required = false) MultipartFile upload) throws IOException {
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        if (upload == null || upload.isEmpty()) { out.put("ok", false); out.put("message", "파일을 고르세요."); return ResponseEntity.ok(out); }
+        if (upload.getSize() > 150L * 1024 * 1024) { out.put("ok", false); out.put("message", "파일이 너무 큽니다."); return ResponseEntity.ok(out); }
+        String name = Txt.str(upload.getOriginalFilename());
+        Path tmp = Files.createTempFile(paths.tmp, "rule", Txt.ext(name).isEmpty() ? ".txt" : Txt.ext(name));
+        try {
+            upload.transferTo(tmp);
+            TextReader.Result res = reader.read(tmp, name);
+            out.put("ok", res.ok() && !Txt.blank(res.text()));
+            out.put("message", res.ok() ? "읽었습니다." : "파일에서 글을 읽지 못했습니다. " + Txt.str(res.note()));
+            out.put("name", Txt.stem(name));
+            out.put("text", Txt.str(res.text()));
+            out.put("html", res.html());
+            return ResponseEntity.ok(out);
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
+    /** 사규 글을 조·부칙·별첨으로 갈라 미리보기용으로 돌려준다. */
+    @PostMapping("/rules/parse")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public ResponseEntity<Map<String, Object>> parse(@org.springframework.web.bind.annotation.RequestBody Map<String, Object> body) {
+        String text = Txt.str(body.get("text"));
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        if (text.isBlank() || text.length() > 3_000_000) { out.put("ok", false); out.put("message", "분석할 글이 없습니다."); return ResponseEntity.ok(out); }
+        java.util.List<Map<String, Object>> arts = local.audit.rule.RuleParser.parse(text);
+        out.put("ok", !arts.isEmpty());
+        out.put("articles", arts);
+        out.put("message", arts.isEmpty() ? "조문을 찾지 못했습니다." : "조 " + arts.stream().filter(a -> !Rules.bool(a, "supp")).count() + "개, 부칙·별첨 " + arts.stream().filter(a -> Rules.bool(a, "supp") || Rules.bool(a, "attach")).count() + "개로 나눴습니다.");
+        Map<String, Object> dup = Txt.blank(Txt.str(body.get("reviseOf"))) ? rules.sameTitle(Txt.str(body.get("title"))) : null;
+        if (dup != null) out.put("dup", Map.of("id", Rules.str(dup, "id"), "title", Rules.str(dup, "title"), "versions", Rules.maps(dup, "versions").size()));
+        return ResponseEntity.ok(out);
+    }
+
+    /** 미리보기에서 확인·수정한 조로 등록하거나 개정판을 넣는다. */
+    @PostMapping("/rules/save")
+    @org.springframework.web.bind.annotation.ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> save(@org.springframework.web.bind.annotation.RequestBody Map<String, Object> body) {
+        Map<String, String> p = new java.util.HashMap<>();
+        for (String k : new String[] { "title", "categoryId", "label", "effectiveDate", "note", "reviseOf", "mode" }) p.put(k, Txt.str(body.get(k)));
+        Object raw = body.get("articles");
+        java.util.List<Map<String, Object>> arts = RuleService.cleanArticles(raw instanceof java.util.List<?> l ? (java.util.List<Map<String, Object>>) l : null);
+        Op op = rules.addArticles(p, arts);
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("ok", op.ok);
+        out.put("message", op.message);
+        if (op.ok) out.put("go", "/rules/" + op.id);
+        if (op.status == 409) out.put("dupId", op.extra);
+        return ResponseEntity.ok(out);
+    }
+
     @PostMapping("/rules/{id}/meta")
     public Object meta(@PathVariable String id, @RequestParam Map<String, String> p, HttpServletRequest req) {
         return Web.reply(req, rules.saveMeta(id, p), null);

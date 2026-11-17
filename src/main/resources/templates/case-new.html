@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>건 등록 · 감사 포털</title></head>
+<head><title>건 등록 · Portal</title></head>
 <body>
 <th:block id="content">
 <h1>건 등록</h1>
@@ -8,7 +8,7 @@
 <form method="post" action="/cases/new" data-track data-write="1">
     <div class="form-grid">
         <label class="field">연도<input name="year" type="number" min="1990" max="2100" required th:value="${year}" /></label>
-        <label class="field">구분<select name="category" required><option>업무진단</option><option>준법감사</option></select></label>
+        <label class="field">구분<select name="category" required><option th:each="c : ${caseCategories}" th:text="${c}"></option></select></label>
         <label class="field grow">제목<input name="title" required maxlength="120" /></label>
         <label class="field">대상<input name="target" required maxlength="120" /></label>
         <label class="field">서가<input name="shelf" maxlength="80" /></label>

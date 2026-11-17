@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>자료 분류 관리 · Portal</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>자료 분류 관리</h1>
+        <p class="hint">순서는 숫자가 작은 것이 앞입니다. 자료가 있는 분류는 지울 수 없습니다.</p>
+    </div>
+</div>
+<section class="card">
+    <div class="inline-row" th:each="c : ${cats}">
+        <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row">
+            <input type="hidden" name="id" th:value="${c.Id}" />
+            <label class="field">이름<input name="name" required maxlength="40" th:value="${c.Name}" /></label>
+            <label class="field">순서<input name="ord" type="number" min="0" max="999" th:value="${c.Ord}" style="width:90px" /></label>
+            <button type="submit" class="btn">저장</button>
+        </form>
+        <span class="pill" th:text="|자료 ${c.Docs}건|"></span>
+        <form method="post" action="/library/categories/delete" data-write="1" th:if="${c.Docs == 0}" th:data-confirm="|'${c.Name}' 분류를 지울까요?|">
+            <input type="hidden" name="id" th:value="${c.Id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </div>
+    <form method="post" action="/library/categories/save" data-write="1" class="inline-form inline-row" style="margin-top:14px">
+        <label class="field">새 분류<input name="name" required maxlength="40" placeholder="예: 감사 결과 공문" /></label>
+        <label class="field">순서<input name="ord" type="number" min="0" max="999" style="width:90px" /></label>
+        <button type="submit" class="btn btn-primary">추가</button>
+    </form>
+</section>
+</th:block>
+</body>
+</html>

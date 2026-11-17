@@ -1,6 +1,17 @@
 // 업무 일정·사규 화면에서 쓰는 작은 동작. 이 파일이 돌지 않아도 단추와 양식만으로 모두 쓸 수 있다.
 (function () {
-  // 윗쪽 큰 메뉴: 누르면 세부 메뉴가 뜬다
+  // 윗쪽 큰 메뉴: 누르면 왼쪽에 그 메뉴의 세부 목록이 나온다
+  document.addEventListener("click", function (event) {
+    var b = event.target.closest && event.target.closest(".tm-btn[data-show]");
+    if (!b) return;
+    var g = b.getAttribute("data-show");
+    document.querySelectorAll(".sn-group").forEach(function (n) { n.hidden = n.getAttribute("data-group") !== g; });
+    document.querySelectorAll(".tm-btn[data-show]").forEach(function (x) { x.classList.toggle("sel", x === b); x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+    var first = document.querySelector('.sn-group[data-group="' + g + '"] a');
+    if (first && event.detail === 0) first.focus();
+  });
+
+  // (예전) 윗쪽 큰 메뉴 팝업
   function closeMenus(except) {
     document.querySelectorAll(".tm-btn[aria-expanded=true]").forEach(function (b) {
       if (b === except) return;
@@ -52,8 +63,10 @@
   document.addEventListener("change", function (event) {
     var all = event.target.closest && event.target.closest("[data-check-all]");
     if (!all) return;
-    var form = all.form || document;
-    form.querySelectorAll('input[type=checkbox][name="' + all.getAttribute("data-check-all") + '"]').forEach(function (c) { c.checked = all.checked; });
+    var form = all.form;
+    document.querySelectorAll('input[type=checkbox][name="' + all.getAttribute("data-check-all") + '"]').forEach(function (c) {
+      if ((!form || c.form === form) && !c.disabled) c.checked = all.checked;
+    });
   });
 
   // 업무 일정 화면에서 Ctrl+Z: 마지막 작업을 되돌린다
