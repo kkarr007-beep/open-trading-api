@@ -26,7 +26,7 @@
             <span class="drop-name" data-file-name hidden></span>
         </div>
         <label class="field grow" style="margin-top:14px">사규 글 붙여 넣기
-            <textarea name="text" rows="18" class="textarea-wide mono" placeholder="제1장 총칙&#10;제1조(목적) 이 규칙은 …&#10;제2조(정의) ① …"></textarea></label>
+            <textarea name="text" rows="18" class="textarea-wide mono" data-rule-paste placeholder="제1장 총칙&#10;제1조(목적) 이 규칙은 …&#10;제2조(정의) ① …"></textarea></label>
         <p class="hint" th:if="${revise != null}">같은 조 번호는 이전 판의 해석 어려움 표시·태그·메모를 이어받습니다. 사규 화면의 '앞 판과 견주기'로 바뀐 곳을 봅니다.</p>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary" th:text="${revise != null} ? '개정판 넣기' : '등록'">등록</button></p>
     </form>

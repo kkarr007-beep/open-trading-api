@@ -315,4 +315,24 @@ class CoreTest {
         assertEquals(2, ((List<?>) cases.get(id).get("Files")).size());
         assertEquals(0, inbox.pendingCount());
     }
+
+    @Test
+    void deleteButtonRemovesFilesWithReasonRules() {
+        String id = newCase(5);
+        Op a = cases.addFile(id, null, "증빙", "", "잘못.txt", new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)), null);
+        assertTrue(a.ok, a.message);
+        String att1 = (String) db.row("SELECT AttachmentId FROM Attachments WHERE CaseId=? AND DisplayName='잘못.txt'", id).get("AttachmentId");
+        // 확정 전 초안: 사유 없이 지운다
+        assertTrue(cases.deleteFileAny(id, null, att1, "").ok);
+        assertEquals("Deleted", db.row("SELECT StorageState FROM Attachments WHERE AttachmentId=?", att1).get("StorageState"));
+        Op b = cases.addFile(id, null, "증빙", "", "증빙.txt", new ByteArrayInputStream("y".getBytes(StandardCharsets.UTF_8)), null);
+        assertTrue(b.ok, b.message);
+        String att2 = (String) db.row("SELECT AttachmentId FROM Attachments WHERE CaseId=? AND DisplayName='증빙.txt'", id).get("AttachmentId");
+        assertTrue(cases.confirm(id, null).ok);
+        // 확정된 건: 사유가 있어야 지운다
+        assertFalse(cases.deleteFileAny(id, null, att2, "").ok);
+        assertTrue(cases.deleteFileAny(id, null, att2, "중복 등록").ok);
+        assertEquals("Deleted", db.row("SELECT StorageState FROM Attachments WHERE AttachmentId=?", att2).get("StorageState"));
+        assertTrue(chain.verify(), "이력 지문이 그대로 맞아야 함");
+    }
 }

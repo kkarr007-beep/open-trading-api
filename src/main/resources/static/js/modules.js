@@ -1,5 +1,43 @@
 // 업무 일정·사규 화면에서 쓰는 작은 동작. 이 파일이 돌지 않아도 단추와 양식만으로 모두 쓸 수 있다.
 (function () {
+  // 윗쪽 큰 메뉴: 누르면 세부 메뉴가 뜬다
+  function closeMenus(except) {
+    document.querySelectorAll(".tm-btn[aria-expanded=true]").forEach(function (b) {
+      if (b === except) return;
+      b.setAttribute("aria-expanded", "false");
+      var pop = b.parentElement.querySelector(".tm-pop");
+      if (pop) pop.hidden = true;
+    });
+  }
+  document.addEventListener("click", function (event) {
+    var btn = event.target.closest && event.target.closest(".tm-btn");
+    if (btn) {
+      var pop = btn.parentElement.querySelector(".tm-pop");
+      var open = btn.getAttribute("aria-expanded") !== "true";
+      closeMenus(btn);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (pop) {
+        pop.hidden = !open;
+        if (open) {
+          var r = pop.getBoundingClientRect();
+          pop.style.left = "";
+          if (r.right > window.innerWidth - 8) pop.style.left = Math.min(0, window.innerWidth - 8 - r.right) + "px";
+          var first = pop.querySelector("a[aria-current=page]") || pop.querySelector("a");
+          if (first && event.detail === 0) first.focus();
+        }
+      }
+      return;
+    }
+    if (!(event.target.closest && event.target.closest(".tm-pop"))) closeMenus(null);
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      var open = document.querySelector(".tm-btn[aria-expanded=true]");
+      closeMenus(null);
+      if (open) open.focus();
+    }
+  });
+
   // 지우기처럼 되돌릴 수 없는 단추는 한 번 더 묻는다
   document.addEventListener("submit", function (event) {
     var form = event.target;

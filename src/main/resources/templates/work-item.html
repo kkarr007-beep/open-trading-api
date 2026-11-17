@@ -66,7 +66,7 @@
             <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
         </div>
         <p class="hint">시행 월은 주기가 '정기(월)'일 때, 연 목표 횟수는 '횟수 목표'일 때, 반복은 '수시·기한'일 때 씁니다. 반복 업무를 완료하면 다음 차례가 저절로 만들어집니다.</p>
-        <label class="field grow" style="margin-top:12px">메모<textarea name="content" class="textarea-wide" rows="6" th:text="${x.content}"></textarea></label>
+        <label class="field grow" style="margin-top:12px">메모<textarea name="content" class="textarea-wide" rows="8" th:text="${x.content}" data-rich="contentHtml" th:attr="data-html=${W.contentHtml(x)}"></textarea></label>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
     </form>
 </section>
@@ -129,7 +129,7 @@
             <span>담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
             <span>장소</span><input name="place" maxlength="120" th:value="${x.place}" />
         </div>
-        <label class="field grow" style="margin-top:12px">메모<textarea name="memo" class="textarea-wide" rows="6" th:text="${x.memo}"></textarea></label>
+        <label class="field grow" style="margin-top:12px">메모<textarea name="memo" class="textarea-wide" rows="8" th:text="${x.memo}" data-rich="memoHtml" th:attr="data-html=${W.memoHtml(x)}"></textarea></label>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
     </form>
 </section>
@@ -147,11 +147,25 @@
             </th:block>
             <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
         </div>
-        <label class="field grow" style="margin-top:12px">내용<textarea name="content" class="textarea-wide mono" rows="18" th:text="${x.content}"></textarea></label>
+        <label class="field grow" style="margin-top:12px">내용<textarea name="content" class="textarea-wide" rows="20" th:text="${x.content}" data-rich="contentHtml" th:attr="data-html=${W.contentHtml(x)}"></textarea></label>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
     </form>
 </section>
 
+<section class="card no-print" th:if="${x.kind != 'event'}">
+    <h2>문서에서 가져오기</h2>
+    <form method="post" th:action="|/work/item/${x.id}/import|" data-write="1" enctype="multipart/form-data">
+        <div class="drop">
+            <p class="drop-copy"><strong>워드·한글·PDF 문서를 고르거나 끌어 놓으세요</strong> — 표(표 안의 표 포함)·서식·그림을 살려 내용에 넣습니다</p>
+            <input type="file" name="upload" required accept=".docx,.doc,.hwpx,.hwp,.pdf,.pptx,.txt,.md" aria-label="가져올 문서" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <div class="inline-row" style="margin-top:8px">
+            <label class="field">넣는 방법<select name="mode"><option value="append">지금 내용 아래에 붙이기</option><option value="replace">지금 내용을 바꾸기</option></select></label>
+            <button type="submit" class="btn">가져오기</button>
+        </div>
+    </form>
+</section>
 <dialog id="delete-dialog" aria-labelledby="delete-title">
     <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1">
         <div class="dialog-head"><h2 id="delete-title">이 항목을 지울까요?</h2></div>

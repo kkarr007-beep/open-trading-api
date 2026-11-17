@@ -28,7 +28,7 @@
             <input type="file" name="upload" accept=".txt,.md,.hwp,.hwpx,.docx,.doc,.pdf" aria-label="회의록 파일" />
             <span class="drop-name" data-file-name hidden></span>
         </div>
-        <label class="field grow" style="margin-top:12px">회의록 붙여 넣기<textarea name="text" rows="14" class="textarea-wide"></textarea></label>
+        <label class="field grow" style="margin-top:12px">회의록 붙여 넣기<textarea name="text" rows="14" class="textarea-wide" data-rich="textHtml"></textarea></label>
         <p class="hint">'결정' 제목 아래 줄은 결정 사항으로, '요청·검토·보고·제출·회신·까지·담당' 같은 말이 든 줄은 조치 후보로 뽑습니다.</p>
         <p style="margin-top:10px"><button type="submit" class="btn btn-primary">넣고 조치 후보 뽑기</button></p>
     </form>
@@ -96,7 +96,7 @@
             </div>
         </form>
         <h3 class="h3">원문</h3>
-        <div class="meet-text" th:text="${cur.content}"></div>
+        <div class="meet-text rich" th:utext="${W.contentHtml(cur)}"></div>
     </section>
 </div>
 </th:block>

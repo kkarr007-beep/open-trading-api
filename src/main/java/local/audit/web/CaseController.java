@@ -35,9 +35,11 @@ public class CaseController {
     private final FileStore files;
     private final local.audit.work.WorkService work;
     private final local.audit.rule.RuleService rules;
+    private final local.audit.RichTexts rich;
 
     public CaseController(CaseService cases, DisciplineService discipline, FileStore files,
-                          local.audit.work.WorkService work, local.audit.rule.RuleService rules) {
+                          local.audit.work.WorkService work, local.audit.rule.RuleService rules, local.audit.RichTexts rich) {
+        this.rich = rich;
         this.work = work;
         this.rules = rules;
         this.cases = cases;
@@ -94,6 +96,7 @@ public class CaseController {
         Integer year = Txt.intOrNull(p.get("year"));
         Op op = year == null ? Op.bad(CaseService.BAD) : cases.register(year, p.get("category"), p.get("title"), p.get("target"), p.get("shelf"),
             p.get("binder"), p.get("summary"), p.get("body"), Txt.intOrNull(p.get("retentionYears")));
+        if (op.ok && !Txt.blank(p.get("bodyHtml"))) cases.setBodyHtml(op.id, local.audit.HtmlClean.clean(p.get("bodyHtml")));
         return Web.reply(req, op, op.ok ? "/cases/" + op.id : null);
     }
 
@@ -123,14 +126,26 @@ public class CaseController {
                 yield year == null ? Op.bad(CaseService.BAD)
                     : cases.saveCase(id, v, year, p.get("category"), p.get("title"), p.get("target"), p.get("owner"), p.get("shelf"), p.get("binder"));
             }
-            case "result" -> cases.saveResult(id, v, p.get("summary"), p.get("body"));
+            case "result" -> {
+                Op r = cases.saveResult(id, v, p.get("summary"), p.get("body"));
+                if (r.ok && p.containsKey("bodyHtml")) cases.setBodyHtml(id, local.audit.HtmlClean.clean(p.get("bodyHtml")));
+                yield r;
+            }
             case "retention" -> cases.changeRetention(id, v, Txt.intOrNull(p.get("years")), p.get("reason"));
             case "confirm" -> cases.confirm(id, v);
             case "cancel" -> cases.cancelConfirm(id, v, p.get("reason"));
             case "close" -> cases.close(id, v, "true".equals(p.get("noActionConfirmed")));
-            case "action" -> cases.addAction(id, v, p.get("title"), p.get("type"), p.get("dept"), p.get("requestedOn"), p.get("dueOn"), p.get("content"));
-            case "reply" -> cases.recordReply(id, v, p.get("actionId"), p.get("reply"));
-            case "verify" -> cases.verifyAction(id, v, p.get("actionId"), p.get("check"));
+            case "action" -> {
+                Op r = cases.addAction(id, v, p.get("title"), p.get("type"), p.get("dept"), p.get("requestedOn"), p.get("dueOn"), p.get("content"));
+                if (r.ok && !Txt.blank(p.get("contentHtml"))) { String aid = cases.lastActionId(id); if (aid != null) rich.put("action:" + aid, p.get("contentHtml")); }
+                yield r;
+            }
+            case "reply", "verify" -> {
+                Op r = "reply".equals(what) ? cases.recordReply(id, v, p.get("actionId"), p.get("reply")) : cases.verifyAction(id, v, p.get("actionId"), p.get("check"));
+                String h = "reply".equals(what) ? p.get("replyHtml") : p.get("checkHtml");
+                if (r.ok && !Txt.blank(h)) { String eid = cases.lastEntryId(p.get("actionId")); if (eid != null) rich.put("entry:" + eid, h); }
+                yield r;
+            }
             case "upload" -> {
                 if (upload == null || upload.isEmpty()) yield Op.bad("올릴 파일을 고르세요.");
                 try (InputStream in = upload.getInputStream()) {
@@ -139,6 +154,7 @@ public class CaseController {
             }
             case "remove" -> cases.removeDraftFile(id, v, att);
             case "early" -> cases.earlyDeleteFile(id, v, att, p.get("reason"));
+            case "delete" -> cases.deleteFileAny(id, v, att, p.get("reason"));
             case "hash" -> cases.verifyFileHash(id, att);
             case "reread" -> cases.reread(id, att);
             case "fill" -> cases.fillBodyFromFile(id, v, att);

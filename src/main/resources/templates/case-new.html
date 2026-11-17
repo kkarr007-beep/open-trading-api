@@ -16,7 +16,7 @@
         <label class="field">문서번호<input id="doc-preview" th:value="|자동 부여(예정: ${previewNo})|" readonly /></label>
         <label class="field">보존연한(년)<input name="retentionYears" type="number" min="1" max="100" /></label>
         <label class="field grow">결과 한 줄<input name="summary" maxlength="160" /></label>
-        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="6"></textarea></label>
+        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="10" data-rich="bodyHtml"></textarea></label>
     </div>
     <p class="hint">제목, 대상, 결과 한 줄, 서가, 철번호는 연한 후에도 남습니다. 개인식별정보나 민감한 상세내용은 결과 본문에 적으세요. 본문은 만료 후 비워집니다.</p>
     <button type="submit" class="btn btn-primary">초안 저장</button>

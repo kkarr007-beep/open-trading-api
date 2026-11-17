@@ -83,6 +83,12 @@ public final class RuleRender {
         return out.toString();
     }
 
+    /** 편집기로 꾸민 조문에도 조 참조 연결을 단다. 이미 연결된 곳은 건드리지 않는다. */
+    public static String linkRefsHtml(String html, Function<String[], String> resolve) {
+        if (resolve == null || html.contains("<a ")) return html;
+        return linkRefs(html, resolve);
+    }
+
     static String cell(String raw, List<String> terms, Function<String[], String> resolve) {
         return highlight(mdSpan(linkRefs(esc(raw), resolve)), terms);
     }

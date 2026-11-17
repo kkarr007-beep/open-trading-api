@@ -1,6 +1,6 @@
 # 내려받기
 
-## 처음 설치 (감사 포털 1.5.0판)
+## 처음 설치 (감사 포털 1.6.0판)
 
 1. `AuditRecord-Setup.exe`(약 98MB)를 받습니다. 파일 이름을 누른 뒤 오른쪽 위 **Download raw file** 단추로 받습니다.
 2. 받은 파일을 실행해 설치합니다. 바탕화면과 시작 메뉴에 **감사 포털** 아이콘이 생깁니다.
@@ -11,13 +11,13 @@
 받은 파일이 맞는지 보려면 명령 프롬프트에서 `certutil -hashfile AuditRecord-Setup.exe SHA256`을 실행해 아래 값과 같은지 봅니다.
 
 ```text
-2431fc4c3163bd6c2d0dca253dc979cc33dccf7fb17d0731dc930a69ccfa1415
+b31112f89aea70c12416a3fb0c0273e6a0ee32c0deabab650666a3fc0e91d448
 ```
 
-## 1.5.0판으로 바꾸기 (감사 포털 · 업무 일정·사규)
+## 1.6.0판으로 바꾸기
 
-1.3.0·1.4.0판을 쓰는 중이면 위의 설치 파일 대신 `AuditRecord-Patch-1.5.0.exe` 하나만 받아 실행해도 됩니다.
-exe가 막히면 `AuditRecord-Patch-1.5.0.zip`을 받아 풀고 `apply-patch.cmd`를 실행합니다.
+1.3.0~1.5.0판을 쓰는 중이면 위의 설치 파일 대신 `AuditRecord-Patch-1.6.0.exe` 하나만 받아 실행해도 됩니다.
+exe가 막히면 `AuditRecord-Patch-1.6.0.zip`을 받아 풀고 `apply-patch.cmd`를 실행합니다.
 
 패치는 프로그램 파일(audit-record.jar) 하나를 바꾸고, 바탕화면·시작 메뉴의 이름을 '감사 포털'로 바꿉니다. 감사 기록과 자료(사용자 폴더\감사기록)는 그대로 둡니다.
 zip의 apply-patch.cmd는 프로그램 파일만 바꾸므로 바로가기 이름은 '감사기록'으로 남습니다.

@@ -61,16 +61,11 @@
                     <div class="form-grid">
                         <label class="field">문서번호<input th:value="${item.DocumentNo}" readonly /></label>
                         <label class="field grow">결과 한 줄<input name="summary" maxlength="160" th:value="${item.SummaryLine}" /></label>
-                        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="8" th:text="${item.Body}"></textarea></label>
+                        <label class="field grow">결과 본문<textarea name="body" maxlength="20000" rows="10" th:text="${item.Body}" data-rich="bodyHtml" th:attr="data-html=${item.BodyView}"></textarea></label>
                     </div>
                     <p class="hint">결과 한 줄은 연한 후에도 남습니다. 본문은 만료 후 비워집니다. 초안 저장은 확정이 아닙니다.</p>
                     <button type="submit" class="btn btn-primary">결과 저장</button>
                 </form>
-                <details class="rich-box" open th:if="${caps.EditResult and item.HasRichBody}">
-                    <summary>가져온 원문 모양 (표·그림 포함)</summary>
-                    <div class="rich" th:utext="${item.BodyView}"></div>
-                    <p class="hint">문서에서 가져올 때의 모양입니다. 위 본문 글자를 고쳐 저장하면 이 모양은 치웁니다.</p>
-                </details>
                 <dl class="facts" th:unless="${caps.EditResult}">
                     <dt>문서번호</dt><dd th:text="${item.DocumentNo}"></dd>
                     <dt>결과 한 줄</dt><dd th:text="${#strings.isEmpty(item.SummaryLine)} ? '없음' : ${item.SummaryLine}"></dd>
@@ -114,13 +109,13 @@
                         <form method="post" th:action="${base + '/reply'}" data-write="1">
                             <input type="hidden" name="version" th:value="${item.Version}" />
                             <input type="hidden" name="actionId" th:value="${action.ActionId}" />
-                            <label class="field">회신 본문<textarea name="reply" required maxlength="20000" rows="3"></textarea></label>
+                            <label class="field">회신 본문<textarea name="reply" required maxlength="20000" rows="5" data-rich="replyHtml"></textarea></label>
                             <button type="submit" class="btn">회신 기록</button>
                         </form>
                         <form method="post" th:action="${base + '/verify'}" data-write="1">
                             <input type="hidden" name="version" th:value="${item.Version}" />
                             <input type="hidden" name="actionId" th:value="${action.ActionId}" />
-                            <label class="field">이행 확인 본문<textarea name="check" required maxlength="20000" rows="3"></textarea></label>
+                            <label class="field">이행 확인 본문<textarea name="check" required maxlength="20000" rows="5" data-rich="checkHtml"></textarea></label>
                             <button type="submit" class="btn">이행 확인</button>
                         </form>
                     </th:block>
@@ -135,7 +130,7 @@
                             <label class="field">대상 부서<input name="dept" required maxlength="120" th:value="${item.Target}" /></label>
                             <label class="field">요구일<input name="requestedOn" type="date" required th:value="${today}" /></label>
                             <label class="field">회신기한<input name="dueOn" type="date" required /></label>
-                            <label class="field grow">내용<textarea name="content" maxlength="20000" rows="3"></textarea></label>
+                            <label class="field grow">내용<textarea name="content" maxlength="20000" rows="5" data-rich="contentHtml"></textarea></label>
                         </div>
                         <p class="hint">제목과 대상은 연한 후에도 남습니다. 내용은 만료 후 비워집니다.</p>
                         <button type="submit" class="btn">조치요구 추가</button>
@@ -176,6 +171,20 @@
                                 </form>
                                 <a class="btn btn-quiet" th:if="${file.HasText}" th:href="${href + '/view'}" data-preview="text" th:data-title="|${file.DisplayName} — 읽은 내용|"
                                    th:data-meta="|${file.ReadMethod} 읽기|" data-tile="TXT" data-tile-kind="txt">읽은 내용</a>
+                                <button type="button" class="btn btn-quiet file-del" th:if="${caps.DeleteFile}" th:data-dialog="|del-${file.AttachmentId}|" title="이 자료를 지웁니다">삭제</button>
+                                <button type="button" class="btn btn-quiet file-del" th:unless="${caps.DeleteFile}" disabled th:title="${caps.DeleteBlocked}">삭제</button>
+                                <dialog th:if="${caps.DeleteFile}" th:id="|del-${file.AttachmentId}|" aria-label="자료 삭제">
+                                    <form method="post" th:action="${base + '/delete'}" data-write="1">
+                                        <input type="hidden" name="version" th:value="${item.Version}" />
+                                        <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
+                                        <div class="dialog-head"><h2>자료를 지울까요?</h2></div>
+                                        <p class="hint"><strong th:text="${file.DisplayName}"></strong><br/>
+                                            파일과 읽은 내용을 지웁니다. 되돌릴 수 없습니다. 이력에는 표시 이름·삭제일·사유가 남습니다.</p>
+                                        <label class="field grow">사유<th:block th:if="${caps.DeleteNeedsReason}"> (확정된 적 있는 건이라 꼭 적습니다)</th:block>
+                                            <input name="reason" maxlength="240" th:required="${caps.DeleteNeedsReason}" placeholder="예: 잘못 올린 파일" /></label>
+                                        <div class="row-actions" style="margin-top:12px"><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn btn-danger">삭제</button></div>
+                                    </form>
+                                </dialog>
                                 <a class="icon-btn" th:href="${href + '?dl=1'}" aria-label="내려받기" title="내려받기">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </a>

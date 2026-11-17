@@ -60,17 +60,17 @@
                     </div>
                 </header>
                 <div class="abody" th:utext="${a.html()}"></div>
-                <div class="anote" th:if="${!#strings.isEmpty(a.note())}" th:text="${a.note()}"></div>
+                <div class="anote rich" th:if="${!#strings.isEmpty(a.note())}" th:utext="${a.noteHtml()}"></div>
                 <details th:if="${m.current}" style="margin-top:8px">
                     <summary class="small muted">메모 · 조문 고치기</summary>
                     <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/note|" data-write="1" style="margin-top:8px">
-                        <label class="field grow">메모<textarea name="text" rows="3" maxlength="20000" th:text="${a.note()}"></textarea></label>
+                        <label class="field grow">메모<textarea name="text" rows="4" maxlength="20000" th:text="${a.note()}" data-rich="html" th:attr="data-html=${a.noteHtml()}"></textarea></label>
                         <p style="margin-top:6px"><button type="submit" class="btn">메모 저장</button></p>
                     </form>
                     <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/edit|" data-write="1" style="margin-top:12px">
                         <label class="field">조 제목<input name="title" maxlength="120" th:value="${a.title()}" /></label>
                         <label class="field grow" style="margin-top:6px">본문 <span class="field-note">①②는 항, 1.은 호, 가.는 목으로 들여 씁니다. 표는 | 칸 | 칸 | 꼴로 적습니다.</span>
-                            <textarea name="content" rows="8" class="mono" th:text="${a.raw()}"></textarea></label>
+                            <textarea name="content" rows="10" th:text="${a.raw()}" data-rich="html" th:attr="data-html=${a.editHtml()}"></textarea></label>
                         <p style="margin-top:6px"><button type="submit" class="btn">조문 저장</button></p>
                     </form>
                 </details>

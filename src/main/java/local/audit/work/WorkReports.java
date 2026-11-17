@@ -260,6 +260,7 @@ public class WorkReports {
         x.mdate = Work.date(p.get("mdate")) == null ? today() : p.get("mdate");
         x.org = Txt.fit(p.get("org"), 80, false);
         x.content = body;
+        if (!Txt.blank(p.get("textHtml"))) x.html = local.audit.HtmlClean.clean(p.get("textHtml"));
         store.add(x);
         scanIssues();
         return Op.ok("회의록을 넣었습니다 · 조치 후보 " + actions(body).size() + "건.", x.id);

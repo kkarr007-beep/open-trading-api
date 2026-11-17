@@ -376,4 +376,58 @@ class ModulesTest {
         assertNull(local.audit.web.ImportController.kindOf("{\"a\":1}".getBytes(StandardCharsets.UTF_8)));
         assertNull(local.audit.web.ImportController.kindOf("not json".getBytes(StandardCharsets.UTF_8)));
     }
+
+    // ───────────── 1.6.0: 편집기 내용 거르기, 예전 노트 모양 ─────────────
+
+    @Test
+    void htmlCleanKeepsNestedTablesAndFormattingButDropsScripts() {
+        String in = "<p class=MsoNormal style=\"mso-x:1;color:#d1304a;font-size:20px\" onclick=\"x()\">가<o:p></o:p></p>"
+            + "<table border=1><tr><td colspan=2 bgcolor=#ff0>바깥<table><tr><td>안쪽</td></tr></table></td></tr></table>"
+            + "<script>alert(1)</script><img src=\"http://evil/x.png\"><img src=\"data:image/png;base64,AAAA\"><a href=\"javascript:x\">링크</a>"
+            + "<font color=red size=5>큰 글</font><td>표 밖 칸</td>";
+        String out = local.audit.HtmlClean.clean(in);
+        assertTrue(out.contains("<table><tr><td colspan=\"2\" style=\"background-color:#ff0;\">바깥<table><tr><td>안쪽</td></tr></table></td></tr></table>"), out);
+        assertTrue(out.contains("color:#d1304a;font-size:20px;"), out);
+        assertFalse(out.contains("mso-") || out.contains("onclick") || out.contains("script") || out.contains("evil") || out.contains("javascript") || out.contains("class="), out);
+        assertTrue(out.contains("data:image/png;base64,AAAA"));
+        assertTrue(out.contains("<span style=\"color:red;font-size:24px;\">큰 글</span>"), out);
+        assertFalse(out.contains("<td>표 밖 칸"), "표 밖의 칸은 칸으로 두지 않음");
+        assertEquals("가\n바깥\t안쪽", local.audit.HtmlClean.toText("<p>가</p><table><tr><td>바깥</td><td>안쪽</td></tr></table>"));
+        // 닫히지 않은 태그도 닫아 준다
+        assertEquals("<b>굵게</b>", local.audit.HtmlClean.clean("<b>굵게"));
+    }
+
+    @Test
+    void oldMarkdownNotesShowAsFormattedText() {
+        String md = "# 제목\n\n- 하나\n- **둘**\n\n| 구분 | 값 |\n|---|---|\n| 가 | 1 |\n\n[[연결 업무]] #태그";
+        assertTrue(local.audit.Md.looksLike(md));
+        String h = local.audit.Md.toHtml(md);
+        assertTrue(h.contains("<h2>제목</h2>"), h);
+        assertTrue(h.contains("<li><b>둘</b></li>"), h);
+        assertTrue(h.contains("<table><tr><th>구분</th><th>값</th></tr><tr><td>가</td><td>1</td></tr></table>"), h);
+        assertFalse(h.contains("[["), h);
+        assertFalse(local.audit.Md.looksLike("그냥 한 줄 메모"));
+    }
+
+    @Test
+    void notesAreGroupedByTypeNewestFirstAndPaged() throws Exception {
+        assertTrue(work.importJson(resource("work-v2-sample.json"), false).ok);
+        for (int i = 0; i < 35; i++) {
+            Op op = work.create("note", new HashMap<>(Map.of("title", "회의 " + i, "ntype", "meet")));
+            work.get(op.id).mdate = "2026-" + String.format("%02d", 1 + i % 11) + "-10";
+        }
+        List<WorkService.NoteGroup> g = work.noteGroups(null, 5);
+        WorkService.NoteGroup meet = g.stream().filter(x -> x.key().equals("meet")).findFirst().orElseThrow();
+        assertEquals(35, meet.count());
+        assertEquals(5, meet.rows().size());
+        assertTrue(meet.rows().get(0).date().compareTo(meet.rows().get(4).date()) >= 0, "최신순");
+        Map<String, Object> p1 = work.notePage("meet", null, 1, 30), p2 = work.notePage("meet", null, 2, 30);
+        assertEquals(2, p1.get("pages"));
+        assertEquals(5, ((Map<?, ?>) p2.get("months")).values().stream().mapToInt(v -> ((List<?>) v).size()).sum());
+        // 편집기 내용 저장
+        Op n = work.create("note", new HashMap<>(Map.of("title", "표 노트")));
+        assertTrue(work.update(n.id, Map.of("content", "가", "contentHtml", "<table><tr><td>가<table><tr><td>나</td></tr></table></td></tr></table><script>x</script>")).ok);
+        assertTrue(work.contentHtml(work.get(n.id)).contains("<td>가<table>"));
+        assertFalse(work.contentHtml(work.get(n.id)).contains("script"));
+    }
 }

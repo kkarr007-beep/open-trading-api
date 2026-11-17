@@ -197,6 +197,10 @@ final class Schema {
           Data TEXT NOT NULL,
           UpdatedAt TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS RichText (
+          Owner TEXT PRIMARY KEY,
+          Html TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS IX_Work_Kind ON WorkItems(Kind, Due);
         CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase);
         CREATE INDEX IF NOT EXISTS IX_Actions_Due ON Actions(ReplyDueOn, ActionState);

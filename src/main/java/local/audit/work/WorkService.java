@@ -150,6 +150,24 @@ public class WorkService {
         return x.stage > 0 && x.stage <= st.size() ? x.stage + "/" + st.size() + " " + st.get(x.stage - 1) : "";
     }
     public String cycleLabel(WorkItem x) { return Work.cycleLabel(x); }
+
+    /** 편집기와 화면에 넣을 내용 모양. 꾸민 모양이 없으면 글자에서 만든다. 예전 노트의 마크다운(표·제목·목록)은 그 모양대로. */
+    public String contentHtml(WorkItem x) {
+        if (x == null) return "";
+        if (!Txt.blank(x.html)) return x.html;
+        return textView(x.content);
+    }
+
+    public String memoHtml(WorkItem x) {
+        if (x == null) return "";
+        if (!Txt.blank(x.memoHtml)) return x.memoHtml;
+        return textView(x.memo);
+    }
+
+    static String textView(String t) {
+        if (Txt.blank(t)) return "";
+        return local.audit.Md.looksLike(t) ? local.audit.Md.toHtml(t) : local.audit.extract.Rich.fromText(t);
+    }
     public String md(String d) { return Work.md(d); }
 
     // ───── 기록 ─────
@@ -332,6 +350,7 @@ public class WorkService {
             x.due = Work.date(p.get("due")) == null ? "" : p.get("due");
             x.due0 = x.due;
             x.content = Txt.fit(p.get("content"), 4000, true);
+            if (!Txt.blank(p.get("contentHtml"))) x.html = local.audit.HtmlClean.clean(p.get("contentHtml"));
         } else if ("note".equals(x.kind)) {
             x.ntype = Work.NOTE.containsKey(p.get("ntype")) ? p.get("ntype") : "doc";
         } else if ("plan".equals(x.kind)) {
@@ -358,6 +377,8 @@ public class WorkService {
         String content = p.containsKey("content") ? Txt.clean(p.get("content"), 100_000, true) : null;
         if (p.containsKey("content") && content == null) return Op.bad("메모가 너무 깁니다.");
         if (content != null) x.content = content;
+        if (p.containsKey("contentHtml")) { String h = local.audit.HtmlClean.clean(p.get("contentHtml")); x.html = h.isBlank() ? null : h; }
+        if (p.containsKey("memoHtml")) { String h = local.audit.HtmlClean.clean(p.get("memoHtml")); x.memoHtml = h.isBlank() ? null : h; }
         if (p.containsKey("ownerId") && !p.get("ownerId").equals(x.ownerId)) {
             addLog(x, "담당 " + config().owner(x.ownerId).n + " → " + config().owner(p.get("ownerId")).n);
             x.ownerId = p.get("ownerId");
@@ -710,6 +731,96 @@ public class WorkService {
     public List<WorkItem> ofKind(String... kinds) {
         Set<String> ks = Set.of(kinds);
         return all().stream().filter(x -> ks.contains(x.kind)).toList();
+    }
+
+    // ───── 노트: 종류별, 최신순 ─────
+    public record NoteRow(WorkItem item, String date, String snippet) { }
+    public record NoteGroup(String key, String name, int count, List<NoteRow> rows) { }
+
+    static String noteDate(WorkItem x) {
+        String d = !Txt.blank(x.mdate) ? x.mdate : Txt.str(x.created);
+        if (d.isEmpty() && !x.log.isEmpty()) d = x.log.get(x.log.size() - 1).d;
+        return d;
+    }
+
+    NoteRow noteRow(WorkItem x) {
+        String t = Txt.str(x.content).replaceAll("\\[\\[([^\\]|]+)(\\|[^\\]]*)?\\]\\]", "$1").replaceAll("[#>*|`=~\\-]+", " ").replaceAll("\\s+", " ").strip();
+        return new NoteRow(x, noteDate(x), t.length() > 120 ? t.substring(0, 120) + "…" : t);
+    }
+
+    public static String noteType(WorkItem x) {
+        if ("issue".equals(x.kind)) return "issue";
+        return Work.NOTE.containsKey(x.ntype) ? x.ntype : "doc";
+    }
+
+    /** 모든 노트를 종류별로 나눠 최신순으로. */
+    public List<NoteGroup> noteGroups(String q, int perGroup) {
+        String k = Txt.str(q).strip().toLowerCase();
+        Map<String, List<WorkItem>> by = new LinkedHashMap<>();
+        for (String t : Work.NOTE.keySet()) by.put(t, new ArrayList<>());
+        by.put("issue", new ArrayList<>());
+        for (WorkItem x : all()) {
+            if (!"note".equals(x.kind) && !"issue".equals(x.kind)) continue;
+            if (!k.isEmpty() && !(x.title + " " + x.content + " " + String.join(" ", x.tags)).toLowerCase().contains(k)) continue;
+            by.get(noteType(x)).add(x);
+        }
+        List<NoteGroup> out = new ArrayList<>();
+        for (var e : by.entrySet()) {
+            List<WorkItem> l = e.getValue();
+            l.sort(Comparator.comparing(WorkService::noteDate).reversed());
+            List<NoteRow> rows = l.stream().limit(perGroup <= 0 ? Integer.MAX_VALUE : perGroup).map(this::noteRow).toList();
+            out.add(new NoteGroup(e.getKey(), "issue".equals(e.getKey()) ? "쟁점" : Work.NOTE.get(e.getKey()), l.size(), rows));
+        }
+        return out;
+    }
+
+    /** 한 종류의 노트를 달별로 묶어 쪽 단위로. 쌓여도 한 화면이 길어지지 않게 30건씩 끊는다. */
+    public Map<String, Object> notePage(String type, String q, int page, int size) {
+        NoteGroup g = noteGroups(q, 0).stream().filter(x -> x.key().equals(type)).findFirst().orElse(null);
+        Map<String, Object> v = new LinkedHashMap<>();
+        if (g == null) return v;
+        int pages = Math.max(1, (g.rows().size() + size - 1) / size);
+        int p = Math.max(1, Math.min(page, pages));
+        List<NoteRow> slice = g.rows().subList(Math.min(g.rows().size(), (p - 1) * size), Math.min(g.rows().size(), p * size));
+        Map<String, List<NoteRow>> months = new LinkedHashMap<>();
+        for (NoteRow r : slice) {
+            String m = r.date().length() >= 7 ? r.date().substring(0, 4) + "년 " + Integer.parseInt(r.date().substring(5, 7)) + "월" : "날짜 없음";
+            months.computeIfAbsent(m, z -> new ArrayList<>()).add(r);
+        }
+        v.put("group", g);
+        v.put("months", months);
+        v.put("page", p);
+        v.put("pages", pages);
+        return v;
+    }
+
+    /** 문서에서 읽은 내용으로 노트를 만든다. */
+    public Op noteFromDocument(String title, String ntype, String text, String html) {
+        WorkItem x = fresh("note");
+        x.title = Txt.fit(title, 200, false);
+        if (Txt.blank(x.title)) return Op.bad("제목을 적어 주세요.");
+        x.ntype = Work.NOTE.containsKey(ntype) ? ntype : "doc";
+        x.content = Txt.fit(text, 400_000, true);
+        String h = local.audit.HtmlClean.clean(html);
+        x.html = h.isBlank() ? null : h;
+        store.add(x);
+        return Op.ok("문서를 읽어 노트를 만들었습니다.", x.id);
+    }
+
+    /** 문서 내용을 이 항목 내용에 붙이거나 바꾼다. */
+    public Op importIntoItem(String id, String text, String html, boolean replace) {
+        WorkItem x = get(id);
+        if (x == null) return Op.fail(404, "항목을 찾을 수 없습니다.");
+        String h = local.audit.HtmlClean.clean(html);
+        if (replace) { x.content = Txt.fit(text, 400_000, true); x.html = h.isBlank() ? null : h; }
+        else {
+            String before = contentHtml(x);
+            x.content = Txt.fit((x.content.isBlank() ? "" : x.content + "\n\n") + text, 400_000, true);
+            x.html = before.isBlank() ? (h.isBlank() ? null : h) : before + "<hr>" + h;
+        }
+        addLog(x, "문서에서 내용 " + (replace ? "바꿈" : "붙임"));
+        store.save(x);
+        return Op.ok(replace ? "문서 내용으로 바꿨습니다." : "문서 내용을 아래에 붙였습니다.", x.id);
     }
 
     /** 찾기: 모든 종류의 항목에서 제목·내용·태그. */

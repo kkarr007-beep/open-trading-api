@@ -404,6 +404,17 @@ public class CaseService {
         return row.get("Html") != null ? (String) row.get("Html") : Rich.fromText((String) row.get("Body"));
     }
 
+    /** 방금 넣은 조치요구·이행 기록의 ID. 편집기로 꾸민 모양을 붙일 때 쓴다. */
+    public String lastActionId(String caseId) {
+        Map<String, Object> r = db.row("SELECT ActionId FROM Actions WHERE CaseId=? ORDER BY Sequence DESC LIMIT 1", caseId);
+        return r == null ? null : (String) r.get("ActionId");
+    }
+
+    public String lastEntryId(String actionId) {
+        Map<String, Object> r = db.row("SELECT FulfillmentId FROM Fulfillments WHERE ActionId=? ORDER BY HistorySeq DESC, At DESC LIMIT 1", actionId);
+        return r == null ? null : (String) r.get("FulfillmentId");
+    }
+
     /** 가져온 원문 모양을 건의 결과 본문 옆에 둔다. */
     public void setBodyHtml(String caseId, String html) {
         db.tx(conn -> {
@@ -452,6 +463,23 @@ public class CaseService {
         String why = Txt.clean(reason, 240, false);
         if (Txt.blank(why)) return Op.bad(REASON);
         return deleteFile(caseId, version, attachmentId, why);
+    }
+
+    /**
+     * 자료 삭제 단추 하나로 지운다. 확정한 적 없는 초안 건이면 바로 빼고, 한 번이라도 확정된 건이면 사유를 받아 지운다.
+     * 삭제 보류 중이거나 보존 만료로 정리된 건은 지우지 않는다. 지운 사실과 사유는 이력에 남는다.
+     */
+    public Op deleteFileAny(String caseId, Integer version, String attachmentId, String reason) {
+        Map<String, Object> row = Txt.isId(caseId) ? db.row("SELECT EverConfirmed, Phase FROM Cases WHERE CaseId=?", caseId) : null;
+        if (row == null) return Op.fail(404, "건을 찾을 수 없음");
+        boolean draftOnly = !flag(row, "EverConfirmed") && "초안".equals(row.get("Phase"));
+        if (draftOnly) {
+            String why = Txt.clean(reason, 240, false);
+            Op op = deleteFile(caseId, version, attachmentId, null);
+            if (op.ok && !Txt.blank(why)) db.tx(conn -> { log(conn, caseId, "자료삭제", "자료", attachmentId, "삭제 사유: " + why); return null; });
+            return op;
+        }
+        return earlyDeleteFile(caseId, version, attachmentId, reason);
     }
 
     private Op deleteFile(String caseId, Integer version, String attachmentId, String why) {
@@ -543,11 +571,14 @@ public class CaseService {
                 List<Map<String, Object>> entries = Db.rows(conn, "SELECT * FROM Fulfillments WHERE ActionId=? ORDER BY At", a.get("ActionId"));
                 for (Map<String, Object> e : entries) {
                     e.put("AtDisplay", Kst.display((String) e.get("At")));
-                    e.put("ReplyView", Rich.fromText((String) e.get("ReplyBody")));
-                    e.put("CheckView", Rich.fromText((String) e.get("CheckBody")));
+                    Map<String, Object> er = Db.row(conn, "SELECT Html FROM RichText WHERE Owner=?", "entry:" + e.get("FulfillmentId"));
+                    String eh = er == null ? null : (String) er.get("Html");
+                    e.put("ReplyView", eh != null && e.get("ReplyBody") != null ? eh : Rich.fromText((String) e.get("ReplyBody")));
+                    e.put("CheckView", eh != null && e.get("CheckBody") != null ? eh : Rich.fromText((String) e.get("CheckBody")));
                 }
                 a.put("Entries", entries);
-                a.put("ContentView", Rich.fromText((String) a.get("Content")));
+                Map<String, Object> ar = Db.row(conn, "SELECT Html FROM RichText WHERE Owner=?", "action:" + a.get("ActionId"));
+                a.put("ContentView", ar != null && a.get("Content") != null ? ar.get("Html") : Rich.fromText((String) a.get("Content")));
             }
             Map<String, Object> rich = Db.row(conn, "SELECT Html FROM CaseRich WHERE CaseId=?", caseId);
             c.put("HasRichBody", rich != null);
@@ -589,6 +620,10 @@ public class CaseService {
             caps.put("AddFile", open);
             caps.put("RemoveDraftFile", !ever && phase.equals("초안"));
             caps.put("EarlyDelete", ever && !flag(c, "Hold") && !purged && c.get("BodiesClearedAt") == null);
+            caps.put("DeleteFile", (!ever && phase.equals("초안")) || (ever && !flag(c, "Hold") && !purged && c.get("BodiesClearedAt") == null));
+            caps.put("DeleteNeedsReason", ever);
+            caps.put("DeleteBlocked", flag(c, "Hold") ? "삭제 보류 중인 건이라 지울 수 없습니다. 보류를 먼저 해제하세요."
+                : purged || c.get("BodiesClearedAt") != null ? "보존 만료로 정리된 건입니다." : "");
             c.put("Caps", caps);
             return c;
         });
@@ -718,7 +753,9 @@ public class CaseService {
 
     public List<Map<String, Object>> searchFiles(String name, String kind, String caseTitle, String body) {
         StringBuilder sql = new StringBuilder("""
-            SELECT a.*, c.Title AS CaseTitle, c.DocumentNo, LENGTH(t.Body) AS TextLength, t.Body AS FullText
+            SELECT a.*, c.Title AS CaseTitle, c.DocumentNo, LENGTH(t.Body) AS TextLength, t.Body AS FullText,
+              c.EverConfirmed AS CaseEver, c.Phase AS CasePhase, c.Hold AS CaseHold,
+              CASE WHEN c.PurgedAt IS NOT NULL OR c.BodiesClearedAt IS NOT NULL THEN 1 ELSE 0 END AS CaseCleared
             FROM Attachments a JOIN Cases c ON c.CaseId=a.CaseId
             LEFT JOIN AttachmentText t ON t.AttachmentId=a.AttachmentId
             WHERE a.StorageState='Present'""");

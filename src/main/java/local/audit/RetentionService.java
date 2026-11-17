@@ -72,6 +72,10 @@ public class RetentionService {
             db.tx(conn -> {
                 String at = Kst.stamp();
                 boolean first = c.get("BodiesClearedAt") == null;
+                // 편집기로 꾸민 모양도 함께 지운다
+                Db.update(conn, "DELETE FROM CaseRich WHERE CaseId=?", caseId);
+                Db.update(conn, "DELETE FROM RichText WHERE Owner IN (SELECT 'action:' || ActionId FROM Actions WHERE CaseId=?)", caseId);
+                Db.update(conn, "DELETE FROM RichText WHERE Owner IN (SELECT 'entry:' || f.FulfillmentId FROM Fulfillments f JOIN Actions a ON a.ActionId=f.ActionId WHERE a.CaseId=?)", caseId);
                 Db.update(conn, "UPDATE Actions SET Content=NULL WHERE CaseId=?", caseId);
                 Db.update(conn, "UPDATE Fulfillments SET ReplyBody=NULL, CheckBody=NULL WHERE ActionId IN (SELECT ActionId FROM Actions WHERE CaseId=?)", caseId);
                 Db.update(conn, "DELETE FROM AttachmentText WHERE AttachmentId IN (SELECT AttachmentId FROM Attachments WHERE CaseId=?)", caseId);

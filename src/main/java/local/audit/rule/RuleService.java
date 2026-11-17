@@ -114,7 +114,7 @@ public class RuleService {
     }
 
     public record Art(String id, String number, String title, String label, String chapter, String html, String note, boolean bookmarked,
-                      boolean difficult, String tag, boolean newChapter, boolean supp, String raw) { }
+                      boolean difficult, String tag, boolean newChapter, boolean supp, String raw, String editHtml, String noteHtml) { }
 
     public Map<String, Object> read(String regId, String vid, String q, boolean diffMode) {
         Map<String, Object> r = reg(regId);
@@ -135,6 +135,7 @@ public class RuleService {
         for (String t : Txt.str(q).split("[|\\s]+")) if (t.strip().length() >= 1) terms.add(t.strip());
         m.put("q", Txt.str(q));
         Map<String, Object> notes = Rules.map(state(), "notes");
+        Map<String, Object> notesHtml = Rules.map(state(), "notesHtml");
         Set<String> marks = bookmarkKeys();
         List<Art> items = new ArrayList<>();
         String lastCh = null;
@@ -154,18 +155,22 @@ public class RuleService {
                     tag = "chg";
                     html = "<div class=\"para\">" + RuleRender.diff(Rules.str(before, "content"), Rules.str(a, "content")) + "</div>";
                 } else html = RuleRender.content(Rules.str(a, "content"), terms, current ? resolver(r, aid) : null);
-            } else html = RuleRender.content(Rules.str(a, "content"), terms, current ? resolver(r, aid) : null);
+            } else if (!Rules.str(a, "html").isEmpty()) html = RuleRender.highlight(RuleRender.linkRefsHtml(Rules.str(a, "html"), current ? resolver(r, aid) : null), terms);
+            else html = RuleRender.content(Rules.str(a, "content"), terms, current ? resolver(r, aid) : null);
             String key = regId + "::" + aid;
             Object note = notes.get(key);
+            Object noteH = notesHtml.get(key);
             items.add(new Art(aid, Rules.str(a, "number"), Rules.str(a, "title"), Rules.artLabel(a), ch, html,
-                note == null ? "" : note.toString(), marks.contains(key), Rules.bool(a, "difficult"), tag, nc, Rules.bool(a, "supp"), Rules.str(a, "content")));
+                note == null ? "" : note.toString(), marks.contains(key), Rules.bool(a, "difficult"), tag, nc, Rules.bool(a, "supp"), Rules.str(a, "content"),
+                Rules.str(a, "html").isEmpty() ? RuleRender.content(Rules.str(a, "content"), List.of(), null) : Rules.str(a, "html"),
+                noteH != null ? noteH.toString() : local.audit.extract.Rich.fromText(note == null ? "" : note.toString())));
         }
         List<Art> gone = new ArrayList<>();
         if (dm) {
             for (Map<String, Object> b : Rules.maps(pv, "articles")) {
                 boolean still = arts.stream().anyMatch(a -> Rules.str(a, "number").equals(Rules.str(b, "number")));
                 if (!still) gone.add(new Art(Rules.str(b, "id"), Rules.str(b, "number"), Rules.str(b, "title"), Rules.artLabel(b), "",
-                    RuleRender.content(Rules.str(b, "content"), List.of(), null), "", false, false, "del", false, false, Rules.str(b, "content")));
+                    RuleRender.content(Rules.str(b, "content"), List.of(), null), "", false, false, "del", false, false, Rules.str(b, "content"), "", ""));
             }
         }
         m.put("items", items);
@@ -479,7 +484,13 @@ public class RuleService {
                 String t = Txt.clean(p.get("text"), 20_000, true);
                 if (t == null) return Op.bad("메모가 너무 깁니다.");
                 Map<String, Object> notes = Rules.map(state(), "notes");
-                if (t.isBlank()) notes.remove(key); else notes.put(key, t);
+                Map<String, Object> notesHtml = Rules.map(state(), "notesHtml");
+                if (t.isBlank()) { notes.remove(key); notesHtml.remove(key); }
+                else {
+                    notes.put(key, t);
+                    String h = local.audit.HtmlClean.clean(p.get("html"));
+                    if (h.isBlank()) notesHtml.remove(key); else notesHtml.put(key, h);
+                }
                 store.saveState();
                 return Op.ok(t.isBlank() ? "메모를 지웠습니다." : "메모를 저장했습니다.");
             }
@@ -489,6 +500,7 @@ public class RuleService {
                 if (title == null || content == null) return Op.bad("입력을 확인하세요.");
                 a.put("title", title);
                 a.put("content", content);
+                if (p.containsKey("html")) { String h = local.audit.HtmlClean.clean(p.get("html")); if (h.isBlank()) a.remove("html"); else a.put("html", h); }
                 store.saveReg(r);
                 return Op.ok("조문을 고쳤습니다.");
             }

@@ -49,6 +49,9 @@ public class WorkItem {
     public String next = "";
     public List<Map<String, Object>> comments = new ArrayList<>();
     public String repeat = "";
+    /** 편집기로 꾸민 내용(HTML). 없으면 content 글자로 보여 준다. */
+    public String html;
+    public String memoHtml;
 
     // 일정(event)
     public String date;

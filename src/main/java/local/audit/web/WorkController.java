@@ -134,13 +134,54 @@ public class WorkController {
     }
 
     @GetMapping("/work/notes")
-    public String notes(Model model) {
+    public String notes(@RequestParam(required = false) String cat, @RequestParam(required = false) String q,
+                        @RequestParam(required = false) Integer page, Model model) {
         common(model);
+        String c = Txt.str(cat);
+        model.addAttribute("cat", c);
+        model.addAttribute("q", Txt.str(q));
+        model.addAttribute("groups", work.noteGroups(q, 5));
+        if (!c.isEmpty()) model.addAttribute("v", work.notePage(c, q, page == null ? 1 : page, 30));
         model.addAttribute("inbox", work.ofKind("inbox"));
         model.addAttribute("plans", work.ofKind("plan"));
-        model.addAttribute("notes", work.ofKind("note", "issue").stream()
-            .sorted(java.util.Comparator.comparing((WorkItem x) -> Txt.str(x.created)).reversed()).toList());
         return "work-notes";
+    }
+
+    /** 올린 문서를 읽어 글자와 모양(표·그림·서식)을 돌려준다. */
+    private String[] readDocument(MultipartFile upload) throws IOException {
+        String name = Txt.str(upload.getOriginalFilename());
+        java.nio.file.Path tmp = java.nio.file.Files.createTempFile(paths.tmp, "doc", Txt.ext(name).isEmpty() ? ".txt" : Txt.ext(name));
+        try {
+            upload.transferTo(tmp);
+            local.audit.extract.TextReader.Result res = reader.read(tmp, name);
+            if (!res.ok() || Txt.blank(res.text())) return new String[] { null, null, "파일에서 글을 읽지 못했습니다. " + Txt.str(res.note()) };
+            String html = res.html() != null ? res.html() : local.audit.extract.Rich.fromText(res.text());
+            return new String[] { res.text(), html, Txt.stem(name) };
+        } finally {
+            java.nio.file.Files.deleteIfExists(tmp);
+        }
+    }
+
+    @PostMapping("/work/notes/import")
+    public Object noteImport(@RequestParam(required = false) MultipartFile upload, @RequestParam(required = false) String title,
+                             @RequestParam(required = false) String ntype, HttpServletRequest req) throws IOException {
+        if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("가져올 문서를 고르세요."), null);
+        if (upload.getSize() > 150L * 1024 * 1024) return Web.reply(req, Op.bad("파일이 너무 큽니다."), null);
+        String[] d = readDocument(upload);
+        if (d[0] == null) return Web.reply(req, Op.bad(d[2]), null);
+        String t = Txt.blank(title) ? d[2] : title;
+        Op op = work.change("문서로 노트 만들기", () -> work.noteFromDocument(t, ntype, d[0], d[1]));
+        return Web.reply(req, op, op.ok ? "/work/item/" + op.id : null);
+    }
+
+    @PostMapping("/work/item/{id}/import")
+    public Object itemImport(@PathVariable String id, @RequestParam(required = false) MultipartFile upload,
+                             @RequestParam(required = false) String mode, HttpServletRequest req) throws IOException {
+        if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("가져올 문서를 고르세요."), null);
+        String[] d = readDocument(upload);
+        if (d[0] == null) return Web.reply(req, Op.bad(d[2]), null);
+        Op op = work.change("문서 가져오기", () -> work.importIntoItem(id, d[0], d[1], "replace".equals(mode)));
+        return Web.reply(req, op, op.ok ? "/work/item/" + id : null);
     }
 
     @GetMapping("/work/item/{id}")

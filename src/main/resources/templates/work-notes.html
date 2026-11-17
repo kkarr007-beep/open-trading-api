@@ -6,11 +6,81 @@
 <div class="page-head">
     <div>
         <h1>노트·계획</h1>
-        <p class="hint">떠오른 생각을 담아 두고, 나중에 업무로 옮기거나 계획 대기함에 둡니다. 회의록·조사 메모는 노트로 남깁니다.</p>
+        <p class="hint">노트는 종류별로 나눠 최신 것부터 보입니다. 종류를 누르면 달별로 묶어 30건씩 넘겨 봅니다. 워드·한글·PDF 문서를 그대로 가져와 노트로 만들 수 있습니다.</p>
     </div>
 </div>
-<div class="cols-2">
+<nav class="section-tabs" aria-label="노트 종류">
+    <a th:href="@{/work/notes(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'">전체</a>
+    <a th:each="g : ${groups}" th:href="@{/work/notes(cat=${g.key()},q=${q})}" th:aria-current="${cat == g.key()} ? 'page'" th:text="|${g.name()} ${g.count()}|"></a>
+</nav>
+<form method="get" action="/work/notes" class="toolbar" style="margin-bottom:14px">
+    <input type="hidden" name="cat" th:value="${cat}" />
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">노트 찾기</span>
+            <input name="q" th:value="${q}" placeholder="노트 제목·내용·태그로 찾기" maxlength="80" />
+        </label>
+        <button class="btn" type="submit">찾기</button>
+        <a class="btn" th:unless="${#strings.isEmpty(q)}" th:href="@{/work/notes(cat=${cat})}">찾기 지우기</a>
+    </div>
+</form>
+<div class="notes-layout">
     <div>
+        <!-- 전체: 종류마다 최근 5건 -->
+        <div class="note-cats" th:if="${#strings.isEmpty(cat)}">
+            <section class="card" th:each="g : ${groups}" th:if="${g.count() > 0 or g.key() != 'issue'}">
+                <div class="card-head"><h2 th:text="${g.name()}"></h2><span class="count" th:text="${g.count()}">0</span>
+                    <a class="btn btn-quiet" th:if="${g.count() > 0}" th:href="@{/work/notes(cat=${g.key()},q=${q})}">모두 보기</a></div>
+                <p class="empty" th:if="${g.count() == 0}">노트가 없습니다.</p>
+                <a class="note-row" th:each="r : ${g.rows()}" th:href="|/work/item/${r.item().id}|">
+                    <time th:text="${r.date()}"></time>
+                    <div><strong th:text="${r.item().title}"></strong><span th:text="${r.snippet()}"></span></div>
+                </a>
+            </section>
+        </div>
+        <!-- 한 종류: 달별, 쪽 나눔 -->
+        <section class="card" th:if="${!#strings.isEmpty(cat) and v != null and v.group != null}">
+            <div class="card-head"><h2 th:text="${v.group.name()}"></h2><span class="count" th:text="${v.group.count()}">0</span>
+                <span class="sub" th:text="|${v.page} / ${v.pages}쪽|"></span></div>
+            <p class="empty" th:if="${v.group.count() == 0}">노트가 없습니다.</p>
+            <th:block th:each="m : ${v.months}">
+                <h3 class="month-head" th:text="|${m.key} · ${#lists.size(m.value)}건|"></h3>
+                <a class="note-row" th:each="r : ${m.value}" th:href="|/work/item/${r.item().id}|">
+                    <time th:text="${r.date()}"></time>
+                    <div><strong th:text="${r.item().title}"></strong><span th:text="${r.snippet()}"></span></div>
+                </a>
+            </th:block>
+            <p class="row-actions" th:if="${v.pages > 1}" style="margin-top:12px">
+                <a class="btn" th:if="${v.page > 1}" th:href="@{/work/notes(cat=${cat},q=${q},page=${v.page - 1})}">← 더 최근</a>
+                <a class="btn" th:if="${v.page < v.pages}" th:href="@{/work/notes(cat=${cat},q=${q},page=${v.page + 1})}">이전 노트 →</a>
+            </p>
+        </section>
+    </div>
+    <div>
+        <section class="card">
+            <h2>새 노트</h2>
+            <form method="post" action="/work/new/note" data-write="1" class="line-add">
+                <input type="hidden" name="open" value="1" />
+                <input name="title" required maxlength="200" placeholder="노트 제목" class="wide" aria-label="노트 제목" />
+                <select name="ntype" aria-label="노트 종류"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == (#strings.isEmpty(cat) or cat == 'issue' ? 'doc' : cat)}"></option></select>
+                <button type="submit" class="btn btn-primary">만들기</button>
+            </form>
+            <h3 class="h3">문서에서 가져오기</h3>
+            <form method="post" action="/work/notes/import" data-write="1" enctype="multipart/form-data">
+                <div class="drop">
+                    <p class="drop-copy"><strong>워드·한글·PDF 문서를 고르거나 끌어 놓으세요</strong></p>
+                    <input type="file" name="upload" required accept=".docx,.doc,.hwpx,.hwp,.pdf,.pptx,.txt,.md" aria-label="가져올 문서" />
+                    <span class="drop-name" data-file-name hidden></span>
+                </div>
+                <div class="line-add" style="margin-top:8px">
+                    <input name="title" maxlength="200" placeholder="제목 (비우면 파일 이름)" class="wide" aria-label="제목" />
+                    <select name="ntype" aria-label="노트 종류"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == 'doc'}"></option></select>
+                </div>
+                <p class="hint">표(표 안의 표 포함)·굵게·글자 크기·정렬·그림을 살려 가져옵니다. 문서보안이 걸린 문서는 이 컴퓨터의 한글·워드로 열어 읽습니다.</p>
+                <button type="submit" class="btn btn-primary">가져와서 노트 만들기</button>
+            </form>
+        </section>
         <section class="card">
             <div class="card-head"><h2>생각 담기 <span class="sub" th:text="|${#lists.size(inbox)}건|"></span></h2></div>
             <form method="post" action="/work/new/inbox" data-write="1" class="line-add">
@@ -30,7 +100,7 @@
             <div class="card-head"><h2>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h2></div>
             <form method="post" action="/work/new/plan" data-write="1" class="line-add">
                 <input name="title" required maxlength="200" placeholder="나중에 할 일" class="wide" aria-label="계획" />
-                <input name="when" maxlength="60" placeholder="예상 시기 (다음 분기)" aria-label="예상 시기" />
+                <input name="when" maxlength="60" placeholder="예상 시기" aria-label="예상 시기" />
                 <button type="submit" class="btn btn-primary">넣기</button>
             </form>
             <p class="empty" th:if="${#lists.isEmpty(plans)}">계획 대기 중인 일이 없습니다.</p>
@@ -39,24 +109,6 @@
                     <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
                         <small th:text="${(#strings.isEmpty(x.when) ? '' : '예상 ' + x.when) + (#strings.isEmpty(x.tick) ? '' : ' · 다시 볼 날 ' + x.tick)}"></small></div>
                     <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
-                </li>
-            </ul>
-        </section>
-    </div>
-    <div>
-        <section class="card">
-            <div class="card-head"><h2>노트 <span class="sub" th:text="|${#lists.size(notes)}건|"></span></h2></div>
-            <form method="post" action="/work/new/note" data-write="1" class="line-add">
-                <input type="hidden" name="open" value="1" />
-                <input name="title" required maxlength="200" placeholder="노트 제목" class="wide" aria-label="노트 제목" />
-                <select name="ntype" aria-label="노트 종류"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == 'doc'}"></option></select>
-                <button type="submit" class="btn btn-primary">만들기</button>
-            </form>
-            <p class="empty" th:if="${#lists.isEmpty(notes)}">노트가 없습니다.</p>
-            <ul class="wlist">
-                <li class="wrow" th:each="x : ${notes}">
-                    <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
-                        <small th:text="|${NOTE[x.ntype] ?: x.kindName} · ${x.created}${#lists.isEmpty(x.tags) ? '' : ' · #' + #strings.listJoin(x.tags, ' #')}|"></small></div>
                 </li>
             </ul>
         </section>

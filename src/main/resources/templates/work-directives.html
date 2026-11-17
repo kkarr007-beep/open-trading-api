@@ -18,7 +18,7 @@
             <label class="field">지시한 곳<input name="from" maxlength="120" placeholder="감사위원회 · 준법감시인 · 파트장" /></label>
             <label class="field">기한<input name="due" type="date" /></label>
             <label class="field">담당<select name="ownerId"><option th:each="o : ${cfg.owners}" th:if="${o.on}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
-            <label class="field grow">내용<textarea name="content" rows="2" maxlength="4000"></textarea></label>
+            <label class="field grow">내용<textarea name="content" rows="4" maxlength="4000" data-rich="contentHtml"></textarea></label>
         </div>
         <button type="submit" class="btn btn-primary">접수</button>
     </form>

@@ -54,6 +54,10 @@ public class Web {
         if (path.startsWith("/work/report")) navKey = "work/insight";
         if (path.equals("/import")) navKey = "import";
         model.addAttribute("navKey", navKey);
+        String navGroup = path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
+            : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules"
+            : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";
+        model.addAttribute("navGroup", navGroup);
         model.addAttribute("workUrgent", work.urgentCount());
         model.addAttribute("workDirs", work.openDirectives());
         model.addAttribute("path", path);
