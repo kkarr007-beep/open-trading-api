@@ -43,6 +43,7 @@ public class RuleController {
     public String list(Model model) {
         model.addAttribute("groups", rules.groups());
         model.addAttribute("stats", rules.stats());
+        model.addAttribute("reviewDue", rules.reviewDue());
         model.addAttribute("cats", rules.categories());
         return "rules";
     }
@@ -265,6 +266,11 @@ public class RuleController {
         if (op.ok) out.put("go", "/rules/" + op.id);
         if (op.status == 409) out.put("dupId", op.extra);
         return ResponseEntity.ok(out);
+    }
+
+    @PostMapping("/rules/{id}/reviewed")
+    public Object reviewed(@PathVariable String id, HttpServletRequest req) {
+        return Web.reply(req, rules.reviewed(id), "/rules/" + id);
     }
 
     @PostMapping("/rules/{id}/meta")

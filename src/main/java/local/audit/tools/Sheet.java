@@ -291,6 +291,7 @@ public final class Sheet {
     /** '45971' '1.5E5' '0.4375' 같은 숫자 글자를 보기 좋게. */
     static String tidyNumber(String v) {
         if (v == null || v.isBlank()) return "";
+        if (v.trim().matches("-?\\d+")) return v.trim(); // 카드번호처럼 긴 정수는 글자 그대로
         try {
             double d = Double.parseDouble(v.trim());
             return num(d);

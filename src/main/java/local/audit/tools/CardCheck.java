@@ -325,7 +325,11 @@ public class CardCheck {
             Long amount = amount(cell(row, map.get("amount")));
             if (Txt.blank(name) || date == null || amount == null || merchant.startsWith("예시")) { skipped++; continue; }
             String time = time(cell(row, map.get("time")));
-            if (time.isEmpty()) time = time(Txt.str(cell(row, map.get("date"))).replaceFirst("^\\S+\\s*", ""));
+            if (time.isEmpty()) {
+                String rawDate = cell(row, map.get("date"));
+                // 엑셀 날짜·시각 일련번호(46336.4375)면 소수 부분이 시각
+                time = rawDate.matches("\\d{5}\\.\\d+") ? time("0" + rawDate.substring(rawDate.indexOf('.'))) : time(rawDate.replaceFirst("^\\S+\\s*", ""));
+            }
             Long cancelAmt = amount(cell(row, map.get("cancelAmt")));
             String yn = cell(row, map.get("cancelYn")).trim().toUpperCase(Locale.ROOT);
             boolean cancelled = amount < 0 || (cancelAmt != null && cancelAmt != 0 && Math.abs(cancelAmt) >= Math.abs(amount))
@@ -761,6 +765,56 @@ public class CardCheck {
         people.sort(Comparator.comparingLong((Map<String, Object> p) -> ((Number) p.get("Score")).longValue()).reversed()
             .thenComparing(p -> -((Number) p.get("Amt")).longValue()));
         v.put("people", people);
+        v.put("benford", benford(runId));
+        return v;
+    }
+
+    /**
+     * 첫자리 숫자 분포(벤포드 법칙). 1만 원 이상 금액만 본다. 평균 절대편차(MAD)로 일치 정도를 판정한다(Nigrini 기준).
+     * 건수가 적으면 판정하지 않는다.
+     */
+    public Map<String, Object> benford(String runId) {
+        long[] n = new long[10];
+        Map<Integer, Map<String, Integer>> who = new HashMap<>();
+        for (Map<String, Object> r : db.rows("SELECT Name, Amount FROM CardTx WHERE RunId=? AND Cancelled=0 AND Amount>=10000", runId)) {
+            String a = Long.toString(((Number) r.get("Amount")).longValue());
+            int d = a.charAt(0) - '0';
+            if (d < 1 || d > 9) continue;
+            n[d]++;
+            who.computeIfAbsent(d, k -> new HashMap<>()).merge(Txt.str(r.get("Name")), 1, Integer::sum);
+        }
+        long total = 0;
+        for (int d = 1; d <= 9; d++) total += n[d];
+        List<Map<String, Object>> rows = new ArrayList<>();
+        double mad = 0, worst = 0;
+        int worstDigit = 0;
+        for (int d = 1; d <= 9; d++) {
+            double exp = Math.log10(1 + 1.0 / d), act = total == 0 ? 0 : (double) n[d] / total;
+            mad += Math.abs(act - exp);
+            if (act - exp > worst) { worst = act - exp; worstDigit = d; }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("digit", d);
+            row.put("count", n[d]);
+            row.put("actual", Math.round(act * 1000) / 10.0);
+            row.put("expected", Math.round(exp * 1000) / 10.0);
+            row.put("over", act - exp > 0.02);
+            rows.add(row);
+        }
+        mad = total == 0 ? 0 : mad / 9;
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("rows", rows);
+        v.put("total", total);
+        v.put("mad", String.format("%.4f", mad));
+        v.put("enough", total >= 300);
+        v.put("verdict", total < 300 ? "건수가 적어(300건 미만) 참고만" : mad <= 0.006 ? "매우 잘 맞음" : mad <= 0.012 ? "대체로 맞음" : mad <= 0.015 ? "조금 벗어남" : "많이 벗어남 — 금액 조정 의심");
+        v.put("tone", total < 300 ? "" : mad <= 0.012 ? "ok" : mad <= 0.015 ? "warn" : "bad");
+        List<String> top = new ArrayList<>();
+        if (worstDigit > 0 && worst > 0.02) {
+            who.get(worstDigit).entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed()).limit(3)
+                .forEach(e -> top.add(e.getKey() + " " + e.getValue() + "건"));
+        }
+        v.put("worstDigit", worst > 0.02 ? worstDigit : 0);
+        v.put("worstWho", top);
         return v;
     }
 

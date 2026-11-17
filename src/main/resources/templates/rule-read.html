@@ -7,8 +7,14 @@
 <th:block th:if="${m != null}" th:with="r=${m.reg}, row=${m.row}, v=${m.version}">
 <div class="page-head">
     <div>
-        <p class="kicker" th:text="|${row.category()} · ${v != null ? v.label : ''} · 시행 ${row.effectiveDate()}|">카테고리</p>
+        <p class="kicker" th:text="|${row.category()} · ${v != null ? v.label : ''} · 시행 ${row.effectiveDate()}${#strings.isEmpty(row.owner()) ? '' : ' · 주관 ' + row.owner()}|">카테고리</p>
         <h1 th:text="${row.title()}">사규</h1>
+        <p class="review-line" th:if="${!#strings.isEmpty(row.reviewText())}">
+            <span class="pill" th:classappend="${row.reviewTone()}" th:text="${row.reviewText()}"></span>
+            <span class="small muted" th:text="|검토 주기 ${row.reviewMonths()}개월|"></span>
+            <form method="post" th:action="|/rules/${row.id()}/reviewed|" data-write="1" class="inline-form no-print" data-confirm="이 사규를 오늘 검토한 것으로 기록할까요? 다음 검토일이 다시 계산됩니다.">
+                <button type="submit" class="btn btn-quiet">검토 완료</button></form>
+        </p>
         <p class="hint" th:if="${!m.current}">지난 판을 보고 있습니다. 북마크·메모·고치기는 지금 판에서만 됩니다.</p>
         <p class="hint" th:if="${m.diff}">바로 앞 판과 견주어 보고 있습니다. <span class="dtag new">신설</span> <span class="dtag chg">변경</span> <span class="dtag del">삭제</span></p>
     </div>
@@ -104,6 +110,8 @@
                 <option value="active" th:selected="${row.status() == 'active'}">시행 중</option>
                 <option th:each="s : ${ {'개정 예정','검토 중','폐지'} }" th:value="${s}" th:text="${s}" th:selected="${row.status() == s}"></option>
             </select></label>
+            <label class="field">주관부서<input name="owner" maxlength="60" th:value="${row.owner()}" placeholder="예: 인사팀" /></label>
+            <label class="field">검토 주기(개월) <span class="field-note">비우면 검토 알림 없음</span><input name="reviewMonths" type="number" min="0" max="120" th:value="${row.reviewMonths() > 0 ? row.reviewMonths() : ''}" placeholder="예: 12" /></label>
         </div>
         <button type="submit" class="btn btn-primary">저장</button>
     </form>

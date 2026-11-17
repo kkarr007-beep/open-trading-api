@@ -28,12 +28,10 @@
     <section class="card">
         <h2>규칙별 <span class="sub">누르면 그 규칙에 걸린 건만</span></h2>
         <p class="empty" th:if="${#lists.isEmpty(s.byRule)}">걸린 건이 없습니다.</p>
-        <table class="data small" th:unless="${#lists.isEmpty(s.byRule)}">
-            <thead><tr><th scope="col">규칙</th><th scope="col" class="num">건</th><th scope="col" class="num">예외로 뺀 건</th></tr></thead>
-            <tbody><tr th:each="r : ${s.byRule}">
-                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule})}" th:text="${r.Label}"></a></th>
-                <td class="num" th:text="${r.N}"></td><td class="num muted" th:text="${r.Ex}"></td></tr></tbody>
-        </table>
+        <div class="rule-chips" th:unless="${#lists.isEmpty(s.byRule)}">
+            <a th:each="r : ${s.byRule}" th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule},min=1)}" th:classappend="${q['rule'] == r.Rule} ? 'on'">
+                <span th:text="${r.Label}"></span><b th:text="${r.N}"></b><small th:if="${r.Ex > 0}" th:text="|예외 ${r.Ex}|"></small></a>
+        </div>
     </section>
     <section class="card">
         <h2>사람별 <span class="sub">점수 합 순 · 부서 평균 대비 2배 이상은 굵게</span></h2>
@@ -53,6 +51,19 @@
         </div>
     </section>
 </div>
+<section class="card" th:if="${s.benford.total > 0}" th:with="bf=${s.benford}">
+    <h2>금액 첫자리 분포 <span class="sub">벤포드 법칙 · 1만 원 이상 <th:block th:text="${bf.total}"></th:block>건</span></h2>
+    <p class="hint">자연스럽게 생긴 금액은 첫자리가 1인 경우가 약 30%, 9인 경우가 약 5%로 일정한 분포를 따릅니다. 금액을 지어내거나 한도에 맞춰 조정하면 특정 숫자가 튑니다.
+        일치 정도(평균 절대편차) <strong th:text="${bf.mad}"></strong> — <span class="pill" th:classappend="${bf.tone}" th:text="${bf.verdict}"></span></p>
+    <div class="bf-chart" role="img" aria-label="첫자리 숫자별 실제 비율과 기대 비율">
+        <div class="bf-col" th:each="r : ${bf.rows}" th:classappend="${r.over} ? 'over'">
+            <div class="bf-bars"><i class="bf-act" th:style="|height:${r.actual * 2.2}px|"></i><i class="bf-exp" th:style="|height:${r.expected * 2.2}px|"></i></div>
+            <b th:text="${r.digit}"></b><small th:text="|${r.actual}%|"></small>
+        </div>
+    </div>
+    <p class="small muted" style="margin:8px 0 0"><span class="bf-key act"></span> 실제 <span class="bf-key exp"></span> 기대(벤포드)
+        <th:block th:if="${bf.worstDigit > 0}"> · 기대보다 많은 첫자리 <strong th:text="${bf.worstDigit}"></strong> — 많이 쓴 사람: <th:block th:text="${#strings.listJoin(bf.worstWho, ', ')}"></th:block></th:block></p>
+</section>
 <div class="sticky-tools no-print">
     <form method="get" th:action="|/tools/card/${run.Id}|" class="toolbar">
         <div class="search-row">

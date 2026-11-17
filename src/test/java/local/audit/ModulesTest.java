@@ -543,6 +543,8 @@ class ModulesTest {
         assertEquals("22:05:00", local.audit.tools.CardCheck.time("오후 10:05"));
         assertEquals("09:07:03", local.audit.tools.CardCheck.time("090703"));
         assertEquals(-12000L, local.audit.tools.CardCheck.amount("(12,000)"));
+        assertEquals("4518123412341234", local.audit.tools.Sheet.tidyNumber("4518123412341234"));
+        assertEquals("0.4375", local.audit.tools.Sheet.tidyNumber("0.4375"));
         assertArrayEquals(new String[] { "서울", "강남구", "역삼동", "테헤란로" }, local.audit.tools.CardCheck.area("서울특별시 강남구 테헤란로 123 (역삼동)"));
         assertArrayEquals(new String[] { "경기", "성남시 분당구", "", "정자일로" }, local.audit.tools.CardCheck.area("경기도 성남시 분당구 정자일로 95"));
         assertEquals("역삼동", local.audit.tools.CardCheck.area("서울 강남구 역삼1동 1-1 래미안 101동")[2]);
@@ -574,5 +576,34 @@ class ModulesTest {
         assertEquals("2026-11-10", row.get("TxDate"));
         assertEquals("10:30:00", row.get("TxTime"));
         assertEquals(150000L, ((Number) row.get("Amount")).longValue());
+    }
+
+    @Test
+    void ruleReviewCycleShowsDueAndResets() {
+        Op made = rules.addArticles(Map.of("title", "취업규칙", "effectiveDate", "2025-10-01"), RuleService.cleanArticles(rules.preview("제1조(목적) 이 규칙은 근로조건을 정한다.")));
+        assertTrue(made.ok, made.message);
+        assertTrue(rules.saveMeta(made.id, Map.of("title", "취업규칙", "status", "active", "owner", "인사팀", "reviewMonths", "12")).ok);
+        RuleService.RegRow row = rules.row(rules.reg(made.id));
+        assertEquals("인사팀", row.owner());
+        assertEquals("2026-10-01", row.reviewDue());
+        assertEquals("bad", row.reviewTone()); // 오늘(2026-11-17) 기준 지남
+        assertEquals(1, rules.reviewDue().size());
+        assertTrue(rules.reviewed(made.id).ok);
+        RuleService.RegRow after = rules.row(rules.reg(made.id));
+        assertEquals("2027-11-17", after.reviewDue());
+        assertEquals("", after.reviewTone());
+    }
+
+    @Test
+    void benfordComparesFirstDigits() throws Exception {
+        local.audit.tools.CardCheck card = new local.audit.tools.CardCheck(db, settings);
+        StringBuilder t = new StringBuilder("이름\t승인일자\t승인금액\t가맹점명\n");
+        for (int i = 0; i < 400; i++) t.append("가\t2026-11-10\t").append(90000 + i).append("\t식당\n"); // 모두 9로 시작
+        Op up = card.upload("", "b.tsv", List.of(new local.audit.tools.Sheet.Table("t", local.audit.tools.Sheet.text(t.toString()))));
+        assertTrue(card.confirm(up.id, Map.of("col_name", "0", "col_date", "1", "col_amount", "2", "col_merchant", "3")).ok);
+        Map<String, Object> bf = card.benford(up.id);
+        assertEquals(400L, bf.get("total"));
+        assertEquals("bad", bf.get("tone"));
+        assertEquals(9, bf.get("worstDigit"));
     }
 }

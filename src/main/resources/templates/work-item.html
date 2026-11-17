@@ -46,25 +46,25 @@
     <h2>내용</h2>
     <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
         <div class="props">
-            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
-            <span>담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
-            <span>우선순위</span><select name="pri"><option th:each="p : ${PRI}" th:value="${p.key}" th:text="${p.value}" th:selected="${p.key == x.pri}"></option></select>
-            <th:block th:if="${x.kind == 'dir'}"><span>지시한 곳</span><input name="from" maxlength="120" th:value="${x.from}" /></th:block>
-            <span>유형</span><select name="typeId"><option th:each="t : ${cfg.types}" th:value="${t.id}" th:text="${t.n}" th:selected="${t.id == x.typeId}"></option></select>
-            <span>과제</span><select name="projectId"><option value="">없음</option><option th:each="p : ${cfg.projects}" th:value="${p.id}" th:text="${p.n}" th:selected="${p.id == x.projectId}"></option></select>
+            <span>제목</span><input aria-label="제목" name="title" required maxlength="200" th:value="${x.title}" />
+            <span>담당</span><select aria-label="담당" name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
+            <span>우선순위</span><select aria-label="우선순위" name="pri"><option th:each="p : ${PRI}" th:value="${p.key}" th:text="${p.value}" th:selected="${p.key == x.pri}"></option></select>
+            <th:block th:if="${x.kind == 'dir'}"><span>지시한 곳</span><input aria-label="지시한 곳" name="from" maxlength="120" th:value="${x.from}" /></th:block>
+            <span>유형</span><select aria-label="유형" name="typeId"><option th:each="t : ${cfg.types}" th:value="${t.id}" th:text="${t.n}" th:selected="${t.id == x.typeId}"></option></select>
+            <span>과제</span><select aria-label="과제" name="projectId"><option value="">없음</option><option th:each="p : ${cfg.projects}" th:value="${p.id}" th:text="${p.n}" th:selected="${p.id == x.projectId}"></option></select>
             <span>시작 ~ 기한</span><div class="two"><input type="date" name="start" th:value="${x.start}" aria-label="시작" /> ~ <input type="date" name="due" th:value="${x.due}" aria-label="기한" /></div>
             <th:block th:if="${x.kind == 'work'}">
-                <span>주기</span><select name="cycle"><option th:each="c : ${CYCLE}" th:value="${c.key}" th:text="${c.value}" th:selected="${c.key == x.cycle}"></option></select>
+                <span>주기</span><select aria-label="주기" name="cycle"><option th:each="c : ${CYCLE}" th:value="${c.key}" th:text="${c.value}" th:selected="${c.key == x.cycle}"></option></select>
                 <span>시행 월</span>
                 <div class="months"><input type="hidden" name="monthsSent" value="1" />
                     <label th:each="m : ${#numbers.sequence(1, 12)}"><input type="checkbox" th:name="|m${m}|" value="1" th:checked="${x.hasMonth(m)}" /><span th:text="|${m}월|"></span></label>
                 </div>
-                <span>연 목표 횟수</span><input type="number" name="target" min="0" max="999" th:value="${x.target}" />
-                <span>반복</span><select name="repeat"><option th:each="r : ${REPEAT}" th:value="${r.key}" th:text="${r.value}" th:selected="${r.key == x.repeat}"></option></select>
-                <span>상위 업무</span><select name="parentId"><option value="">없음</option><option th:each="z : ${parents}" th:value="${z.id}" th:text="${#strings.abbreviate(z.title, 50)}" th:selected="${z.id == x.parentId}"></option></select>
-                <span>다음 행동</span><input name="next" maxlength="300" th:value="${x.next}" placeholder="지금 할 행동 한 줄" />
+                <span>연 목표 횟수</span><input aria-label="연 목표 횟수" type="number" name="target" min="0" max="999" th:value="${x.target}" />
+                <span>반복</span><select aria-label="반복" name="repeat"><option th:each="r : ${REPEAT}" th:value="${r.key}" th:text="${r.value}" th:selected="${r.key == x.repeat}"></option></select>
+                <span>상위 업무</span><select aria-label="상위 업무" name="parentId"><option value="">없음</option><option th:each="z : ${parents}" th:value="${z.id}" th:text="${#strings.abbreviate(z.title, 50)}" th:selected="${z.id == x.parentId}"></option></select>
+                <span>다음 행동</span><input aria-label="다음 행동" name="next" maxlength="300" th:value="${x.next}" placeholder="지금 할 행동 한 줄" />
             </th:block>
-            <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
+            <span>태그</span><input aria-label="태그" name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
         </div>
         <p class="hint">시행 월은 주기가 '정기(월)'일 때, 연 목표 횟수는 '횟수 목표'일 때, 반복은 '수시·기한'일 때 씁니다. 반복 업무를 완료하면 다음 차례가 저절로 만들어집니다.</p>
         <label class="field grow" style="margin-top:12px">메모<textarea name="content" class="textarea-wide" rows="8" th:text="${x.content}" data-rich="contentHtml" th:attr="data-html=${W.contentHtml(x)}"></textarea></label>
@@ -123,12 +123,12 @@
     <h2>일정</h2>
     <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
         <div class="props">
-            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
-            <span>날짜</span><input type="date" name="date" required th:value="${x.date}" />
+            <span>제목</span><input aria-label="제목" name="title" required maxlength="200" th:value="${x.title}" />
+            <span>날짜</span><input aria-label="날짜" type="date" name="date" required th:value="${x.date}" />
             <span>시간</span><div class="two"><input type="time" name="t1" th:value="${x.t1}" aria-label="시작" /> ~ <input type="time" name="t2" th:value="${x.t2}" aria-label="끝" /></div>
-            <span>구분</span><select name="cat"><option th:each="e : ${EVENT}" th:value="${e.key}" th:text="${e.value}" th:selected="${e.key == x.cat}"></option></select>
-            <span>담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
-            <span>장소</span><input name="place" maxlength="120" th:value="${x.place}" />
+            <span>구분</span><select aria-label="구분" name="cat"><option th:each="e : ${EVENT}" th:value="${e.key}" th:text="${e.value}" th:selected="${e.key == x.cat}"></option></select>
+            <span>담당</span><select aria-label="담당" name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
+            <span>장소</span><input aria-label="장소" name="place" maxlength="120" th:value="${x.place}" />
         </div>
         <label class="field grow" style="margin-top:12px">메모<textarea name="memo" class="textarea-wide" rows="8" th:text="${x.memo}" data-rich="memoHtml" th:attr="data-html=${W.memoHtml(x)}"></textarea></label>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
@@ -140,13 +140,13 @@
     <h2 th:text="${x.kindName}">노트</h2>
     <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
         <div class="props">
-            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
-            <th:block th:if="${x.kind == 'note'}"><span>종류</span><select name="ntype"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == x.ntype}"></option></select></th:block>
+            <span>제목</span><input aria-label="제목" name="title" required maxlength="200" th:value="${x.title}" />
+            <th:block th:if="${x.kind == 'note'}"><span>종류</span><select aria-label="종류" name="ntype"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == x.ntype}"></option></select></th:block>
             <th:block th:if="${x.kind == 'plan'}">
-                <span>예상 시기</span><input name="when" maxlength="60" th:value="${x.when}" />
-                <span>다시 볼 날</span><input type="date" name="tick" th:value="${x.tick}" />
+                <span>예상 시기</span><input aria-label="예상 시기" name="when" maxlength="60" th:value="${x.when}" />
+                <span>다시 볼 날</span><input aria-label="다시 볼 날" type="date" name="tick" th:value="${x.tick}" />
             </th:block>
-            <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
+            <span>태그</span><input aria-label="태그" name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
         </div>
         <label class="field grow" style="margin-top:12px">내용<textarea name="content" class="textarea-wide" rows="20" th:text="${x.content}" data-rich="contentHtml" th:attr="data-html=${W.contentHtml(x)}"></textarea></label>
         <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>

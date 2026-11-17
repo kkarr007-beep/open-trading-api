@@ -29,14 +29,26 @@
     <li class="metric-ok"><a href="/rules/marks"><span class="metric-top">북마크</span><strong th:text="${stats.bookmarks}">0</strong></a></li>
     <li class="metric-ok"><a href="/rules/marks#notes"><span class="metric-top">메모</span><strong th:text="${stats.notes}">0</strong></a></li>
     <li th:class="${stats.difficult > 0} ? 'metric-warn' : 'metric-ok'"><a href="/rules/marks#difficult"><span class="metric-top">해석 어려운 조항</span><strong th:text="${stats.difficult}">0</strong></a></li>
+    <li th:class="${stats.reviewDue > 0} ? 'metric-bad' : 'metric-ok'"><a href="#review-due"><span class="metric-top">검토 도래 (30일 안·지남)</span><strong th:text="${stats.reviewDue}">0</strong></a></li>
 </ul>
+<section class="card" id="review-due" th:if="${reviewDue != null and !#lists.isEmpty(reviewDue)}">
+    <h2>검토할 사규 <span class="sub">사규 정보에서 정한 검토 주기 기준</span></h2>
+    <ul class="wlist">
+        <li class="wrow" th:each="r : ${reviewDue}">
+            <div class="t"><a th:href="|/rules/${r.id()}|" th:text="${r.title()}"></a>
+                <small th:text="|${r.category()}${#strings.isEmpty(r.owner()) ? '' : ' · 주관 ' + r.owner()} · 검토 주기 ${r.reviewMonths()}개월 · 검토일 ${r.reviewDue()}|"></small></div>
+            <span class="pill" th:classappend="${r.reviewTone()}" th:text="${r.reviewText()}"></span>
+        </li>
+    </ul>
+</section>
 <p class="empty" th:if="${#lists.isEmpty(groups)}">등록된 사규가 없습니다. '사규 등록'에서 글을 붙여 넣거나, 예전 사규 관리 프로그램의 백업 파일을 옮겨 오세요.</p>
 <section th:each="g : ${groups}">
     <h2 th:text="${g.name()}">카테고리</h2>
     <div class="reg-cards">
         <a class="reg-card" th:each="r : ${g.regs()}" th:href="|/rules/${r.id()}|">
             <strong><th:block th:text="${r.title()}"></th:block> <span class="pill warn" th:if="${r.status() != 'active'}" th:text="${r.status()}"></span></strong>
-            <span th:text="|조 ${r.articles()}개 · ${r.label()} · 시행 ${r.effectiveDate()}${r.versions() > 1 ? ' · 판 ' + r.versions() + '개' : ''}|"></span>
+            <span th:text="|조 ${r.articles()}개 · ${r.label()} · 시행 ${r.effectiveDate()}${r.versions() > 1 ? ' · 판 ' + r.versions() + '개' : ''}${#strings.isEmpty(r.owner()) ? '' : ' · ' + r.owner()}|"></span>
+            <span class="pill" th:if="${!#strings.isEmpty(r.reviewTone())}" th:classappend="${r.reviewTone()}" th:text="${r.reviewText()}"></span>
         </a>
     </div>
 </section>

@@ -83,21 +83,24 @@ public class LibraryController {
     @PostMapping("/library/upload")
     public Object upload(@RequestParam(required = false) List<MultipartFile> upload, @RequestParam Map<String, String> p, HttpServletRequest req) throws IOException {
         if (upload == null || upload.stream().allMatch(MultipartFile::isEmpty)) return Web.reply(req, Op.bad("등재할 파일을 고르세요."), null);
-        int ok = 0;
-        String last = null, lastId = null;
+        int ok = 0, dupCount = 0;
+        String last = null, lastId = null, dupMsg = null, dupId = null;
+        long chosen = upload.stream().filter(x -> !x.isEmpty()).count();
         for (MultipartFile f : upload) {
             if (f.isEmpty()) continue;
-            boolean one = upload.stream().filter(x -> !x.isEmpty()).count() == 1;
             try (InputStream in = f.getInputStream()) {
-                Op op = lib.add(p.get("categoryId"), one ? p.get("title") : null, p.get("tags"), p.get("note"), f.getOriginalFilename(), in);
+                Op op = lib.add(p.get("categoryId"), chosen == 1 ? p.get("title") : null, p.get("tags"), p.get("note"), f.getOriginalFilename(), in);
+                if (op.status == 409) { dupCount++; dupMsg = op.message; dupId = op.extra; continue; }
                 if (!op.ok) return Web.reply(req, op, null);
                 ok++;
                 last = op.message;
                 lastId = op.id;
             }
         }
-        Op res = Op.ok(ok == 1 ? last : "자료 " + ok + "건을 등재했습니다. 내용은 뒤에서 읽습니다.");
-        return Web.reply(req, res, ok == 1 ? "/library/" + lastId : "/library?cat=" + Txt.str(p.get("categoryId")));
+        if (ok == 0 && dupCount > 0) return Web.reply(req, Op.fail(409, dupCount == 1 ? dupMsg : "고른 파일 " + dupCount + "개가 모두 이미 등재되어 있습니다."), dupCount == 1 ? "/library/" + dupId : null);
+        String msg = ok == 1 ? last : "자료 " + ok + "건을 등재했습니다. 내용은 뒤에서 읽습니다.";
+        if (dupCount > 0) msg += " 이미 있는 파일 " + dupCount + "개는 건너뛰었습니다.";
+        return Web.reply(req, Op.ok(msg), ok == 1 ? "/library/" + lastId : "/library?cat=" + Txt.str(p.get("categoryId")));
     }
 
     @PostMapping("/library/categories/{what}")

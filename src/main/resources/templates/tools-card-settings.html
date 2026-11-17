@@ -33,14 +33,14 @@
     </section>
     <section class="card">
         <h2>규칙과 점수</h2>
-        <table class="data">
+        <div class="table-wrap"><table class="data">
             <thead><tr><th scope="col">사용</th><th scope="col">규칙</th><th scope="col" class="num">점수</th><th scope="col">무엇을 보나</th></tr></thead>
             <tbody><tr th:each="r : ${RULES}">
                 <td><input type="checkbox" th:name="|on_${r.key}|" value="1" th:checked="${c.on(r.key)}" th:aria-label="|${r.value} 사용|" /></td>
                 <th scope="row" class="nowrap" th:text="${r.value}"></th>
                 <td class="num"><input type="number" min="0" max="100" th:name="|score_${r.key}|" th:value="${c.score(r.key)}" style="width:80px" th:aria-label="|${r.value} 점수|" /></td>
                 <td class="small" th:text="${HELP[r.key]}"></td></tr></tbody>
-        </table>
+        </table></div>
     </section>
     <section class="card">
         <h2>낱말 목록 <span class="sub">쉼표로 나눕니다 · 업종·업태·가맹점명에 들어 있으면 해당</span></h2>

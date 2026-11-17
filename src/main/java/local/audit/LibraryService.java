@@ -150,6 +150,12 @@ public class LibraryService {
         if (Txt.blank(name)) return Op.bad("파일 이름을 확인하세요.");
         String id = Txt.newId();
         FileStore.Stored st = files.save(FOLDER, id, Txt.ext(name), in);
+        // 같은 파일(내용 지문이 같음)이 이미 있으면 다시 쌓지 않는다.
+        Map<String, Object> dup = db.row("SELECT d.Id, d.Title, c.Name AS Category FROM LibDocs d JOIN LibCategories c ON c.Id=d.CategoryId WHERE d.Sha256=?", st.sha256());
+        if (dup != null) {
+            files.delete(st.key());
+            return Op.fail(409, "같은 파일이 이미 있습니다: '" + dup.get("Title") + "' (" + dup.get("Category") + ")").extra((String) dup.get("Id"));
+        }
         String t = Txt.fit(Txt.blank(title) ? Txt.stem(name) : title, 200, false);
         db.tx(conn -> Db.update(conn, """
             INSERT INTO LibDocs(Id, CategoryId, Title, FileName, StoragePath, SizeBytes, Sha256, Tags, Note, RegisteredAt, ReadState, ReadNote)

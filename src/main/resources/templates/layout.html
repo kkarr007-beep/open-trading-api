@@ -125,7 +125,7 @@
             <a class="btn btn-quiet" th:if="${navKey != 'work'}" href="/work">오늘</a>
             <form th:if="${#strings.startsWith(navKey, 'work')}" method="post" action="/work/undo" data-write="1" style="display:inline;margin:0">
                 <button type="submit" class="btn btn-quiet" title="업무 일정의 마지막 작업을 되돌립니다 (Ctrl+Z)">되돌리기</button></form>
-            <a class="btn btn-quiet" th:if="${nav != 'todo' and !#strings.startsWith(navKey, 'work') and !#strings.startsWith(navKey, 'rules')}" href="/todo">감사 할 일</a>
+            <a class="btn btn-quiet" th:if="${nav != 'todo' and navGroup == 'audit'}" href="/todo">감사 할 일</a>
         </div>
         <main id="main">
             <div class="banner danger" role="alert" th:unless="${integrityOk}">

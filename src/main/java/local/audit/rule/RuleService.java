@@ -42,14 +42,43 @@ public class RuleService {
     }
 
     // ───── 목록 ─────
-    public record RegRow(String id, String title, String status, int articles, String label, String effectiveDate, int versions, String category) { }
+    public record RegRow(String id, String title, String status, int articles, String label, String effectiveDate, int versions, String category,
+                         String owner, int reviewMonths, String reviewDue, String reviewTone, String reviewText) { }
     public record Group(String name, String id, List<RegRow> regs) { }
 
     public RegRow row(Map<String, Object> r) {
         Map<String, Object> v = Rules.curVer(r);
+        String eff = v == null ? "" : date(Rules.str(v, "effectiveDate"));
+        int months = Rules.str(r, "reviewMonths").matches("\\d{1,3}") ? Integer.parseInt(Rules.str(r, "reviewMonths")) : 0;
+        String due = "", tone = "", text = "";
+        java.time.LocalDate base = Kst.date(Rules.str(r, "reviewedAt").isEmpty() ? eff : Rules.str(r, "reviewedAt"));
+        if (months > 0 && base != null && !"폐지".equals(Rules.str(r, "status"))) {
+            java.time.LocalDate d = base.plusMonths(months);
+            long left = java.time.temporal.ChronoUnit.DAYS.between(Kst.today(), d);
+            due = d.toString();
+            tone = left < 0 ? "bad" : left <= 30 ? "warn" : "";
+            text = left < 0 ? "검토 " + (-left) + "일 지남" : left <= 30 ? "검토 D-" + left : "다음 검토 " + due;
+        }
         return new RegRow(Rules.str(r, "id"), Rules.str(r, "title"), Rules.str(r, "status"), Rules.arts(r).size(),
-            v == null ? "" : Rules.str(v, "label"), v == null ? "" : date(Rules.str(v, "effectiveDate")), Rules.maps(r, "versions").size(),
-            categoryName(Rules.str(r, "categoryId")));
+            v == null ? "" : Rules.str(v, "label"), eff, Rules.maps(r, "versions").size(),
+            categoryName(Rules.str(r, "categoryId")), Rules.str(r, "owner"), months, due, tone, text);
+    }
+
+    /** 검토할 때가 됐거나 지난 사규(30일 안 포함). */
+    public List<RegRow> reviewDue() {
+        List<RegRow> out = new ArrayList<>();
+        for (Map<String, Object> r : regs()) { RegRow row = row(r); if (!row.reviewTone().isEmpty()) out.add(row); }
+        out.sort(java.util.Comparator.comparing(RegRow::reviewDue));
+        return out;
+    }
+
+    public Op reviewed(String id) {
+        Map<String, Object> r = reg(id);
+        if (r == null) return Op.fail(404, "사규를 찾을 수 없습니다.");
+        r.put("reviewedAt", Kst.today().toString());
+        store.saveReg(r);
+        RegRow row = row(r);
+        return Op.ok("검토를 마친 것으로 기록했습니다." + (row.reviewDue().isEmpty() ? "" : " 다음 검토일 " + row.reviewDue() + "."));
     }
 
     static String date(String iso) { return iso.length() >= 10 ? iso.substring(0, 10) : iso; }
@@ -82,6 +111,7 @@ public class RuleService {
         int diff = 0;
         for (Map<String, Object> r : regs()) for (Map<String, Object> a : Rules.arts(r)) if (Rules.bool(a, "difficult")) diff++;
         s.put("difficult", diff);
+        s.put("reviewDue", reviewDue().size());
         return s;
     }
 
@@ -460,6 +490,11 @@ public class RuleService {
         r.put("categoryId", Txt.str(p.get("categoryId")));
         String st = Txt.str(p.get("status"));
         r.put("status", List.of("active", "폐지", "개정 예정", "검토 중").contains(st) ? st : "active");
+        if (p.containsKey("owner")) r.put("owner", Txt.fit(p.get("owner"), 60, false));
+        if (p.containsKey("reviewMonths")) {
+            Integer m = Txt.intOrNull(p.get("reviewMonths"));
+            r.put("reviewMonths", m == null || m <= 0 ? "" : String.valueOf(Math.min(m, 120)));
+        }
         store.saveReg(r);
         return Op.ok("저장했습니다.");
     }

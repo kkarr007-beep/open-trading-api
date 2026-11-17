@@ -430,4 +430,18 @@ class CoreTest {
         assertEquals(1, ((Number) lib.tree().get(0).get("Docs")).intValue());
         assertFalse(lib.category("delete", Map.of("id", "old1")).ok);
     }
+
+    @Test
+    void librarySkipsSameFileTwice() throws Exception {
+        LibraryService lib = new LibraryService(db, files, reader);
+        String cat = (String) lib.categories().get(0).get("Id");
+        byte[] data = "같은 내용".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        Op a = lib.add(cat, "", "", "", "a.txt", new java.io.ByteArrayInputStream(data));
+        assertTrue(a.ok);
+        Op b = lib.add(cat, "", "", "", "다른이름.txt", new java.io.ByteArrayInputStream(data));
+        assertFalse(b.ok);
+        assertEquals(409, b.status);
+        assertEquals(a.id, b.extra);
+        assertEquals(1, lib.total());
+    }
 }
