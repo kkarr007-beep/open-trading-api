@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>점검 기준 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>법인카드 점검 기준</h1>
+        <p class="hint">회사 규정에 맞게 고치세요. 저장하면 지금까지의 회차에 모두 다시 적용됩니다. 점수는 0~100, 규칙 점수를 더해 40점 이상이 '높음'입니다.</p>
+    </div>
+    <div class="row-actions">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <form method="post" action="/tools/card/settings/reset" data-write="1" data-confirm="점검 기준을 처음 값으로 되돌릴까요?" class="inline-form"><button type="submit" class="btn btn-quiet">처음 값으로</button></form>
+    </div>
+</div>
+<form method="post" action="/tools/card/settings" data-write="1">
+    <section class="card">
+        <h2>기준값</h2>
+        <div class="form-grid">
+            <label class="field">한도(전결·일상감사 기준, 원)<input name="limit" type="number" min="1" th:value="${c.limit}" /></label>
+            <label class="field">쪼개기로 볼 시간 간격(분)<input name="splitMinutes" type="number" min="1" max="1440" th:value="${c.splitMinutes}" /></label>
+            <label class="field">심야 시작(시)<input name="nightFrom" type="number" min="0" max="23" th:value="${c.nightFrom}" /></label>
+            <label class="field">심야 끝(시)<input name="nightTo" type="number" min="0" max="23" th:value="${c.nightTo}" /></label>
+            <label class="field">한도 바로 아래로 볼 비율(%)<input name="nearPct" type="number" min="50" max="99" th:value="${c.nearPct}" /></label>
+            <label class="field">딱 떨어지는 단위(원)<input name="roundUnit" type="number" min="1000" th:value="${c.roundUnit}" /></label>
+            <label class="field">딱 떨어지는 고액 기준(원 이상)<input name="roundMin" type="number" min="0" th:value="${c.roundMin}" /></label>
+            <label class="field">같은 금액 반복(회 이상)<input name="repeatMin" type="number" min="2" max="100" th:value="${c.repeatMin}" /></label>
+            <label class="field">반복으로 볼 최소 금액(원)<input name="repeatAmountMin" type="number" min="0" th:value="${c.repeatAmountMin}" /></label>
+            <label class="field">식사 후 주점(시간 안)<input name="secondHours" type="number" min="1" max="12" th:value="${c.secondHours}" /></label>
+            <label class="field">늦은 등록(일 초과)<input name="lateDays" type="number" min="1" max="365" th:value="${c.lateDays}" /></label>
+            <label class="field">사용 사유 최소 글자 수<input name="purposeMinLength" type="number" min="0" max="50" th:value="${c.purposeMinLength}" /></label>
+        </div>
+    </section>
+    <section class="card">
+        <h2>규칙과 점수</h2>
+        <table class="data">
+            <thead><tr><th scope="col">사용</th><th scope="col">규칙</th><th scope="col" class="num">점수</th><th scope="col">무엇을 보나</th></tr></thead>
+            <tbody><tr th:each="r : ${RULES}">
+                <td><input type="checkbox" th:name="|on_${r.key}|" value="1" th:checked="${c.on(r.key)}" th:aria-label="|${r.value} 사용|" /></td>
+                <th scope="row" class="nowrap" th:text="${r.value}"></th>
+                <td class="num"><input type="number" min="0" max="100" th:name="|score_${r.key}|" th:value="${c.score(r.key)}" style="width:80px" th:aria-label="|${r.value} 점수|" /></td>
+                <td class="small" th:text="${HELP[r.key]}"></td></tr></tbody>
+        </table>
+    </section>
+    <section class="card">
+        <h2>낱말 목록 <span class="sub">쉼표로 나눕니다 · 업종·업태·가맹점명에 들어 있으면 해당</span></h2>
+        <div class="form-grid">
+            <label class="field grow">제한업종<textarea name="restrictedWords" rows="3" th:text="${c.restrictedWords}"></textarea></label>
+            <label class="field grow">주점<textarea name="barWords" rows="2" th:text="${c.barWords}"></textarea></label>
+            <label class="field grow">식당(식사 후 주점 판단용)<textarea name="mealWords" rows="2" th:text="${c.mealWords}"></textarea></label>
+            <label class="field grow">모호한 사용 사유(이 낱말만 적힌 경우)<textarea name="vagueWords" rows="2" th:text="${c.vagueWords}"></textarea></label>
+        </div>
+    </section>
+    <p class="row-actions"><button type="submit" class="btn btn-primary">저장하고 다시 점검</button></p>
+</form>
+</th:block>
+</body>
+</html>

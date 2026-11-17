@@ -19,6 +19,7 @@
             <button type="button" class="tm-btn" data-show="work" th:classappend="${navGroup == 'work'} ? 'on'" th:aria-pressed="${navGroup == 'work'}">업무 일정</button>
             <button type="button" class="tm-btn" data-show="audit" th:classappend="${navGroup == 'audit'} ? 'on'" th:aria-pressed="${navGroup == 'audit'}">감사기록</button>
             <button type="button" class="tm-btn" data-show="rules" th:classappend="${navGroup == 'rules'} ? 'on'" th:aria-pressed="${navGroup == 'rules'}">사규</button>
+            <button type="button" class="tm-btn" data-show="tools" th:classappend="${navGroup == 'tools'} ? 'on'" th:aria-pressed="${navGroup == 'tools'}">점검툴</button>
             <button type="button" class="tm-btn" data-show="library" th:classappend="${navGroup == 'library'} ? 'on'" th:aria-pressed="${navGroup == 'library'}">자료</button>
             <button type="button" class="tm-btn" data-show="board" th:classappend="${navGroup == 'board'} ? 'on'" th:aria-pressed="${navGroup == 'board'}">경영 현황판</button>
             <button type="button" class="tm-btn" data-show="program" th:classappend="${navGroup == 'program'} ? 'on'" th:aria-pressed="${navGroup == 'program'}">프로그램</button>
@@ -83,6 +84,12 @@
                     <a href="/rules/marks" th:aria-current="${navKey == 'rules/marks'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15l-5-3.5-5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>북마크·메모</span></a>
                     <a href="/rules/scan" th:aria-current="${navKey == 'rules/scan'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6v3H9zM7 6H5.5v14h13V6H17M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>감사점검 추출</span></a>
                     <a href="/rules/checklists" th:aria-current="${navKey == 'rules/checklists'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7l1.5 1.5L9 6M5 13l1.5 1.5L9 12M12 7h7M12 13h7M12 19h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>점검 체크리스트</span></a>
+        </nav>
+        <nav class="sn-group" data-group="tools" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'tools'}" aria-label="점검툴">
+            <p class="sn-title">점검툴</p>
+                <a href="/tools/card" th:aria-current="${navKey == 'tools/card'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h17v11h-17zM3.5 10h17M7 14.5h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>법인카드 점검</span></a>
+                <a class="sn-sub" href="/tools/card/settings" th:aria-current="${navKey == 'tools/card/settings'} ? 'page'"><span>점검 기준</span></a>
+                <a class="sn-sub" href="/tools/card/exceptions" th:aria-current="${navKey == 'tools/card/exceptions'} ? 'page'"><span>예외 목록</span></a>
         </nav>
         <nav class="sn-group" data-group="library" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'library'}" aria-label="자료">
             <p class="sn-title">자료</p>

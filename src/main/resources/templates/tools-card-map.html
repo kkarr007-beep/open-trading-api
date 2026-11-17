@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>열 연결 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1 th:text="|열 연결 — ${run.Title}|">열 연결</h1>
+        <p class="hint" th:text="|${run.FileName} · ${run.RowCount}줄. 자동으로 연결한 열을 확인하고 '점검 시작'을 누르세요. * 표시는 꼭 필요한 열입니다. 다음 달에도 같은 양식이면 그대로 연결됩니다.|"></p>
+    </div>
+</div>
+<form method="post" th:action="|/tools/card/${run.Id}/map|" data-write="1">
+    <section class="card">
+        <div class="map-grid">
+            <label class="field" th:each="f : ${fields}"><span th:text="${f.label()} + (${f.required()} ? ' *' : '')"></span>
+                <select th:name="|col_${f.key()}|">
+                    <option value="">(연결 안 함)</option>
+                    <option th:each="h, st : ${headers}" th:value="${st.index}" th:text="${h}" th:selected="${map[f.key()] != null and map[f.key()] == st.index}"></option>
+                </select>
+            </label>
+        </div>
+        <p class="row-actions" style="margin-top:14px"><button type="submit" class="btn btn-primary">점검 시작</button>
+            <a class="btn" href="/tools/card">취소</a></p>
+    </section>
+</form>
+<section class="card">
+    <h2>앞 5줄 미리보기 <span class="sub">집주소는 가려서 보여 줍니다</span></h2>
+    <div class="table-wrap">
+        <table class="data small">
+            <thead><tr><th scope="col" th:each="h : ${headers}" th:text="${h}"></th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${sample}">
+                <td th:each="h, st : ${headers}" class="nowrap" th:text="${st.index == homeCol} ? '●●●' : (${st.index < #lists.size(row)} ? ${row[st.index]} : '')"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

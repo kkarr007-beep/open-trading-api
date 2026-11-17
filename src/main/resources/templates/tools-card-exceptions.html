@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>예외 목록 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>예외 목록</h1>
+        <p class="hint">확인해서 정상으로 본 경우(휴일근무명령, 출장, 정기 계약 가맹점 등)를 등록해 두면 모든 회차에서 해당 건이 빠집니다. 결과 화면의 각 건 '예외'로 등록합니다.</p>
+    </div>
+    <div class="row-actions"><button type="button" class="btn" data-print>인쇄</button></div>
+</div>
+<p class="empty" th:if="${#lists.isEmpty(items)}">등록한 예외가 없습니다.</p>
+<div class="table-wrap" th:unless="${#lists.isEmpty(items)}">
+    <table class="data">
+        <thead><tr><th scope="col">규칙</th><th scope="col">사람</th><th scope="col">가맹점(사업자번호)</th><th scope="col">날짜</th><th scope="col">사유</th>
+            <th scope="col" class="num">빠진 건</th><th scope="col">등록</th><th scope="col"></th></tr></thead>
+        <tbody><tr th:each="e : ${items}">
+            <td th:text="${e.RuleLabel}"></td><td th:text="${e.Name}"></td><td th:text="${e.Merchant}"></td><td class="nowrap" th:text="${e.TxDate}"></td>
+            <td th:text="${e.Note}"></td><td class="num" th:text="${e.Used}"></td>
+            <td class="nowrap small" th:text="${#strings.substring(e.CreatedAt, 0, 10)}"></td>
+            <td><form method="post" th:action="|/tools/card/exceptions/${e.Id}/delete|" data-write="1" data-confirm="이 예외를 지울까요? 빠졌던 건이 다시 점검됩니다.">
+                <button type="submit" class="btn btn-quiet">지우기</button></form></td></tr></tbody>
+    </table>
+</div>
+</th:block>
+</body>
+</html>

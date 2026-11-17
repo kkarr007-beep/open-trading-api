@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>점검 결과 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1 th:text="${run.Title}">점검 결과</h1>
+        <p class="hint" th:text="|${run.FileName} · 점검 ${run.CheckedAt == null ? '' : #strings.substring(run.CheckedAt, 0, 16).replace('T', ' ')}${#strings.isEmpty(run.Note) ? '' : ' · ' + run.Note}|"></p>
+    </div>
+    <div class="row-actions no-print">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <a class="btn" th:href="|/tools/card/${run.Id}/export|">결과 내려받기 (CSV)</a>
+        <a class="btn" th:href="|/tools/card/${run.Id}/export?all=1|">전체 내려받기</a>
+        <form method="post" th:action="|/tools/card/${run.Id}/recheck|" data-write="1" class="inline-form"><button type="submit" class="btn">다시 점검</button></form>
+    </div>
+</div>
+<ul class="metrics">
+    <li class="metric-ok"><a th:href="|/tools/card/${run.Id}|"><span class="metric-top" th:text="|사용내역 · ${#numbers.formatInteger(s.total.Amt, 1, 'COMMA')}원|">사용내역</span>
+        <strong th:text="|${#numbers.formatInteger(s.total.N, 1, 'COMMA')}건|">0</strong></a></li>
+    <li class="metric-warn"><a th:href="|/tools/card/${run.Id}|"><span class="metric-top" th:text="|확인 대상 (20점 이상) · ${#numbers.formatInteger(s.hit.Amt ?: 0, 1, 'COMMA')}원|">확인 대상</span>
+        <strong th:text="|${s.hit.N ?: 0}건|">0</strong></a></li>
+    <li class="metric-bad"><a th:href="@{|/tools/card/${run.Id}|(min=40)}"><span class="metric-top">위험 높음 (40점 이상)</span><strong th:text="|${s.hit.High ?: 0}건|">0</strong></a></li>
+    <li class="metric-warn"><a th:href="@{|/tools/card/${run.Id}|(status='open')}"><span class="metric-top">확인 대상 중 처리 안 된 건</span><strong th:text="|${s.hit.Open ?: 0}건|">0</strong></a></li>
+</ul>
+<p class="hint" th:if="${s.hit.Low != null and s.hit.Low > 0}" th:text="|약한 신호 하나만 있는 낮은 점수(20점 미만) ${s.hit.Low}건은 기본 목록에서 뺐습니다. 아래 '점수: 전체'로 볼 수 있습니다.|"></p>
+<div class="card-split">
+    <section class="card">
+        <h2>규칙별 <span class="sub">누르면 그 규칙에 걸린 건만</span></h2>
+        <p class="empty" th:if="${#lists.isEmpty(s.byRule)}">걸린 건이 없습니다.</p>
+        <table class="data small" th:unless="${#lists.isEmpty(s.byRule)}">
+            <thead><tr><th scope="col">규칙</th><th scope="col" class="num">건</th><th scope="col" class="num">예외로 뺀 건</th></tr></thead>
+            <tbody><tr th:each="r : ${s.byRule}">
+                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule})}" th:text="${r.Label}"></a></th>
+                <td class="num" th:text="${r.N}"></td><td class="num muted" th:text="${r.Ex}"></td></tr></tbody>
+        </table>
+    </section>
+    <section class="card">
+        <h2>사람별 <span class="sub">점수 합 순 · 부서 평균 대비 2배 이상은 굵게</span></h2>
+        <div class="table-wrap people-wrap">
+        <table class="data small">
+            <thead><tr><th scope="col">이름</th><th scope="col">부서</th><th scope="col" class="num">사용</th><th scope="col" class="num">금액</th>
+                <th scope="col" class="num">확인 대상</th><th scope="col" class="num">점수 합</th><th scope="col" class="num">부서 평균 대비</th><th scope="col" class="num">지난 회차 반복</th></tr></thead>
+            <tbody><tr th:each="p : ${s.people}">
+                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})}" th:text="${p.Name}"></a></th>
+                <td th:text="${p.Dept}"></td><td class="num" th:text="${p.N}"></td>
+                <td class="num" th:text="${#numbers.formatInteger(p.Amt, 1, 'COMMA')}"></td>
+                <td class="num" th:text="${p.HitN}"></td>
+                <td class="num"><span class="pill" th:classappend="${p.Score >= 40} ? 'bad' : (${p.Score >= 20} ? 'warn' : '')" th:text="${p.Score}"></span></td>
+                <td class="num" th:classappend="${p.Over} ? 'strong'" th:text="${p.Ratio}"></td>
+                <td class="num"><span class="pill warn" th:if="${p.Repeat > 0}" th:text="|${p.Repeat}회|"></span></td></tr></tbody>
+        </table>
+        </div>
+    </section>
+</div>
+<div class="sticky-tools no-print">
+    <form method="get" th:action="|/tools/card/${run.Id}|" class="toolbar">
+        <div class="search-row">
+            <label class="search"><span class="sr">찾기</span>
+                <input name="q" th:value="${q['q']}" placeholder="가맹점·사용내역·이름·사유" maxlength="80" /></label>
+            <button class="btn btn-primary" type="submit">찾기</button>
+        </div>
+        <label class="field">규칙<select name="rule" data-autosubmit><option value="">전체</option>
+            <option th:each="r : ${RULES}" th:value="${r.key}" th:text="${r.value}" th:selected="${q['rule'] == r.key}"></option></select></label>
+        <label class="field">부서<select name="dept" data-autosubmit><option value="">전체</option>
+            <option th:each="d : ${depts}" th:value="${d}" th:text="${d}" th:selected="${q['dept'] == d}"></option></select></label>
+        <label class="field">이름<select name="name" data-autosubmit><option value="">전체</option>
+            <option th:each="n : ${names}" th:value="${n}" th:text="${n}" th:selected="${q['name'] == n}"></option></select></label>
+        <label class="field">처리<select name="status" data-autosubmit><option value="">전체</option><option value="open" th:selected="${q['status'] == 'open'}">처리 안 된 건</option>
+            <option th:each="st : ${STATUSES}" th:value="${st}" th:text="${st}" th:selected="${q['status'] == st}"></option></select></label>
+        <label class="field">점수<select name="min" data-autosubmit>
+            <option value="20" th:selected="${q['min'] == '20'}">20점 이상 (확인 대상)</option>
+            <option value="40" th:selected="${q['min'] == '40'}">40점 이상 (높음)</option>
+            <option value="1" th:selected="${q['min'] == '1'}">전체 (낮음 포함)</option></select></label>
+        <a class="btn" th:href="|/tools/card/${run.Id}|">조건 지우기</a>
+    </form>
+</div>
+<div class="row-actions no-print" style="justify-content:space-between;margin:6px 0 8px">
+    <p class="count-line" style="margin:0" th:text="|${v.total}건 · ${#numbers.formatInteger(v.amount, 1, 'COMMA')}원 · ${v.page}/${v.pages}쪽|"></p>
+    <form id="card-case" method="post" th:action="|/tools/card/${run.Id}/case|" data-write="1" data-confirm="고른 건으로 감사기록 건 초안을 만들까요?">
+        <button type="submit" class="btn">고른 건 감사기록으로</button></form>
+</div>
+<p class="empty" th:if="${v.total == 0}">조건에 맞는 건이 없습니다.</p>
+<div class="table-wrap" th:unless="${v.total == 0}">
+    <table class="data card-hits">
+        <thead><tr>
+            <th scope="col" class="no-print"><input type="checkbox" data-check-all="tx" aria-label="모두 고르기" form="card-case" /></th>
+            <th scope="col" class="num">점수</th><th scope="col">점검 사유</th><th scope="col">사람</th><th scope="col">일시</th><th scope="col">가맹점</th>
+            <th scope="col" class="num">금액</th><th scope="col">사용내역</th><th scope="col">처리</th><th scope="col" class="no-print"></th>
+        </tr></thead>
+        <tbody>
+        <tr th:each="t : ${v.items}">
+            <td class="no-print"><input type="checkbox" name="tx" th:value="${t.Id}" form="card-case" aria-label="고르기" /></td>
+            <td class="num"><span class="pill" th:classappend="${t.Score >= 40} ? 'bad' : (${t.Score >= 20} ? 'warn' : '')" th:text="${t.Score}"></span>
+                <div class="small muted" th:text="${t.Level}"></div></td>
+            <td class="reasons" th:text="${t.Reasons}"></td>
+            <td class="nowrap"><strong th:text="${t.Name}"></strong><div class="small muted" th:text="${t.Dept}"></div></td>
+            <td class="nowrap" th:text="|${t.TxDate} ${#strings.length(t.TxTime) >= 5 ? #strings.substring(t.TxTime, 0, 5) : ''}|"></td>
+            <td><span th:text="${t.Merchant}"></span><div class="small muted" th:text="${t.Industry} + (${#strings.isEmpty(t.BizType)} ? '' : ' · ' + ${t.BizType})"></div></td>
+            <td class="num nowrap" th:text="${#numbers.formatInteger(t.Amount, 1, 'COMMA')}"></td>
+            <td class="small" th:text="${t.Purpose}"></td>
+            <td class="review-cell">
+                <form method="post" action="/tools/card/review" data-write="1" class="review-form">
+                    <input type="hidden" name="key" th:value="${t.TxKey}" />
+                    <select name="status" aria-label="처리 상태"><option value="">미처리</option>
+                        <option th:each="st : ${STATUSES}" th:value="${st}" th:text="${st}" th:selected="${t.Status == st}"></option></select>
+                    <input name="note" th:value="${t.ReviewNote}" placeholder="소명·확인 메모" maxlength="1000" aria-label="메모" />
+                    <button type="submit" class="btn btn-quiet no-print">저장</button>
+                </form>
+            </td>
+            <td class="no-print">
+                <details class="ex-menu"><summary class="btn btn-quiet">예외</summary>
+                    <form method="post" action="/tools/card/exception" data-write="1" class="ex-form">
+                        <input type="hidden" name="tx" th:value="${t.Id}" />
+                        <input type="hidden" name="back" th:value="|/tools/card/${run.Id}|" />
+                        <label class="field">범위<select name="scope">
+                            <option value="personDate" th:text="|${t.Name} · ${t.TxDate} (휴일근무·출장 등)|"></option>
+                            <option value="shop" th:text="|가맹점 ${t.Merchant}|"></option>
+                            <option value="person" th:text="|${t.Name} (규칙을 골라야 함)|"></option></select></label>
+                        <label class="field">규칙<select name="rule"><option value="">모든 규칙</option>
+                            <option th:each="r : ${t.RuleList}" th:value="${r}" th:text="${RULES[r]}"></option></select></label>
+                        <label class="field">사유<input name="note" maxlength="300" placeholder="예: 휴일근무명령서 확인" /></label>
+                        <button type="submit" class="btn btn-primary">예외 등록</button>
+                    </form>
+                </details>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<p class="row-actions no-print" th:if="${v.pages > 1}">
+    <a class="btn" th:if="${v.page > 1}" th:href="@{|/tools/card/${run.Id}|(page=${v.page - 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})}">← 앞쪽</a>
+    <a class="btn" th:if="${v.page < v.pages}" th:href="@{|/tools/card/${run.Id}|(page=${v.page + 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})}">뒤쪽 →</a>
+</p>
+<p class="row-actions no-print" style="margin-top:20px">
+    <form method="post" th:action="|/tools/card/${run.Id}/delete|" data-write="1" th:data-confirm="|'${run.Title}' 회차를 지울까요? 소명·예외 기록은 남습니다.|">
+        <button type="submit" class="btn btn-quiet">이 회차 지우기</button></form>
+</p>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>법인카드 점검 · 점검툴</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>법인카드 점검</h1>
+        <p class="hint">카드 사용내역 엑셀을 올리면 열을 자동으로 연결하고, 규칙별 점수로 위험한 건부터 보여 줍니다. 소명·정상 처리와 예외는 다음 회차에도 이어집니다.</p>
+    </div>
+    <div class="row-actions">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <a class="btn" href="/tools/card/settings">점검 기준</a>
+        <a class="btn" href="/tools/card/exceptions">예외 목록</a>
+    </div>
+</div>
+<section class="card">
+    <h2>새 점검</h2>
+    <form method="post" action="/tools/card/upload" data-write="1" enctype="multipart/form-data">
+        <div class="form-grid">
+            <label class="field grow">회차 이름<input name="title" maxlength="120" th:value="${defaultTitle}" /></label>
+        </div>
+        <div class="drop" style="margin-top:10px">
+            <p class="drop-copy"><strong>카드 사용내역 파일을 고르거나 끌어 놓으세요</strong> — 엑셀(xlsx·xls), CSV</p>
+            <input type="file" name="upload" accept=".xlsx,.xls,.csv,.txt" aria-label="사용내역 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <details style="margin-top:10px">
+            <summary class="small muted">파일 대신 엑셀에서 복사(Ctrl+C)한 표를 붙여 넣기</summary>
+            <textarea name="paste" rows="6" class="textarea-wide mono" placeholder="머리글 줄까지 함께 복사해 붙여 넣으세요" style="margin-top:8px"></textarea>
+        </details>
+        <p class="row-actions" style="margin-top:12px"><button type="submit" class="btn btn-primary">읽어서 열 연결하기</button>
+            <span class="hint" style="margin:0">집주소 열은 시·구·동 이름만 뽑아 비교에 쓰고, 원문은 저장하지 않습니다.</span></p>
+    </form>
+</section>
+<section class="card">
+    <h2>점검 회차</h2>
+    <p class="empty" th:if="${#lists.isEmpty(runs)}">아직 점검한 회차가 없습니다.</p>
+    <div class="table-wrap" th:unless="${#lists.isEmpty(runs)}">
+        <table class="data">
+            <thead><tr><th scope="col">회차</th><th scope="col">파일</th><th scope="col" class="num">사용내역</th><th scope="col" class="num">확인 대상</th>
+                <th scope="col" class="num">위험 높음</th><th scope="col">올린 때</th><th scope="col">상태</th><th scope="col"></th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${runs}">
+                <th scope="row"><a th:href="|/tools/card/${r.Id}|" th:text="${r.Title}"></a></th>
+                <td class="small" th:text="${r.FileName}"></td>
+                <td class="num" th:text="${#numbers.formatInteger(r.RowCount, 1, 'COMMA')}"></td>
+                <td class="num" th:text="${r.HitTx}"></td>
+                <td class="num"><span class="pill bad" th:if="${r.HighTx > 0}" th:text="${r.HighTx}"></span><span th:unless="${r.HighTx > 0}">0</span></td>
+                <td class="nowrap small" th:text="${#strings.substring(r.CreatedAt, 0, 16).replace('T', ' ')}"></td>
+                <td class="nowrap" th:text="${r.State}"></td>
+                <td><form method="post" th:action="|/tools/card/${r.Id}/delete|" data-write="1" th:data-confirm="|'${r.Title}' 회차를 지울까요? 소명·예외 기록은 남습니다.|">
+                    <button type="submit" class="btn btn-quiet">지우기</button></form></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+<section class="card">
+    <h2>무엇을 점검하나 <span class="sub">기준값과 점수는 '점검 기준'에서 바꿉니다</span></h2>
+    <dl class="rule-help">
+        <th:block th:each="r : ${RULES}"><dt th:text="${r.value}"></dt><dd th:text="${HELP[r.key]}"></dd></th:block>
+    </dl>
+    <p class="hint">점수를 더해 40점 이상은 '높음', 20~39점은 '중간'(여기까지 확인 대상), 20점 미만은 약한 신호 하나뿐인 '낮음'으로 봅니다. 점검에 걸렸다고 위반은 아니며, 사용자 소명과 증빙으로 확인합니다.</p>
+</section>
+</th:block>
+</body>
+</html>

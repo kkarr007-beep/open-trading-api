@@ -49,7 +49,7 @@ public class Web {
         String path = req.getRequestURI();
         String nav = path.startsWith("/cases") ? "cases" : path.startsWith("/files") ? "files" : path.startsWith("/discipline") ? "discipline"
             : path.startsWith("/inbox") ? "inbox" : path.startsWith("/admin") ? "admin" : path.startsWith("/settings") ? "settings"
-            : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") || path.startsWith("/library") || path.startsWith("/board") ? "module" : path.startsWith("/search") ? "search" : "todo";
+            : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") || path.startsWith("/library") || path.startsWith("/board") || path.startsWith("/tools") ? "module" : path.startsWith("/search") ? "search" : "todo";
         model.addAttribute("nav", nav);
         // 업무 일정·사규 메뉴의 현재 위치: work, work/list, rules, rules/search …
         String navKey = "";
@@ -60,12 +60,13 @@ public class Web {
         if (path.equals("/import")) navKey = "import";
         if (path.startsWith("/library")) navKey = path.equals("/library/new") ? "library/new" : path.equals("/library/categories") ? "library/categories" : "library";
         if (path.startsWith("/board")) navKey = "board";
+        if (path.startsWith("/tools")) navKey = path.startsWith("/tools/card/settings") ? "tools/card/settings" : path.startsWith("/tools/card/exceptions") ? "tools/card/exceptions" : "tools/card";
         model.addAttribute("navKey", navKey);
         model.addAttribute("caseCategories", cases.categories());
         model.addAttribute("libTree", library.tree());
         model.addAttribute("libCat", path.equals("/library") ? Txt.str(req.getParameter("cat")) : "");
         String navGroup = path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
-            : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board"
+            : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board" : path.startsWith("/tools") ? "tools"
             : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";
         model.addAttribute("navGroup", navGroup);
         model.addAttribute("workUrgent", work.urgentCount());

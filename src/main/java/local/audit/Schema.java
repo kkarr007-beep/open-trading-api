@@ -257,6 +257,67 @@ final class Schema {
           Body TEXT NOT NULL,
           Html TEXT NULL
         );
+        CREATE TABLE IF NOT EXISTS CardRuns (
+          Id TEXT PRIMARY KEY,
+          Title TEXT NOT NULL,
+          FileName TEXT NOT NULL DEFAULT '',
+          CreatedAt TEXT NOT NULL,
+          State TEXT NOT NULL DEFAULT '연결 필요',
+          Pending TEXT NULL,
+          Mapping TEXT NOT NULL DEFAULT '{}',
+          RowCount INTEGER NOT NULL DEFAULT 0,
+          CheckedAt TEXT NULL,
+          Note TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS CardTx (
+          Id INTEGER PRIMARY KEY AUTOINCREMENT,
+          RunId TEXT NOT NULL,
+          RowNo INTEGER NOT NULL,
+          TxKey TEXT NOT NULL,
+          CardNo TEXT NOT NULL DEFAULT '',
+          ApprovalNo TEXT NOT NULL DEFAULT '',
+          Dept TEXT NOT NULL DEFAULT '',
+          Name TEXT NOT NULL DEFAULT '',
+          TxDate TEXT NOT NULL DEFAULT '',
+          TxTime TEXT NOT NULL DEFAULT '',
+          Amount INTEGER NOT NULL DEFAULT 0,
+          Cancelled INTEGER NOT NULL DEFAULT 0,
+          CostType TEXT NOT NULL DEFAULT '',
+          BizNo TEXT NOT NULL DEFAULT '',
+          Merchant TEXT NOT NULL DEFAULT '',
+          Industry TEXT NOT NULL DEFAULT '',
+          BizType TEXT NOT NULL DEFAULT '',
+          MerchantAddr TEXT NOT NULL DEFAULT '',
+          HomeArea TEXT NOT NULL DEFAULT '',
+          Purpose TEXT NOT NULL DEFAULT '',
+          RegDate TEXT NOT NULL DEFAULT '',
+          Extra TEXT NOT NULL DEFAULT '{}'
+        );
+        CREATE INDEX IF NOT EXISTS IX_CardTx_Run ON CardTx(RunId, Name, TxDate);
+        CREATE TABLE IF NOT EXISTS CardHits (
+          RunId TEXT NOT NULL,
+          TxId INTEGER NOT NULL,
+          Rule TEXT NOT NULL,
+          Score INTEGER NOT NULL,
+          Detail TEXT NOT NULL DEFAULT '',
+          ExceptionId TEXT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_CardHits_Run ON CardHits(RunId, TxId);
+        CREATE TABLE IF NOT EXISTS CardReviews (
+          TxKey TEXT PRIMARY KEY,
+          Status TEXT NOT NULL DEFAULT '',
+          Note TEXT NOT NULL DEFAULT '',
+          UpdatedAt TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS CardExceptions (
+          Id TEXT PRIMARY KEY,
+          Rule TEXT NOT NULL DEFAULT '',
+          Name TEXT NOT NULL DEFAULT '',
+          Merchant TEXT NOT NULL DEFAULT '',
+          TxDate TEXT NOT NULL DEFAULT '',
+          Note TEXT NOT NULL DEFAULT '',
+          CreatedAt TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS IX_Lib_Cat ON LibDocs(CategoryId, RegisteredAt);
         CREATE INDEX IF NOT EXISTS IX_Work_Kind ON WorkItems(Kind, Due);
         CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase);

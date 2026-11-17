@@ -1,6 +1,7 @@
 package local.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -450,5 +452,127 @@ class ModulesTest {
         Op sep = rules.addArticles(Map.of("title", "보안규칙", "mode", "separate"), RuleService.cleanArticles(rules.preview("제1조(목적) 따로.")));
         assertTrue(sep.ok);
         assertNotEquals(first.id, sep.id);
+    }
+
+    static final String CARD_TSV = String.join("\n",
+        "카드번호\t승인번호\t부서\t이름\t승인일자\t승인시간\t승인금액\t전표처리금액\t취소금액\t청구금액\t처리가능금액\t비용구분\t가맹점 사업자번호\t가맹점명\t업종\t업태\t가맹점 주소\t집주소\t구분\t사용내역\t품의자\t전송받은사번\t삼성전표번호\tSAP전표번호\t전표코스트센터\t전기일자\t전표상태\t취소여부\t결재내역 등록일",
+        "1234-****-****-5678\t30012345\t경영진단파트\t홍길동\t2026-11-10\t10:30:00\t10000\t\t\t\t\t\t\t예시 식당\t음식점\t\t\t\t\t\t\t\t\t\t\t\t정상\t\t",
+        // 쪼개기: 같은 카드·같은 날·같은 가맹점 20분 안, 각 20만·15만(한도 30만 아래), 합 35만
+        "1111-****-****-0001\tA1\t영업1팀\t김철수\t2026-11-11\t19:05:00\t200,000\t\t\t\t\t업무추진비\t123-45-67890\t한우마을\t일반음식점\t한식\t서울특별시 중구 세종대로 10\t서울 강남구 역삼1동 1-1 래미안 101동\t\t거래처 간담회\t\t\t\t\t\t\t\t\t2026-11-12",
+        "1111-****-****-0001\tA2\t영업1팀\t김철수\t2026-11-11\t19:25:00\t150,000\t\t\t\t\t업무추진비\t123-45-67890\t한우마을\t일반음식점\t한식\t서울특별시 중구 세종대로 10\t서울 강남구 역삼1동 1-1 래미안 101동\t\t거래처 간담회\t\t\t\t\t\t\t\t\t2026-11-12",
+        // 여러 카드: 다른 카드 둘이 같은 가맹점에서 10분 안, 합 45만
+        "2222-****-****-0002\tB1\t영업2팀\t이영희\t2026-11-12\t20:00:00\t250000\t\t\t\t\t업무추진비\t222-22-22222\t바다횟집\t일반음식점\t일식\t부산광역시 해운대구 우동 1\t\t\t팀 회식\t\t\t\t\t\t\t\t\t2026-11-13",
+        "3333-****-****-0003\tC1\t영업2팀\t박민수\t2026-11-12\t20:08:00\t200000\t\t\t\t\t업무추진비\t222-22-22222\t바다횟집\t일반음식점\t일식\t부산광역시 해운대구 우동 1\t\t\t팀 회식\t\t\t\t\t\t\t\t\t2026-11-13",
+        // 일요일 + 자택 인근(같은 동) + 제한업종(가맹점명) + 사용 사유 없음 + 늦은 등록
+        "1111-****-****-0001\tA3\t영업1팀\t김철수\t2026-11-15\t23:40:00\t88000\t\t\t\t\t업무추진비\t333-33-33333\t별빛노래연습장\t일반음식점\t\t서울특별시 강남구 테헤란로 123 (역삼동)\t서울 강남구 역삼1동 1-1 래미안 101동\t\t\t\t\t\t\t\t\t\t\t2026-12-30",
+        // 딱 떨어지는 고액 + 한도 바로 아래
+        "4444-****-****-0004\tD1\t경영지원팀\t최정우\t2026-11-13\t12:10:00\t280000\t\t\t\t\t복리후생비\t444-44-44444\t정우식당\t일반음식점\t한식\t서울 종로구 종로 1\t\t\t부서 점심\t\t\t\t\t\t\t\t\t2026-11-14",
+        // 취소된 건은 점검에서 뺀다
+        "4444-****-****-0004\tD2\t경영지원팀\t최정우\t2026-11-14\t23:30:00\t500000\t\t500000\t\t\t복리후생비\t555-55-55555\t룸살롱 하늘\t유흥주점\t\t\t\t\t\t\t\t\t\t\t\t\tY\t");
+
+    @Test
+    void cardCheckFindsRiskyUsesAndKeepsReviews() throws Exception {
+        local.audit.tools.CardCheck card = new local.audit.tools.CardCheck(db, settings);
+        Op up = card.upload("11월 점검", "card.tsv", List.of(new local.audit.tools.Sheet.Table("승인내역", local.audit.tools.Sheet.text(CARD_TSV))));
+        assertTrue(up.ok, up.message);
+        Map<String, Object> pend = card.pending(up.id);
+        @SuppressWarnings("unchecked") Map<String, Integer> map = (Map<String, Integer>) pend.get("map");
+        assertEquals(3, map.get("name"));
+        assertEquals(17, map.get("homeAddr"));
+        assertEquals(13, map.get("merchant"));
+        assertEquals(12, map.get("bizNo"));
+        Map<String, String> form = new java.util.HashMap<>();
+        map.forEach((k, v) -> form.put("col_" + k, String.valueOf(v)));
+        Op done = card.confirm(up.id, form);
+        assertTrue(done.ok, done.message);
+        assertTrue(done.message.contains("7건"), done.message); // 예시 줄은 빠짐
+        // 올린 원문과 집주소 원문은 남지 않는다
+        assertNull(db.row("SELECT Pending FROM CardRuns WHERE Id=?", up.id).get("Pending"));
+        assertEquals(0, db.rows("SELECT * FROM CardTx WHERE HomeArea LIKE '%래미안%' OR Extra LIKE '%래미안%'").size());
+
+        Map<String, Set<String>> rulesByAppr = new java.util.HashMap<>();
+        for (Map<String, Object> r : db.rows("SELECT t.ApprovalNo, h.Rule FROM CardHits h JOIN CardTx t ON t.Id=h.TxId WHERE h.RunId=?", up.id))
+            rulesByAppr.computeIfAbsent((String) r.get("ApprovalNo"), k -> new java.util.HashSet<>()).add((String) r.get("Rule"));
+        assertTrue(rulesByAppr.get("A1").contains("split") && rulesByAppr.get("A2").contains("split"), rulesByAppr.toString());
+        assertTrue(rulesByAppr.get("B1").contains("multicard") && rulesByAppr.get("C1").contains("multicard"), rulesByAppr.toString());
+        Set<String> a3 = rulesByAppr.get("A3");
+        for (String r : List.of("holiday", "night", "restricted", "home", "combo", "purpose", "late")) assertTrue(a3.contains(r), r + " " + a3);
+        assertTrue(rulesByAppr.get("D1").containsAll(List.of("near", "round")), rulesByAppr.toString());
+        assertFalse(rulesByAppr.containsKey("D2"), "취소 건은 점검하지 않음");
+        assertFalse(rulesByAppr.get("A1").contains("home"), "중구 가맹점은 강남구 집과 다름");
+
+        Map<String, Object> list = card.list(up.id, Map.of(), 1, 100);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items = (List<Map<String, Object>>) list.get("items");
+        assertEquals("A3", items.get(0).get("ApprovalNo"), "가장 위험한 건이 맨 위");
+        assertEquals("높음", items.get(0).get("Level"));
+
+        // 소명 기록은 승인번호로 다음 회차에도 이어진다
+        String key = (String) items.get(0).get("TxKey");
+        assertTrue(card.review(key, "소명 받음", "가족 행사 아님 확인 필요").ok);
+        Op up2 = card.upload("재점검", "card.tsv", List.of(new local.audit.tools.Sheet.Table("승인내역", local.audit.tools.Sheet.text(CARD_TSV))));
+        assertTrue(card.confirm(up2.id, form).ok);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items2 = (List<Map<String, Object>>) card.list(up2.id, Map.of(), 1, 100).get("items");
+        assertEquals("소명 받음", items2.get(0).get("Status"));
+        // 지난 회차 반복 표시
+        @SuppressWarnings("unchecked") List<Map<String, Object>> people = (List<Map<String, Object>>) card.summary(up2.id).get("people");
+        assertEquals(1, people.stream().filter(p -> "김철수".equals(p.get("Name"))).findFirst().orElseThrow().get("Repeat"));
+
+        // 예외: 김철수의 그날 사용은 모든 규칙에서 뺀다
+        long a3id = ((Number) items2.get(0).get("Id")).longValue();
+        assertTrue(card.addException(a3id, "personDate", "", "휴일근무명령 확인").ok);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items3 = (List<Map<String, Object>>) card.list(up2.id, Map.of(), 1, 100).get("items");
+        assertTrue(items3.stream().noneMatch(m -> "A3".equals(m.get("ApprovalNo"))));
+        assertFalse(card.addException(a3id, "person", "", "").ok, "사람 전체 예외는 규칙을 골라야 함");
+
+        // 내려받기에 집주소 없음
+        String csv = card.csv(up2.id, true);
+        assertFalse(csv.contains("래미안") || csv.contains("역삼1동"));
+        assertTrue(csv.contains("한우마을"));
+
+        // 감사기록 초안 글
+        Map<String, Object> draft = card.caseDraft(up2.id, List.of(((Number) items3.get(0).get("Id")).longValue()));
+        assertTrue(((String) draft.get("body")).contains("점검:"));
+    }
+
+    @Test
+    void cardCheckReadsDatesTimesAddressesAndXlsx() throws Exception {
+        assertEquals(java.time.LocalDate.of(2026, 11, 10), local.audit.tools.CardCheck.date("2026.11.10"));
+        assertEquals(java.time.LocalDate.of(2026, 11, 10), local.audit.tools.CardCheck.date("20261110"));
+        assertEquals(java.time.LocalDate.of(2025, 11, 10), local.audit.tools.CardCheck.date("45971"));
+        assertEquals("10:30:00", local.audit.tools.CardCheck.time("0.4375"));
+        assertEquals("22:05:00", local.audit.tools.CardCheck.time("오후 10:05"));
+        assertEquals("09:07:03", local.audit.tools.CardCheck.time("090703"));
+        assertEquals(-12000L, local.audit.tools.CardCheck.amount("(12,000)"));
+        assertArrayEquals(new String[] { "서울", "강남구", "역삼동", "테헤란로" }, local.audit.tools.CardCheck.area("서울특별시 강남구 테헤란로 123 (역삼동)"));
+        assertArrayEquals(new String[] { "경기", "성남시 분당구", "", "정자일로" }, local.audit.tools.CardCheck.area("경기도 성남시 분당구 정자일로 95"));
+        assertEquals("역삼동", local.audit.tools.CardCheck.area("서울 강남구 역삼1동 1-1 래미안 101동")[2]);
+        assertEquals(2, local.audit.tools.CardCheck.near(local.audit.tools.CardCheck.area("서울 강남구 역삼1동 1-1"), local.audit.tools.CardCheck.area("서울특별시 강남구 테헤란로 1 (역삼동)")));
+        assertEquals(1, local.audit.tools.CardCheck.near(local.audit.tools.CardCheck.area("서울 강남구 대치동 1"), local.audit.tools.CardCheck.area("서울특별시 강남구 테헤란로 1 (역삼동)")));
+        assertEquals(0, local.audit.tools.CardCheck.near(local.audit.tools.CardCheck.area("서울 중구 을지로 1"), local.audit.tools.CardCheck.area("부산 중구 중앙대로 1")));
+
+        // 손으로 만든 최소 xlsx: 공유 글자, 날짜 일련번호, 시간 소수
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream z = new java.util.zip.ZipOutputStream(bo)) {
+            String[][] parts = {
+                { "xl/workbook.xml", "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"승인내역\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>" },
+                { "xl/_rels/workbook.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"x\" Target=\"worksheets/sheet1.xml\"/></Relationships>" },
+                { "xl/sharedStrings.xml", "<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><si><t>이름</t></si><si><t>승인일자</t></si><si><t>승인시간</t></si><si><t>승인금액</t></si><si><t>가맹점명</t></si><si><t>홍길동</t></si><si><r><t>한우</t></r><r><t>마을</t></r></si></sst>" },
+                { "xl/worksheets/sheet1.xml", "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>"
+                    + "<row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c><c r=\"B1\" t=\"s\"><v>1</v></c><c r=\"C1\" t=\"s\"><v>2</v></c><c r=\"D1\" t=\"s\"><v>3</v></c><c r=\"E1\" t=\"s\"><v>4</v></c></row>"
+                    + "<row r=\"2\"><c r=\"A2\" t=\"s\"><v>5</v></c><c r=\"B2\"><v>46336</v></c><c r=\"C2\"><v>0.4375</v></c><c r=\"D2\"><v>150000</v></c><c r=\"E2\" t=\"s\"><v>6</v></c></row>"
+                    + "</sheetData></worksheet>" } };
+            for (String[] pt : parts) { z.putNextEntry(new java.util.zip.ZipEntry(pt[0])); z.write(pt[1].getBytes(java.nio.charset.StandardCharsets.UTF_8)); z.closeEntry(); }
+        }
+        List<local.audit.tools.Sheet.Table> t = local.audit.tools.Sheet.read("a.xlsx", bo.toByteArray());
+        assertEquals(List.of("홍길동", "46336", "0.4375", "150000", "한우마을"), t.get(0).rows().get(1));
+        local.audit.tools.CardCheck card = new local.audit.tools.CardCheck(db, settings);
+        Op up = card.upload("", "a.xlsx", t);
+        assertTrue(up.ok, up.message);
+        Map<String, String> form = Map.of("col_name", "0", "col_date", "1", "col_time", "2", "col_amount", "3", "col_merchant", "4");
+        assertTrue(card.confirm(up.id, form).ok);
+        Map<String, Object> row = db.row("SELECT TxDate, TxTime, Amount FROM CardTx WHERE RunId=?", up.id);
+        assertEquals("2026-11-10", row.get("TxDate"));
+        assertEquals("10:30:00", row.get("TxTime"));
+        assertEquals(150000L, ((Number) row.get("Amount")).longValue());
     }
 }
