@@ -548,3 +548,71 @@ body { display: grid; grid-template-columns: 236px minmax(0, 1fr); grid-template
 .section-tabs.sub-tabs { margin-top: -4px; font-size: 13.5px; }
 .section-tabs .add-tab { color: var(--accent); }
 .lib-cat .lib-sub { margin: 10px 0 0 22px; padding-left: 14px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+
+/* ==========================================================================
+   1.7.2: 화사한 톤 — 경영 현황판과 같은 색 계열(연회색 바탕 · 흰 카드 · 인디고/보라 포인트)
+   ========================================================================== */
+:root {
+  --bg: #f4f6f9;
+  --bg-accent: #eef2ff;
+  --paper: #ffffff;
+  --paper-2: #f8fafc;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --faint: #8a96a8;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --accent: #6366f1;
+  --accent-deep: #4f46e5;
+  --accent-ink: #ffffff;
+  --accent-soft: #eef2ff;
+  --focus: #6366f1;
+  --danger: #ef4444;
+  --danger-deep: #dc2626;
+  --danger-bg: #fef2f2;
+  --warn: #d97706;
+  --warn-bg: #fffbeb;
+  --warn-ink: #b45309;
+  --ok: #059669;
+  --ok-bg: #ecfdf5;
+  --badge-warn-bg: #fef3c7;
+  --badge-warn-ink: #b45309;
+  --badge-ok-bg: #d1fae5;
+  --badge-ok-ink: #047857;
+  --badge-bad-bg: #fee2e2;
+  --badge-bad-ink: #b91c1c;
+  --badge-muted-bg: #f1f5f9;
+  --badge-muted-ink: #64748b;
+  --shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 4px 14px rgba(15, 23, 42, .05);
+  --top-bg: linear-gradient(100deg, #4f46e5 0%, #6366f1 45%, #8b5cf6 100%);
+  --top-solid: #5b55ee;
+}
+html[data-theme="dark"] {
+  --bg: #0b1120;
+  --bg-accent: #172036;
+  --paper: #111a2e;
+  --paper-2: #16213a;
+  --ink: #f1f5f9;
+  --muted: #a3b0c2;
+  --faint: #7d8aa0;
+  --line: #1e293b;
+  --line-strong: #334155;
+  --accent: #818cf8;
+  --accent-deep: #a5b4fc;
+  --accent-ink: #0b1120;
+  --accent-soft: #1e1b4b;
+  --focus: #a5b4fc;
+  --top-bg: linear-gradient(100deg, #312e81 0%, #3730a3 50%, #5b21b6 100%);
+  --top-solid: #3730a3;
+}
+.topnav { background: var(--top-bg); box-shadow: 0 2px 12px rgba(79, 70, 229, .25); }
+.topnav .brand-mark { color: var(--top-solid); box-shadow: 0 1px 3px rgba(15, 23, 42, .15); }
+.topnav .tm-btn { color: rgba(255, 255, 255, .86); }
+.topnav .tm-btn:hover { background: rgba(255, 255, 255, .18); }
+.topnav .tm-btn.on { background: #ffffff; color: var(--top-solid); box-shadow: 0 2px 6px rgba(15, 23, 42, .15); }
+.topnav .top-search { background: rgba(255, 255, 255, .18); border-color: rgba(255, 255, 255, .32); }
+.topnav .top-search svg, .topnav .top-search kbd, .topnav .top-search input::placeholder { color: rgba(255, 255, 255, .85); }
+.topnav .theme { background: rgba(255, 255, 255, .18); }
+.sidenav { background: var(--paper); }
+.sn-group a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-deep); box-shadow: inset 3px 0 0 var(--accent); }
+@media print { .topnav { background: none; } }
