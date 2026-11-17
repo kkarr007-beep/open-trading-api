@@ -739,3 +739,15 @@ main table input:not([type=checkbox]):not([type=radio]):not([type=file]):focus-v
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 main input[type=checkbox], main input[type=radio] { accent-color: var(--accent); }
+
+/* 좁은 화면: 왼쪽 메뉴는 내용만큼, 위쪽 큰 메뉴는 한 줄로 옆으로 밀어 보기 (뒤에 둬야 앞의 높이 규칙을 이김) */
+@media (max-width: 900px) {
+  .sidenav { position: static; top: auto; height: auto; max-height: none; overflow: visible; box-shadow: 0 1px 0 var(--line); }
+  .topnav { flex-wrap: wrap; row-gap: 6px; padding-bottom: 6px; }
+  .topnav .topmenu { order: 10; flex: 1 0 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 2px; }
+  .topnav .topmenu::-webkit-scrollbar { display: none; }
+  .topnav .tm-btn { flex: 0 0 auto; }
+  .topnav .top-print, .topnav .theme { display: none; }
+  .topnav .top-search { order: 11; flex: 1 0 100%; }
+  .sticky-tools { position: static; }
+}
