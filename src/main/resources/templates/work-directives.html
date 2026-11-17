@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>지시 사항 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|미처리 ${#lists.size(open)} / 전체 ${#lists.size(open) + #lists.size(done)}|"></p>
+        <h1>지시 사항</h1>
+        <p class="hint">위에서 받은 지시와 피드백을 접수하고 처리합니다. '업무로'를 누르면 같은 내용의 업무가 만들어지고 지시는 진행으로 바뀝니다.</p>
+    </div>
+</div>
+<section class="card">
+    <h2>지시 접수</h2>
+    <form method="post" action="/work/new/dir" data-write="1">
+        <div class="form-grid">
+            <label class="field grow">받은 지시<input name="title" required maxlength="200" placeholder="받은 지시를 한 줄로" /></label>
+            <label class="field">지시한 곳<input name="from" maxlength="120" placeholder="감사위원회 · 준법감시인 · 파트장" /></label>
+            <label class="field">기한<input name="due" type="date" /></label>
+            <label class="field">담당<select name="ownerId"><option th:each="o : ${cfg.owners}" th:if="${o.on}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
+            <label class="field grow">내용<textarea name="content" rows="2" maxlength="4000"></textarea></label>
+        </div>
+        <button type="submit" class="btn btn-primary">접수</button>
+    </form>
+</section>
+<section class="card">
+    <h2>미처리 <span class="count" th:text="${#lists.size(open)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(open)}">미처리 지시가 없습니다.</p>
+    <ul class="wlist">
+        <th:block th:each="x : ${open}">
+            <li th:replace="~{work-parts :: wrow(${x})}"></li>
+            <li class="wrow" style="border:0;padding-top:0">
+                <span style="flex:1"></span>
+                <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
+            </li>
+        </th:block>
+    </ul>
+</section>
+<section class="card">
+    <h2>처리 완료 <span class="count" th:text="${#lists.size(done)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(done)}">처리한 지시가 없습니다.</p>
+    <ul class="wlist"><th:block th:each="x : ${done}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
+</section>
+</th:block>
+</body>
+</html>

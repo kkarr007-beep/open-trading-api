@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>담당별 업무 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>담당별 업무</h1>
+        <p class="hint">진행 중인 업무를 담당자별로 봅니다. 막대: 파랑 진행 · 보라 타 부서 대기 · 빨강 지연. 용량은 업무 설정에서 정합니다. 담당을 바꾸려면 업무 상세에서 고릅니다.</p>
+    </div>
+</div>
+<div class="team">
+    <section class="card" th:each="r : ${rows}">
+        <div class="card-head">
+            <span class="av" th:text="${W.ownerShort(r.owner().id)}"></span>
+            <h2 th:text="${r.owner().n}"></h2>
+            <span class="pill acc" th:if="${r.owner().id == cfg.me}">나</span>
+            <span class="pill bad" th:if="${r.over()}">용량 초과</span>
+        </div>
+        <div class="load" th:title="|진행 ${r.doing()} · 타 부서 ${r.ext()} · 지연 ${r.late()}|">
+            <i class="o" th:style="|width:${r.barOpen()}%|"></i><i class="e" th:style="|width:${r.barExt()}%|"></i><i class="l" th:style="|width:${r.barLate()}%|"></i>
+        </div>
+        <p class="small muted" th:text="|진행 ${#lists.size(r.items())}${r.owner().cap > 0 ? ' / 용량 ' + r.owner().cap : ''} · 지연 ${r.late()} · 타 부서 ${r.ext()} · 최근 30일 완료 ${r.done30()}|"></p>
+        <p class="empty" th:if="${#lists.isEmpty(r.items())}">맡은 업무 없음</p>
+        <ul class="wlist"><th:block th:each="x : ${r.items()}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
+        <a class="btn btn-quiet" th:href="@{/work/list(owner=${r.owner().id})}">목록으로 보기</a>
+    </section>
+</div>
+</th:block>
+</body>
+</html>

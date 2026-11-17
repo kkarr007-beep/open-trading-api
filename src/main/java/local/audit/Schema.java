@@ -179,6 +179,25 @@ final class Schema {
         );
         CREATE TABLE IF NOT EXISTS CaseRich (CaseId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS InboxRich (InboxId TEXT PRIMARY KEY, Html TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS WorkItems (
+          Id TEXT PRIMARY KEY,
+          Kind TEXT NOT NULL,
+          Title TEXT NOT NULL DEFAULT '',
+          Due TEXT NOT NULL DEFAULT '',
+          OnDate TEXT NOT NULL DEFAULT '',
+          Ord INTEGER NOT NULL DEFAULT 0,
+          Data TEXT NOT NULL,
+          UpdatedAt TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS RuleRegs (
+          RegId TEXT PRIMARY KEY,
+          Title TEXT NOT NULL,
+          CategoryId TEXT NOT NULL DEFAULT '',
+          Ord INTEGER NOT NULL DEFAULT 0,
+          Data TEXT NOT NULL,
+          UpdatedAt TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_Work_Kind ON WorkItems(Kind, Due);
         CREATE INDEX IF NOT EXISTS IX_Cases_List ON Cases(Year, Category, Phase);
         CREATE INDEX IF NOT EXISTS IX_Actions_Due ON Actions(ReplyDueOn, ActionState);
         CREATE INDEX IF NOT EXISTS IX_History_Case ON History(CaseId, Seq);

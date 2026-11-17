@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>사규 설정 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>사규 설정</h1>
+        <p class="hint" th:text="|사규 ${stats.regs}건 · 조문 ${stats.articles}개 · 데이터는 감사기록과 같은 파일에 저장되고, 관리 화면의 백업에 함께 들어갑니다.|"></p>
+    </div>
+</div>
+<section class="card" id="import">
+    <h2>예전 프로그램에서 옮겨 오기</h2>
+    <p class="hint">예전 '사규 관리 시스템 v4'(HTML)에서 <strong>설정·백업 → JSON 백업 내려받기</strong>로 받은 파일을 넣습니다. 사규·판·조문, 메모, 북마크, 카테고리가 그대로 옮겨지고,
+        체크리스트·위반 사례·시정조치·감사 이력처럼 이 프로그램에 아직 화면이 없는 것도 버리지 않고 보관합니다.</p>
+    <form method="post" action="/rules/import" data-write="1" enctype="multipart/form-data">
+        <div class="drop">
+            <p class="drop-copy"><strong>JSON 파일을 고르거나 끌어 놓으세요</strong></p>
+            <input type="file" name="upload" required accept=".json,application/json" aria-label="옮겨 올 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+            <label class="field">방법
+                <select name="mode">
+                    <option value="replace">전부 바꾸기 (처음 옮길 때)</option>
+                    <option value="merge">합치기 (없는 사규만 더함)</option>
+                </select>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">옮겨 오기</button>
+    </form>
+</section>
+<section class="card">
+    <h2>내보내기</h2>
+    <p class="hint">예전 HTML 판의 백업과 같은 모양입니다. 그쪽에서 그대로 불러올 수 있습니다.</p>
+    <p><a class="btn" href="/rules/data/export">JSON 내려받기</a></p>
+</section>
+<section class="card">
+    <h2>카테고리</h2>
+    <p class="hint">순서는 숫자가 작은 것이 앞입니다. 카테고리를 지우면 그 사규는 미분류가 됩니다.</p>
+    <div th:each="c : ${cats}" class="inline-row">
+        <form method="post" action="/rules/settings/category/save" data-write="1" class="inline-form inline-row">
+            <input type="hidden" name="id" th:value="${c.id}" />
+            <label class="field">이름<input name="name" required maxlength="40" th:value="${c.name}" /></label>
+            <label class="field">순서<input name="order" type="number" min="0" max="999" th:value="${c.order}" style="width:90px" /></label>
+            <button type="submit" class="btn">저장</button>
+        </form>
+        <form method="post" action="/rules/settings/category/delete" data-write="1" th:data-confirm="|카테고리 '${c.name}'를 지울까요? 그 사규는 미분류가 됩니다.|"><input type="hidden" name="id" th:value="${c.id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </div>
+    <form method="post" action="/rules/settings/category/save" data-write="1" class="inline-form inline-row" style="margin-top:14px">
+        <label class="field">새 카테고리<input name="name" required maxlength="40" /></label>
+        <label class="field">순서<input name="order" type="number" min="0" max="999" style="width:90px" /></label>
+        <button type="submit" class="btn btn-primary">더하기</button>
+    </form>
+</section>
+</th:block>
+</body>
+</html>

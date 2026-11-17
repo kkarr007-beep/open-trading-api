@@ -73,7 +73,9 @@ public class OtherControllers {
     }
 
     @GetMapping("/discipline/{id}")
-    public String disciplineEdit(@PathVariable String id, @RequestParam(required = false) String caseRef, Model model) {
+    public String disciplineEdit(@PathVariable String id, @RequestParam(required = false) String caseRef,
+                                 @RequestParam(required = false) String ruleText, Model model) {
+        model.addAttribute("ruleTextInit", ruleText == null ? null : local.audit.Txt.fit(ruleText, 240, false));
         boolean fresh = "new".equals(id);
         model.addAttribute("fresh", fresh);
         model.addAttribute("item", fresh ? null : discipline.open(id));

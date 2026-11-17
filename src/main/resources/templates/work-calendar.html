@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>달력 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">달력</p>
+        <h1 th:text="${ymLabel}">2026년 11월</h1>
+        <p class="hint">일정, 업무·지시 기한, 감사 조치요구 회신기한을 한 달력에 보입니다. 공휴일은 참고용입니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" th:href="@{/work/calendar(ym=${prev},owner=${owner})}">◀ 이전 달</a>
+        <a class="btn" th:href="@{/work/calendar(owner=${owner})}">이번 달</a>
+        <a class="btn" th:href="@{/work/calendar(ym=${next},owner=${owner})}">다음 달 ▶</a>
+        <button type="button" class="btn btn-primary" data-dialog="event-dialog">일정 추가</button>
+    </div>
+</div>
+<form method="get" action="/work/calendar" class="toolbar" style="margin-bottom:10px">
+    <input type="hidden" name="ym" th:value="${ym}" />
+    <label class="field">담당
+        <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
+    </label>
+    <button type="button" class="btn" data-print>인쇄</button>
+</form>
+<div class="table-wrap" tabindex="0">
+<table class="cal">
+    <thead><tr><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th><th>일</th></tr></thead>
+    <tbody>
+    <tr th:each="week : ${weeks}">
+        <td th:each="d : ${week}" th:classappend="${(d.inMonth() ? '' : 'out ') + (d.off() ? 'off ' : '') + (d.today() ? 'today' : '')}">
+            <div class="dn"><span th:text="${d.day}">1</span><span class="hol" th:if="${d.holiday() != null}" th:text="${d.holiday()}"></span></div>
+            <a class="ev e" th:each="e : ${d.events()}" th:href="|/work/item/${e.id}|" th:title="${e.title}"
+               th:text="${(#strings.isEmpty(e.t1) ? '' : e.t1 + ' ') + e.title}"></a>
+            <a class="ev w" th:each="x : ${d.items()}" th:href="|/work/item/${x.id}|" th:title="|${x.kindName} · ${x.title} · ${W.ownerName(x.ownerId)}|"
+               th:classappend="${(x.done ? 'done ' : '') + (W.dueTone(x) == 'bad' ? 'late' : '')}" th:text="${x.title}"></a>
+            <a class="ev a" th:each="a : ${d.audit()}" th:href="|/cases/${a.CaseId}#action-${a.ActionId}|" th:title="|감사 조치 회신기한 · ${a.CaseTitle} · ${a.Title}|"
+               th:text="|회신 · ${a.Title}|"></a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</div>
+<div class="legend">
+    <span><i style="background:var(--accent-soft)"></i>일정</span>
+    <span><i style="background:var(--bg-accent)"></i>업무·지시 기한</span>
+    <span><i style="background:var(--badge-bad-bg)"></i>지연</span>
+    <span><i style="background:var(--badge-warn-bg)"></i>감사 조치 회신기한</span>
+</div>
+<dialog id="event-dialog" aria-labelledby="event-dialog-title">
+    <form method="post" action="/work/new/event" data-write="1">
+        <div class="dialog-head"><h2 id="event-dialog-title">일정 추가</h2>
+            <button type="button" class="icon-btn" data-close aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+        <div class="form-grid">
+            <label class="field grow">제목<input name="title" required maxlength="200" /></label>
+            <label class="field">날짜<input name="date" type="date" required th:value="${today}" /></label>
+            <label class="field">시작<input name="t1" type="time" /></label>
+            <label class="field">끝<input name="t2" type="time" /></label>
+            <label class="field">구분<select name="cat"><option th:each="e : ${EVENT}" th:value="${e.key}" th:text="${e.value}"></option></select></label>
+            <label class="field">담당<select name="ownerId"><option th:each="o : ${cfg.owners}" th:if="${o.on}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
+            <label class="field">장소<input name="place" maxlength="120" /></label>
+        </div>
+        <div class="row-actions"><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn btn-primary">추가</button></div>
+    </form>
+</dialog>
+</th:block>
+</body>
+</html>

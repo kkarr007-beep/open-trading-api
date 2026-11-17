@@ -1,16 +1,38 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>전체 찾기 · 감사기록</title></head>
+<head><title>전체 찾기</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
         <p class="kicker">전체 찾기</p>
         <h1 th:text="${#strings.isEmpty(searchQuery)} ? '찾을 말을 적으세요' : |'${searchQuery}' 찾은 결과|"></h1>
-        <p class="hint">건의 제목·대상·문서번호·본문, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
+        <p class="hint">업무·일정, 사규 조문, 감사 건, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
     </div>
 </div>
 <th:block th:unless="${#strings.isEmpty(searchQuery)}">
+<section aria-labelledby="s-work">
+    <h2 id="s-work">업무·일정 <span class="count" th:text="${#lists.size(workHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(workHits)}">맞는 업무·일정이 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="x : ${workHits}"><a th:href="|/work/item/${x.id}|">
+            <strong th:text="${x.title}"></strong>
+            <span th:text="|${x.kindName}${x.kind == 'work' ? ' · ' + x.statusName : ''} · ${W.ownerName(x.ownerId)}${x.hasDue() ? ' · 기한 ' + x.due : ''}${x.date != null ? ' · ' + x.date : ''}|"></span>
+        </a></li>
+    </ul>
+    <p th:if="${#lists.size(workHits) >= 30}"><a th:href="@{/work/list(text=${searchQuery},scope='all')}">업무 목록에서 모두 보기</a></p>
+</section>
+<section aria-labelledby="s-rules">
+    <h2 id="s-rules">사규 조문 <span class="count" th:text="${#lists.size(ruleHits)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(ruleHits)}">맞는 조문이 없습니다.</p>
+    <ul class="result-list">
+        <li th:each="h : ${ruleHits}"><a th:href="@{|/rules/${h.regId()}|(q=${ruleTerms})} + '#a-' + ${h.articleId()}">
+            <strong th:text="|${h.regTitle()} · ${h.label()}|"></strong>
+            <span th:utext="${h.snippet()}"></span>
+        </a></li>
+    </ul>
+    <p th:if="${#lists.size(ruleHits) >= 30}"><a th:href="@{/rules/search(q=${searchQuery})}">사규 찾기에서 모두 보기</a></p>
+</section>
 <section aria-labelledby="s-cases">
     <h2 id="s-cases">건 <span class="count" th:text="${#lists.size(caseHits)}">0</span></h2>
     <p class="empty" th:if="${#lists.isEmpty(caseHits)}">맞는 건이 없습니다.</p>

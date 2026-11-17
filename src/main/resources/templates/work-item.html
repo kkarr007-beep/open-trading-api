@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>업무 상세 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<h1 th:if="${x == null}">항목을 찾을 수 없음</h1>
+<th:block th:if="${x != null}">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|${x.kindName} · 등록 ${x.created}|">업무</p>
+        <h1 th:text="${x.title}">제목</h1>
+        <p class="hint" th:if="${src != null}">원래 항목: <a th:href="|/work/item/${src.id}|" th:text="|${src.kindName} · ${src.title}|"></a></p>
+    </div>
+    <div class="row-actions">
+        <span class="pill" th:if="${x.hasDue()}" th:classappend="${W.dueTone(x)}" th:text="|기한 ${W.dueText(x)}|"></span>
+        <form th:if="${x.kind == 'dir' or x.kind == 'inbox' or x.kind == 'plan'}" method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn">업무로 옮기기</button></form>
+        <button type="button" class="btn btn-danger" data-dialog="delete-dialog">지우기</button>
+    </div>
+</div>
+
+<!-- 업무·지시 -->
+<th:block th:if="${x.kind == 'work' or x.kind == 'dir'}">
+<section class="card">
+    <h2>상태</h2>
+    <div class="seg" role="group" aria-label="상태">
+        <form th:each="s : ${STATUS}" method="post" th:action="|/work/item/${x.id}/status|" data-write="1">
+            <input type="hidden" name="status" th:value="${s.key}" />
+            <button type="submit" th:class="${x.status == s.key} ? 'on'" th:text="${s.value}" th:aria-pressed="${x.status == s.key}"></button>
+        </form>
+    </div>
+    <th:block th:if="${x.kind == 'work' and !#lists.isEmpty(stages)}">
+        <h3 style="margin:16px 0 8px;font-size:14px">단계 <span class="small muted" th:text="|진척 ${W.percent(x)}%|"></span></h3>
+        <div class="seg" role="group" aria-label="단계">
+            <form th:each="s, st : ${stages}" method="post" th:action="|/work/item/${x.id}/stage|" data-write="1">
+                <input type="hidden" name="stage" th:value="${st.count}" />
+                <button type="submit" th:class="${x.stage == st.count} ? 'on' : (${x.stage > st.count} ? 'past' : '')" th:text="|${st.count}. ${s}|"></button>
+            </form>
+        </div>
+    </th:block>
+    <div class="prog" style="margin-top:12px" th:if="${x.kind == 'work'}"><i th:style="|width:${W.percent(x)}%|"></i></div>
+</section>
+<div class="detail-layout">
+<div class="stack">
+<section class="card">
+    <h2>내용</h2>
+    <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
+        <div class="props">
+            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
+            <span>담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
+            <span>우선순위</span><select name="pri"><option th:each="p : ${PRI}" th:value="${p.key}" th:text="${p.value}" th:selected="${p.key == x.pri}"></option></select>
+            <th:block th:if="${x.kind == 'dir'}"><span>지시한 곳</span><input name="from" maxlength="120" th:value="${x.from}" /></th:block>
+            <span>유형</span><select name="typeId"><option th:each="t : ${cfg.types}" th:value="${t.id}" th:text="${t.n}" th:selected="${t.id == x.typeId}"></option></select>
+            <span>과제</span><select name="projectId"><option value="">없음</option><option th:each="p : ${cfg.projects}" th:value="${p.id}" th:text="${p.n}" th:selected="${p.id == x.projectId}"></option></select>
+            <span>시작 ~ 기한</span><div class="two"><input type="date" name="start" th:value="${x.start}" aria-label="시작" /> ~ <input type="date" name="due" th:value="${x.due}" aria-label="기한" /></div>
+            <th:block th:if="${x.kind == 'work'}">
+                <span>주기</span><select name="cycle"><option th:each="c : ${CYCLE}" th:value="${c.key}" th:text="${c.value}" th:selected="${c.key == x.cycle}"></option></select>
+                <span>시행 월</span>
+                <div class="months"><input type="hidden" name="monthsSent" value="1" />
+                    <label th:each="m : ${#numbers.sequence(1, 12)}"><input type="checkbox" th:name="|m${m}|" value="1" th:checked="${x.hasMonth(m)}" /><span th:text="|${m}월|"></span></label>
+                </div>
+                <span>연 목표 횟수</span><input type="number" name="target" min="0" max="999" th:value="${x.target}" />
+                <span>반복</span><select name="repeat"><option th:each="r : ${REPEAT}" th:value="${r.key}" th:text="${r.value}" th:selected="${r.key == x.repeat}"></option></select>
+                <span>상위 업무</span><select name="parentId"><option value="">없음</option><option th:each="z : ${parents}" th:value="${z.id}" th:text="${#strings.abbreviate(z.title, 50)}" th:selected="${z.id == x.parentId}"></option></select>
+                <span>다음 행동</span><input name="next" maxlength="300" th:value="${x.next}" placeholder="지금 할 행동 한 줄" />
+            </th:block>
+            <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
+        </div>
+        <p class="hint">시행 월은 주기가 '정기(월)'일 때, 연 목표 횟수는 '횟수 목표'일 때, 반복은 '수시·기한'일 때 씁니다. 반복 업무를 완료하면 다음 차례가 저절로 만들어집니다.</p>
+        <label class="field grow" style="margin-top:12px">메모<textarea name="content" class="textarea-wide" rows="6" th:text="${x.content}"></textarea></label>
+        <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
+    </form>
+</section>
+<section class="card" th:if="${x.kind == 'work'}" id="todos">
+    <h2>체크리스트 <span class="sub" th:text="|${x.todoDone}/${#lists.size(x.todos)}|"></span></h2>
+    <div class="todo-row" th:each="t, st : ${x.todos}" th:classappend="${t.d} ? 'd'">
+        <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1">
+            <input type="hidden" name="op" value="toggle" /><input type="hidden" name="i" th:value="${st.index}" />
+            <button type="submit" class="chk" th:classappend="${t.d} ? 'on'" th:text="${t.d} ? '✓' : ''" th:aria-label="${t.d} ? '완료 취소' : '완료'"></button>
+        </form>
+        <span th:text="${t.t}"></span>
+        <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1">
+            <input type="hidden" name="op" value="remove" /><input type="hidden" name="i" th:value="${st.index}" />
+            <button type="submit" class="btn btn-quiet" aria-label="항목 지우기">✕</button>
+        </form>
+    </div>
+    <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1" style="margin-top:8px">
+        <input type="hidden" name="op" value="add" />
+        <label class="field grow">항목 추가 <span class="field-note">여러 줄을 붙여 넣으면 줄마다 항목이 됩니다.</span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
+        <p class="row-actions" style="margin-top:8px"><button type="submit" class="btn">추가</button></p>
+    </form>
+    <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1" th:if="${x.todoDone > 0}">
+        <input type="hidden" name="op" value="clean" /><button type="submit" class="btn btn-quiet">끝난 것 치우기</button>
+    </form>
+</section>
+<section class="card" th:if="${!#lists.isEmpty(kids)}">
+    <h2>하위 업무 <span class="sub" th:text="|${#lists.size(kids)}건|"></span></h2>
+    <ul class="wlist"><th:block th:each="k : ${kids}"><li th:replace="~{work-parts :: wrow(${k})}"></li></th:block></ul>
+</section>
+</div>
+<aside class="stack">
+<section class="card">
+    <h2>진행 기록</h2>
+    <form method="post" th:action="|/work/item/${x.id}/log|" data-write="1">
+        <label class="field grow">진행 한 줄 <span class="field-note">정체 판정의 근거가 됩니다.</span><input name="text" required maxlength="1000" /></label>
+        <p style="margin-top:8px"><button type="submit" class="btn">남기기</button></p>
+    </form>
+    <ul class="loglist" style="margin-top:10px">
+        <li th:each="l : ${logs}"><small th:text="${l[0]}"></small><span th:text="${l[1]}"></span></li>
+        <li th:if="${#lists.isEmpty(logs)}"><span class="muted">기록이 없습니다.</span></li>
+    </ul>
+</section>
+<section class="card" th:if="${!#lists.isEmpty(x.dueLog)}">
+    <h2>기한 변경 이력 <span class="sub" th:text="|${#lists.size(x.dueLog)}회 · 최초 ${x.due0}|"></span></h2>
+    <ul class="loglist"><li th:each="z : ${x.dueLog}"><small th:text="${z.d}"></small><span th:text="|${z.from} → ${z.to}|"></span></li></ul>
+</section>
+</aside>
+</div>
+</th:block>
+
+<!-- 일정 -->
+<section class="card" th:if="${x.kind == 'event'}">
+    <h2>일정</h2>
+    <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
+        <div class="props">
+            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
+            <span>날짜</span><input type="date" name="date" required th:value="${x.date}" />
+            <span>시간</span><div class="two"><input type="time" name="t1" th:value="${x.t1}" aria-label="시작" /> ~ <input type="time" name="t2" th:value="${x.t2}" aria-label="끝" /></div>
+            <span>구분</span><select name="cat"><option th:each="e : ${EVENT}" th:value="${e.key}" th:text="${e.value}" th:selected="${e.key == x.cat}"></option></select>
+            <span>담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == x.ownerId}"></option></select>
+            <span>장소</span><input name="place" maxlength="120" th:value="${x.place}" />
+        </div>
+        <label class="field grow" style="margin-top:12px">메모<textarea name="memo" class="textarea-wide" rows="6" th:text="${x.memo}"></textarea></label>
+        <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
+    </form>
+</section>
+
+<!-- 노트·계획·생각 담기 -->
+<section class="card" th:if="${x.kind == 'note' or x.kind == 'plan' or x.kind == 'inbox' or x.kind == 'issue'}">
+    <h2 th:text="${x.kindName}">노트</h2>
+    <form method="post" th:action="|/work/item/${x.id}|" data-write="1">
+        <div class="props">
+            <span>제목</span><input name="title" required maxlength="200" th:value="${x.title}" />
+            <th:block th:if="${x.kind == 'note'}"><span>종류</span><select name="ntype"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == x.ntype}"></option></select></th:block>
+            <th:block th:if="${x.kind == 'plan'}">
+                <span>예상 시기</span><input name="when" maxlength="60" th:value="${x.when}" />
+                <span>다시 볼 날</span><input type="date" name="tick" th:value="${x.tick}" />
+            </th:block>
+            <span>태그</span><input name="tags" maxlength="300" th:value="${x.tagLine}" placeholder="쉼표로 구분" />
+        </div>
+        <label class="field grow" style="margin-top:12px">내용<textarea name="content" class="textarea-wide mono" rows="18" th:text="${x.content}"></textarea></label>
+        <p style="margin-top:12px"><button type="submit" class="btn btn-primary">저장</button></p>
+    </form>
+</section>
+
+<dialog id="delete-dialog" aria-labelledby="delete-title">
+    <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1">
+        <div class="dialog-head"><h2 id="delete-title">이 항목을 지울까요?</h2></div>
+        <p class="hint" th:text="|「${x.title}」를 지웁니다. 되돌릴 수 없습니다. 하위 업무는 남고 연결만 풀립니다.|"></p>
+        <div class="row-actions"><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn btn-danger">지우기</button></div>
+    </form>
+</dialog>
+</th:block>
+</th:block>
+</body>
+</html>

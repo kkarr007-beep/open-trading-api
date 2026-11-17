@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>사규 목록 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>사규 목록</h1>
+        <p class="hint">카테고리별 사규입니다. 사규를 누르면 조문을 읽고, 북마크·메모·해석 어려움 표시를 남길 수 있습니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" href="/rules/settings#import">예전 데이터 옮겨 오기</a>
+        <a class="btn btn-primary" href="/rules/new">사규 등록</a>
+    </div>
+</div>
+<form method="get" action="/rules/search" class="toolbar" style="margin-bottom:16px">
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">사규 찾기</span>
+            <input name="q" placeholder="음주운전 징계 · 취업규칙 제5조 · 겸직" maxlength="120" data-search-focus />
+        </label>
+        <button class="btn btn-primary" type="submit">찾기</button>
+    </div>
+</form>
+<ul class="metrics">
+    <li class="metric-ok"><a href="/rules"><span class="metric-top">사규</span><strong th:text="${stats.regs}">0</strong></a></li>
+    <li class="metric-ok"><a href="/rules/search"><span class="metric-top">조문</span><strong th:text="${stats.articles}">0</strong></a></li>
+    <li class="metric-ok"><a href="/rules/marks"><span class="metric-top">북마크</span><strong th:text="${stats.bookmarks}">0</strong></a></li>
+    <li class="metric-ok"><a href="/rules/marks#notes"><span class="metric-top">메모</span><strong th:text="${stats.notes}">0</strong></a></li>
+    <li th:class="${stats.difficult > 0} ? 'metric-warn' : 'metric-ok'"><a href="/rules/marks#difficult"><span class="metric-top">해석 어려운 조항</span><strong th:text="${stats.difficult}">0</strong></a></li>
+</ul>
+<p class="empty" th:if="${#lists.isEmpty(groups)}">등록된 사규가 없습니다. '사규 등록'에서 글을 붙여 넣거나, 예전 사규 관리 프로그램의 백업 파일을 옮겨 오세요.</p>
+<section th:each="g : ${groups}">
+    <h2 th:text="${g.name()}">카테고리</h2>
+    <div class="reg-cards">
+        <a class="reg-card" th:each="r : ${g.regs()}" th:href="|/rules/${r.id()}|">
+            <strong><th:block th:text="${r.title()}"></th:block> <span class="pill warn" th:if="${r.status() != 'active'}" th:text="${r.status()}"></span></strong>
+            <span th:text="|조 ${r.articles()}개 · ${r.label()} · 시행 ${r.effectiveDate()}${r.versions() > 1 ? ' · 판 ' + r.versions() + '개' : ''}|"></span>
+        </a>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

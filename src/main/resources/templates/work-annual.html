@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>연간 정기 현황 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|이행률 ${v.rate}%|">이행률</p>
+        <h1 th:text="|${y}년 정기 업무 현황|">정기 업무</h1>
+        <p class="hint">칸을 누르면 그달 이행 여부가 바뀝니다. ✓ 이행 · ! 지난 달 미이행 · 테두리 이번 달 · 회색 예정. 주기는 업무 상세 화면에서 '정기(월)'·'횟수 목표'·'상시'로 정합니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" th:href="@{/work/annual(y=${y - 1},owner=${owner})}" th:text="|◀ ${y - 1}|"></a>
+        <a class="btn" th:href="@{/work/annual(y=${y + 1},owner=${owner})}" th:text="|${y + 1} ▶|"></a>
+        <button type="button" class="btn" data-print>인쇄</button>
+    </div>
+</div>
+<form method="get" action="/work/annual" class="toolbar" style="margin-bottom:10px">
+    <input type="hidden" name="y" th:value="${y}" />
+    <label class="field">담당
+        <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
+    </label>
+</form>
+<p class="empty" th:if="${#maps.isEmpty(v.groups)}">정기 업무가 없습니다. 업무 상세 화면에서 주기를 '정기(월)'로 바꾸세요.</p>
+<div class="table-wrap" tabindex="0" th:unless="${#maps.isEmpty(v.groups)}">
+<table class="ann">
+    <thead><tr><th>업무</th><th>담당</th><th class="m" th:each="m : ${#numbers.sequence(1, 12)}" th:text="|${m}월|"></th><th class="m">이행</th></tr></thead>
+    <tbody>
+    <th:block th:each="g : ${v.groups}">
+        <tr class="grp"><td colspan="15" th:text="|${g.key} · ${#lists.size(g.value)}|"></td></tr>
+        <tr th:each="r : ${g.value}">
+            <td><a th:href="|/work/item/${r.item().id}|" th:text="${r.item().title}"></a></td>
+            <td class="nowrap" th:text="${W.ownerName(r.item().ownerId)}"></td>
+            <td class="m" th:each="s, st : ${r.cells()}">
+                <form th:if="${s != 'na' and s != 'always'}" method="post" th:action="|/work/item/${r.item().id}/check|" data-write="1">
+                    <input type="hidden" name="y" th:value="${y}" /><input type="hidden" name="m" th:value="${st.count}" />
+                    <button type="submit" class="cellv" th:classappend="|cv-${s}|" th:text="${s == 'done'} ? '✓' : (${s == 'miss'} ? '!' : '')"
+                            th:title="|${st.count}월 · ${s == 'done' ? '이행 · 누르면 취소' : '누르면 이행'}|" th:aria-label="|${st.count}월 이행 표시|"></button>
+                </form>
+                <span th:if="${s == 'always'}" class="cellv cv-always" aria-hidden="true"></span>
+            </td>
+            <td class="m nowrap" th:text="${r.done()}"></td>
+        </tr>
+    </th:block>
+    </tbody>
+</table>
+</div>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>개정 비교 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>신구 조문 비교</h1>
+        <p class="hint">판이 둘 이상인 사규에서 두 판을 골라 조 번호끼리 견줍니다. 지운 글은 흐리게 줄을 긋고, 더한 글은 붉게 표시합니다.</p>
+    </div>
+    <button type="button" class="btn" data-print th:if="${reg != null}">인쇄</button>
+</div>
+<form method="get" action="/rules/compare" class="toolbar" style="margin-bottom:14px">
+    <label class="field">사규
+        <select name="reg" data-autosubmit><option value="">고르세요</option>
+            <option th:each="r : ${regs}" th:value="${r.id()}" th:text="|${r.title()} (판 ${r.versions()}개)|" th:selected="${reg != null and r.id() == reg.id}"></option></select>
+    </label>
+    <th:block th:if="${reg != null}">
+        <label class="field">이전 판<select name="v1"><option th:each="x : ${versions}" th:value="${x.id}" th:text="${x.label}" th:selected="${x.id == v1}"></option></select></label>
+        <label class="field">새 판<select name="v2"><option th:each="x : ${versions}" th:value="${x.id}" th:text="${x.label}" th:selected="${x.id == v2}"></option></select></label>
+        <button type="submit" class="btn btn-primary">견주기</button>
+    </th:block>
+</form>
+<p class="empty" th:if="${#lists.isEmpty(regs)}">판이 둘 이상인 사규가 없습니다. 사규 읽기 화면의 '개정판 넣기'로 새 판을 넣으세요.</p>
+<th:block th:if="${reg != null}">
+    <p class="count-line" th:text="|바뀐 조 ${changed}개 / 전체 ${#lists.size(rows)}개|"></p>
+    <th:block th:each="x : ${rows}">
+        <article class="art" th:if="${x.tag() != 'same'}" th:classappend="${x.tag() == 'del'} ? 'gone'">
+            <header>
+                <h3 th:text="${x.number() + (#strings.isEmpty(x.title()) ? '' : '(' + x.title() + ')')}"></h3>
+                <span class="dtag" th:classappend="${x.tag()}" th:text="${x.tag() == 'new'} ? '신설' : (${x.tag() == 'chg'} ? '변경' : '삭제')"></span>
+            </header>
+            <div class="abody"><div class="para" th:utext="${x.html()}"></div></div>
+        </article>
+    </th:block>
+    <p class="empty" th:if="${changed == 0}">두 판 사이에 바뀐 조가 없습니다.</p>
+</th:block>
+</th:block>
+</body>
+</html>

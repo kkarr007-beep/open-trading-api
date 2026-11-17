@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>사규 찾기 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1 th:text="${#strings.isEmpty(q)} ? '사규 찾기' : |'${q}' 찾은 결과|">사규 찾기</h1>
+        <p class="hint">조 번호(예: 취업규칙 제5조), 낱말(예: 음주운전 징계)로 찾습니다. 조 제목·장 이름에 있으면 더 앞에 둡니다. 메모와 태그도 함께 찾습니다.</p>
+    </div>
+</div>
+<form method="get" action="/rules/search" class="toolbar" style="margin-bottom:14px">
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">찾기</span>
+            <input name="q" th:value="${q}" placeholder="음주운전 징계 · 취업규칙 제5조 · 겸직" maxlength="120" data-search-focus autofocus />
+        </label>
+        <button class="btn btn-primary" type="submit">찾기</button>
+    </div>
+    <label class="field">카테고리
+        <select name="cat" data-autosubmit><option value="">전체</option><option th:each="c : ${cats}" th:value="${c.id}" th:text="${c.name}" th:selected="${cat == c.id}"></option></select>
+    </label>
+</form>
+<div class="chips" th:if="${#strings.isEmpty(q)}">
+    <a class="chip" th:each="c : ${ {'음주운전','직장 내 괴롭힘','개인정보 유출','겸직','지각·결근','금품 수수'} }" th:href="@{/rules/search(q=${c})}" th:text="${c}"></a>
+</div>
+<th:block th:unless="${#strings.isEmpty(q)}">
+    <p class="count-line" role="status" th:text="|${#lists.size(hits)} 개 조문|"></p>
+    <p class="empty" th:if="${#lists.isEmpty(hits)}">맞는 조문이 없습니다. 낱말을 줄이거나 다른 말로 찾아 보세요.</p>
+    <div class="card" th:unless="${#lists.isEmpty(hits)}">
+        <a class="hit" th:each="h : ${hits}" th:href="@{|/rules/${h.regId()}|(q=${terms})} + '#a-' + ${h.articleId()}">
+            <strong><span th:text="${h.regTitle()}"></span> · <span th:text="${h.label()}"></span> <span class="pill" th:text="${h.why()}"></span></strong>
+            <span class="snip" th:utext="${h.snippet()}"></span>
+        </a>
+    </div>
+</th:block>
+</th:block>
+</body>
+</html>

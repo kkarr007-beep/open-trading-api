@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 항목 한 줄: 완료 표시, 우선순위, 제목, 기한, 담당 -->
+<li th:fragment="wrow(x)" class="wrow" th:classappend="${x.done} ? 'done'">
+    <form method="post" th:action="|/work/item/${x.id}/status|" data-write="1" th:if="${x.kind == 'work' or x.kind == 'dir'}">
+        <input type="hidden" name="status" th:value="${x.done} ? 'todo' : 'done'" />
+        <button type="submit" class="chk" th:classappend="${x.done} ? 'on'" th:title="${x.done} ? '완료 취소' : '완료로 표시'"
+                th:aria-label="${x.done} ? '완료 취소' : '완료로 표시'" th:text="${x.done} ? '✓' : ''"></button>
+    </form>
+    <span class="pri" th:classappend="${x.pri}" th:text="${x.priIcon}" th:title="|우선순위 ${x.priName}|"></span>
+    <div class="t">
+        <a th:href="|/work/item/${x.id}|" th:text="${x.title}">제목</a>
+        <small th:text="${x.kind == 'dir'} ? ${'지시 · ' + (x.from ?: '출처 미기재')} : ${x.statusName + (#strings.isEmpty(W.stageName(x)) ? '' : ' · ' + W.stageName(x)) + (#strings.isEmpty(x.next) ? '' : ' · 다음: ' + x.next)}"></small>
+    </div>
+    <span class="pill" th:if="${x.hasDue()}" th:classappend="${W.dueTone(x)}" th:text="${W.dueText(x)}"></span>
+    <span class="av" th:text="${W.ownerShort(x.ownerId)}" th:title="${W.ownerName(x.ownerId)}"></span>
+</li>
+
+<!-- 빠른 추가 -->
+<th:block th:fragment="quick(owner)">
+<form class="quick" method="post" action="/work/quick" data-write="1">
+    <input type="hidden" name="owner" th:value="${owner}" />
+    <input name="text" maxlength="300" autocomplete="off" placeholder="빠른 추가: 보고서 초안 @담당자 #점검 !높음 금요일" aria-label="빠른 추가" required />
+    <button class="btn btn-primary" type="submit">추가</button>
+</form>
+<p class="quick-hint">@담당자 · #태그 · !높음/!낮음 · +과제 · 오늘/내일/모레/금요일/다음주 화/11/20/3일 후/월말 처럼 적으면 알아서 나눠 넣습니다.</p>
+</th:block>
+</body>
+</html>

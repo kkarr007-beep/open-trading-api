@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>칸반 보드 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>칸반 보드</h1>
+        <p class="hint">카드를 다른 상태 칸으로 끌어 놓거나, 카드 아래 상태를 고르면 바로 바뀌고 진행 기록에 남습니다. 정기·횟수 업무는 연간 정기 현황에서 봅니다. 완료는 최근 14일 것만 보입니다.</p>
+    </div>
+    <form method="get" action="/work/board" class="inline-form">
+        <label class="field">담당
+            <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
+        </label>
+    </form>
+</div>
+<div th:replace="~{work-parts :: quick(${owner})}"></div>
+<div class="board">
+    <div class="bcol" th:each="c : ${cols}" th:attr="data-status=${c.key}">
+        <h2><span th:text="${STATUS[c.key]}"></span> <span class="count" th:text="${#lists.size(c.value)}">0</span></h2>
+        <div class="bcard" th:each="x : ${c.value}" draggable="true" th:attr="data-id=${x.id}">
+            <a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+            <div class="meta">
+                <span class="pri" th:classappend="${x.pri}" th:text="${x.priIcon}"></span>
+                <span class="av" th:text="${W.ownerShort(x.ownerId)}" th:title="${W.ownerName(x.ownerId)}"></span>
+                <span class="pill" th:if="${x.hasDue()}" th:classappend="${W.dueTone(x)}" th:text="${W.dueText(x)}"></span>
+                <span th:if="${!#strings.isEmpty(W.stageName(x))}" th:text="${W.stageName(x)}"></span>
+                <span th:if="${!#lists.isEmpty(x.todos)}" th:text="|☑ ${x.todoDone}/${#lists.size(x.todos)}|"></span>
+            </div>
+            <form class="move" method="post" th:action="|/work/item/${x.id}/status|" data-write="1">
+                <select name="status" data-autosubmit aria-label="상태 바꾸기">
+                    <option th:each="s : ${STATUS}" th:value="${s.key}" th:text="${s.value}" th:selected="${s.key == x.status}"></option>
+                </select>
+            </form>
+        </div>
+    </div>
+</div>
+</th:block>
+</body>
+</html>

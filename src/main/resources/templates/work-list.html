@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>업무 목록 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>업무 목록</h1>
+        <p class="hint">제목·메모·다음 행동·태그·담당자 이름으로 찾습니다. 줄을 누르면 상세 화면이 열립니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" th:href="@{/work/export(text=${q['text']},status=${q['status']},owner=${q['owner']},type=${q['type']},project=${q['project']},scope=${q['scope']},sort=${q['sort']})}">CSV 내려받기</a>
+    </div>
+</div>
+<div th:replace="~{work-parts :: quick(${q['owner'] ?: ''})}"></div>
+<div class="sticky-tools">
+    <form method="get" action="/work/list" class="toolbar">
+        <div class="search-row">
+            <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span class="sr">찾기</span>
+                <input name="text" th:value="${q['text']}" placeholder="제목·메모·태그·담당" maxlength="80" data-search-focus />
+            </label>
+            <button class="btn btn-primary" type="submit">찾기</button>
+        </div>
+        <label class="field">범위
+            <select name="scope">
+                <option value="open" th:selected="${q['scope'] == null or q['scope'] == 'open'}">진행 중(완료·보류 뺌)</option>
+                <option value="mine" th:selected="${q['scope'] == 'mine'}">내 업무</option>
+                <option value="late" th:selected="${q['scope'] == 'late'}">지연만</option>
+                <option value="done" th:selected="${q['scope'] == 'done'}">완료만</option>
+                <option value="all" th:selected="${q['scope'] == 'all'}">전체</option>
+            </select>
+        </label>
+        <label class="field">상태
+            <select name="status"><option value="">전체</option><option th:each="s : ${STATUS}" th:value="${s.key}" th:text="${s.value}" th:selected="${q['status'] == s.key}"></option></select>
+        </label>
+        <label class="field">담당
+            <select name="owner"><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${q['owner'] == o.id}"></option></select>
+        </label>
+        <label class="field">유형
+            <select name="type"><option value="">전체</option><option th:each="t : ${cfg.types}" th:value="${t.id}" th:text="${t.n}" th:selected="${q['type'] == t.id}"></option></select>
+        </label>
+        <label class="field" th:if="${!#lists.isEmpty(cfg.projects)}">과제
+            <select name="project"><option value="">전체</option><option th:each="p : ${cfg.projects}" th:value="${p.id}" th:text="${p.n}" th:selected="${q['project'] == p.id}"></option></select>
+        </label>
+        <label class="field">정렬
+            <select name="sort">
+                <option value="due" th:selected="${q['sort'] == null or q['sort'] == 'due'}">기한</option>
+                <option value="pri" th:selected="${q['sort'] == 'pri'}">우선순위</option>
+                <option value="owner" th:selected="${q['sort'] == 'owner'}">담당</option>
+                <option value="title" th:selected="${q['sort'] == 'title'}">제목</option>
+                <option value="created" th:selected="${q['sort'] == 'created'}">최근 등록</option>
+            </select>
+        </label>
+        <a class="btn" href="/work/list" th:if="${filtered}">조건 지우기</a>
+    </form>
+</div>
+<p class="count-line" role="status" th:text="|${#lists.size(rows)} 건|"></p>
+<p class="empty" th:if="${#lists.isEmpty(rows)}">조건에 맞는 업무가 없습니다.</p>
+<div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(rows)}">
+    <table class="data">
+        <thead><tr>
+            <th scope="col"></th><th scope="col">업무</th><th scope="col">상태</th><th scope="col">단계</th><th scope="col">담당</th>
+            <th scope="col">유형</th><th scope="col" class="num">기한</th><th scope="col">주기</th><th scope="col" class="num">진척</th><th scope="col">다음 행동</th>
+        </tr></thead>
+        <tbody>
+        <tr th:each="x : ${rows}">
+            <td><span class="pri" th:classappend="${x.pri}" th:text="${x.priIcon}" th:title="${x.priName}"></span></td>
+            <th scope="row"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                <span class="small muted" th:if="${!#lists.isEmpty(x.tags)}" th:text="| #${#strings.listJoin(x.tags, ' #')}|"></span></th>
+            <td class="nowrap" th:text="${x.statusName}"></td>
+            <td class="nowrap" th:text="${W.stageName(x)}"></td>
+            <td class="nowrap" th:text="${W.ownerName(x.ownerId)}"></td>
+            <td class="nowrap" th:text="${W.typeName(x.typeId)}"></td>
+            <td class="num nowrap"><span class="pill" th:if="${x.hasDue()}" th:classappend="${W.dueTone(x)}" th:text="${W.dueText(x)}"></span></td>
+            <td class="nowrap" th:text="${W.cycleLabel(x)}"></td>
+            <td class="num" th:text="|${W.percent(x)}%|"></td>
+            <td th:text="${#strings.abbreviate(x.next, 40)}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</th:block>
+</body>
+</html>

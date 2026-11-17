@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>노트·계획 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>노트·계획</h1>
+        <p class="hint">떠오른 생각을 담아 두고, 나중에 업무로 옮기거나 계획 대기함에 둡니다. 회의록·조사 메모는 노트로 남깁니다.</p>
+    </div>
+</div>
+<div class="cols-2">
+    <div>
+        <section class="card">
+            <div class="card-head"><h2>생각 담기 <span class="sub" th:text="|${#lists.size(inbox)}건|"></span></h2></div>
+            <form method="post" action="/work/new/inbox" data-write="1" class="line-add">
+                <input name="title" required maxlength="200" placeholder="떠오른 생각 한 줄" class="wide" aria-label="생각 한 줄" />
+                <button type="submit" class="btn btn-primary">담기</button>
+            </form>
+            <p class="empty" th:if="${#lists.isEmpty(inbox)}">담아 둔 생각이 없습니다.</p>
+            <ul class="wlist">
+                <li class="wrow" th:each="x : ${inbox}">
+                    <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a><small th:text="${x.created}"></small></div>
+                    <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
+                    <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" data-confirm="이 생각을 버릴까요?"><input type="hidden" name="back" value="/work/notes" /><button type="submit" class="btn btn-quiet">버리기</button></form>
+                </li>
+            </ul>
+        </section>
+        <section class="card">
+            <div class="card-head"><h2>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h2></div>
+            <form method="post" action="/work/new/plan" data-write="1" class="line-add">
+                <input name="title" required maxlength="200" placeholder="나중에 할 일" class="wide" aria-label="계획" />
+                <input name="when" maxlength="60" placeholder="예상 시기 (다음 분기)" aria-label="예상 시기" />
+                <button type="submit" class="btn btn-primary">넣기</button>
+            </form>
+            <p class="empty" th:if="${#lists.isEmpty(plans)}">계획 대기 중인 일이 없습니다.</p>
+            <ul class="wlist">
+                <li class="wrow" th:each="x : ${plans}">
+                    <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                        <small th:text="${(#strings.isEmpty(x.when) ? '' : '예상 ' + x.when) + (#strings.isEmpty(x.tick) ? '' : ' · 다시 볼 날 ' + x.tick)}"></small></div>
+                    <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
+                </li>
+            </ul>
+        </section>
+    </div>
+    <div>
+        <section class="card">
+            <div class="card-head"><h2>노트 <span class="sub" th:text="|${#lists.size(notes)}건|"></span></h2></div>
+            <form method="post" action="/work/new/note" data-write="1" class="line-add">
+                <input type="hidden" name="open" value="1" />
+                <input name="title" required maxlength="200" placeholder="노트 제목" class="wide" aria-label="노트 제목" />
+                <select name="ntype" aria-label="노트 종류"><option th:each="n : ${NOTE}" th:value="${n.key}" th:text="${n.value}" th:selected="${n.key == 'doc'}"></option></select>
+                <button type="submit" class="btn btn-primary">만들기</button>
+            </form>
+            <p class="empty" th:if="${#lists.isEmpty(notes)}">노트가 없습니다.</p>
+            <ul class="wlist">
+                <li class="wrow" th:each="x : ${notes}">
+                    <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                        <small th:text="|${NOTE[x.ntype] ?: x.kindName} · ${x.created}${#lists.isEmpty(x.tags) ? '' : ' · #' + #strings.listJoin(x.tags, ' #')}|"></small></div>
+                </li>
+            </ul>
+        </section>
+    </div>
+</div>
+</th:block>
+</body>
+</html>

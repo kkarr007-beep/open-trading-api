@@ -8,12 +8,13 @@
     <script src="/js/theme.js"></script>
     <link rel="stylesheet" href="/css/site.css" />
     <link rel="stylesheet" href="/css/local.css" />
+    <link rel="stylesheet" href="/css/modules.css" />
     <link rel="icon" type="image/png" href="/icons/app.png" />
 </head>
 <body th:classappend="${integrityOk} ? '' : 'frozen-integrity'">
     <a class="skip" href="#main">본문으로 건너뛰기</a>
     <aside class="side" id="app-nav">
-        <a class="brand" href="/todo">
+        <a class="brand" href="/work">
             <span class="brand-mark" aria-hidden="true">감</span>
             <span>감사기록</span>
         </a>
@@ -23,15 +24,31 @@
             <kbd>Ctrl K</kbd>
         </form>
         <nav id="menu" aria-label="업무 화면">
-            <p class="side-label">업무</p>
-            <a href="/todo" th:aria-current="${nav == 'todo'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>할 일</span></a>
+            <p class="side-label">업무 일정</p>
+            <a href="/work" th:aria-current="${navKey == 'work'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>오늘</span><span class="count" th:if="${workUrgent > 0}" th:text="${workUrgent}">0</span></a>
+            <a href="/work/list" th:aria-current="${navKey == 'work/list'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h11M8 12h11M8 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>업무 목록</span></a>
+            <a href="/work/board" th:aria-current="${navKey == 'work/board'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h4.5v14H4zM9.75 5h4.5v9h-4.5zM15.5 5H20v11h-4.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>칸반 보드</span></a>
+            <a href="/work/calendar" th:aria-current="${navKey == 'work/calendar'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>달력</span></a>
+            <a href="/work/annual" th:aria-current="${navKey == 'work/annual'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>연간 정기 현황</span></a>
+            <a href="/work/team" th:aria-current="${navKey == 'work/team'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.5 19c.6-3 2.6-4.5 5-4.5s4.4 1.5 5 4.5M16 11a2.5 2.5 0 1 0 0-5M16.5 14.5c2 .3 3.4 1.8 4 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>담당별 업무</span></a>
+            <a href="/work/directives" th:aria-current="${navKey == 'work/directives'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v9M12 17.5v.5M5 20h14L12 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>지시 사항</span><span class="count" th:if="${workDirs > 0}" th:text="${workDirs}">0</span></a>
+            <a href="/work/notes" th:aria-current="${navKey == 'work/notes'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h9l3 3v12H6zM9 10h6M9 14h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>노트·계획</span></a>
+            <p class="side-label">감사</p>
+            <a href="/todo" th:aria-current="${nav == 'todo'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>감사 할 일</span></a>
             <a href="/inbox" th:aria-current="${nav == 'inbox'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 6.5 5h11L20 13.5V19H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13.5h5a3 3 0 0 0 6 0h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>수집함</span><span class="count" th:if="${inboxPending > 0}" th:text="${inboxPending}">0</span></a>
             <a href="/cases" th:aria-current="${nav == 'cases'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 9h6M9 13h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>건 목록</span></a>
             <a href="/files" th:aria-current="${nav == 'files'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h6l2 2h8v9H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>자료</span></a>
             <a href="/discipline" th:aria-current="${nav == 'discipline'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 19c.8-3.2 3.3-5 6.5-5s5.700 1.800 6.500 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>징계기록</span></a>
+            <p class="side-label">사규</p>
+            <a href="/rules" th:aria-current="${navKey == 'rules'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5zM5 20.5V5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>사규 목록</span></a>
+            <a href="/rules/search" th:aria-current="${navKey == 'rules/search'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 16.5a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM15 15l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>사규 찾기</span></a>
+            <a href="/rules/marks" th:aria-current="${navKey == 'rules/marks'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15l-5-3.5-5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>북마크·메모</span></a>
+            <a href="/rules/compare" th:aria-current="${navKey == 'rules/compare'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h4M16 16h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>개정 비교</span></a>
             <p class="side-label">프로그램</p>
             <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.500 19 6.500v5c0 4.300-2.900 7.400-7 9-4.100-1.600-7-4.700-7-9v-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>관리</span></a>
             <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3.500v3M12 17.500v3M3.500 12h3M17.500 12h3M6 6l2.100 2.100M15.900 15.900 18 18M18 6l-2.100 2.100M8.100 15.900 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>설정</span></a>
+            <a href="/work/settings" th:aria-current="${navKey == 'work/settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>업무 설정</span></a>
+            <a href="/rules/settings" th:aria-current="${navKey == 'rules/settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>사규 설정</span></a>
         </nav>
         <div class="side-end">
             <div class="theme" role="group" aria-label="화면 테마">
@@ -56,7 +73,8 @@
             <button type="button" class="btn btn-quiet" data-back>← 이전 화면</button>
             <a class="btn" th:if="${listHref != null}" th:href="${listHref}" th:text="|← ${listLabel}으로|">← 목록으로</a>
             <a class="btn btn-quiet" th:if="${showCasesLink}" href="/cases">건 목록</a>
-            <a class="btn btn-quiet" th:if="${nav != 'todo'}" href="/todo">할 일</a>
+            <a class="btn btn-quiet" th:if="${navKey != 'work'}" href="/work">오늘</a>
+            <a class="btn btn-quiet" th:if="${nav != 'todo' and !#strings.startsWith(navKey, 'work') and !#strings.startsWith(navKey, 'rules')}" href="/todo">감사 할 일</a>
         </div>
         <main id="main">
             <div class="banner danger" role="alert" th:unless="${integrityOk}">
@@ -88,5 +106,6 @@
         <img id="preview-img" alt="" hidden>
     </dialog>
     <script src="/js/site.js" defer></script>
+    <script src="/js/modules.js" defer></script>
 </body>
 </html>

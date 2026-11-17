@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>북마크·메모 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>북마크·메모</h1>
+        <p class="hint">사규 읽기 화면에서 표시한 조문을 모아 봅니다.</p>
+    </div>
+</div>
+<section class="card" id="bookmarks">
+    <h2>북마크 <span class="count" th:text="${#lists.size(m.bookmarks)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(m.bookmarks)}">북마크가 없습니다. 조문 오른쪽 위 '북마크'를 누르세요.</p>
+    <a class="hit" th:each="x : ${m.bookmarks}" th:href="|/rules/${x.regId()}#a-${x.articleId()}|">
+        <strong th:text="|${x.regTitle()} · ${x.label()}|"></strong><span class="snip" th:text="|${x.text()} · ${x.at()}|"></span>
+    </a>
+</section>
+<section class="card" id="notes">
+    <h2>메모 <span class="count" th:text="${#lists.size(m.notes)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(m.notes)}">메모가 없습니다.</p>
+    <a class="hit" th:each="x : ${m.notes}" th:href="|/rules/${x.regId()}#a-${x.articleId()}|">
+        <strong th:text="|${x.regTitle()} · ${x.label()}|"></strong><span class="snip" style="white-space:pre-wrap" th:text="${x.text()}"></span>
+    </a>
+</section>
+<section class="card" id="difficult">
+    <h2>해석 어려운 조항 <span class="count" th:text="${#lists.size(m.difficult)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(m.difficult)}">표시한 조항이 없습니다.</p>
+    <a class="hit" th:each="x : ${m.difficult}" th:href="|/rules/${x.regId()}#a-${x.articleId()}|"><strong th:text="|${x.regTitle()} · ${x.label()}|"></strong></a>
+</section>
+</th:block>
+</body>
+</html>

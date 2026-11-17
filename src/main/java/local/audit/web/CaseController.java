@@ -33,15 +33,20 @@ public class CaseController {
     private final CaseService cases;
     private final DisciplineService discipline;
     private final FileStore files;
+    private final local.audit.work.WorkService work;
+    private final local.audit.rule.RuleService rules;
 
-    public CaseController(CaseService cases, DisciplineService discipline, FileStore files) {
+    public CaseController(CaseService cases, DisciplineService discipline, FileStore files,
+                          local.audit.work.WorkService work, local.audit.rule.RuleService rules) {
+        this.work = work;
+        this.rules = rules;
         this.cases = cases;
         this.discipline = discipline;
         this.files = files;
     }
 
     @GetMapping("/")
-    public String home() { return "redirect:/todo"; }
+    public String home() { return "redirect:/work"; }
 
     @GetMapping("/todo")
     public String todo(Model model) {
@@ -197,6 +202,10 @@ public class CaseController {
         model.addAttribute("caseHits", found);
         model.addAttribute("fileHits", fileHits.size() > 30 ? fileHits.subList(0, 30) : fileHits);
         model.addAttribute("peopleHits", people.size() > 30 ? people.subList(0, 30) : people);
+        model.addAttribute("workHits", work.search(term, 30));
+        model.addAttribute("W", work);
+        model.addAttribute("ruleHits", rules.search(term, null, 30));
+        model.addAttribute("ruleTerms", String.join("|", local.audit.rule.RuleService.terms(term)));
         return "search";
     }
 
