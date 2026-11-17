@@ -5,10 +5,12 @@ set -e
 PLATFORM="$1"; OUT="$2"; V="${FX_VERSION:-25.0.1}"
 REPO=https://repo.maven.apache.org/maven2/org/openjfx
 mkdir -p "$OUT"
+# 저장소가 잠시 막으면(429) 쉬었다가 다시 받는다.
+get() { for t in 1 2 3 4 5 6; do curl -fsS -o "$1" "$2" && return 0; sleep $((t * 15)); done; return 1; }
 for a in base graphics controls media web; do
-  curl -fsS -o "$OUT/javafx-$a.jar" "$REPO/javafx-$a/$V/javafx-$a-$V-$PLATFORM.jar"
+  get "$OUT/javafx-$a.jar" "$REPO/javafx-$a/$V/javafx-$a-$V-$PLATFORM.jar"
 done
-curl -fsS -o "$OUT/jdk-jsobject.jar" "$REPO/jdk-jsobject/$V/jdk-jsobject-$V-$PLATFORM.jar"
+get "$OUT/jdk-jsobject.jar" "$REPO/jdk-jsobject/$V/jdk-jsobject-$V-$PLATFORM.jar"
 JMOD="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")/jmods/jdk.xml.dom.jmod"
 [ -f "$JMOD" ] || { echo "jdk.xml.dom.jmod 을 찾지 못했습니다: $JMOD"; exit 1; }
 TMP="$(mktemp -d)"

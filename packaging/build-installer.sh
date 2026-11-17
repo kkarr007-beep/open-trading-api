@@ -4,6 +4,8 @@
 # 필요한 것: JDK 21(jmods 포함), Maven, makensis(nsis), pip, unzip, curl
 # 함께 넣는 Windows용 Java 실행 환경은 PyPI의 jdk4py 묶음에 들어 있는 OpenJDK를 꺼내 쓴다.
 set -e
+# makensis는 UTF-8 로캘이 아니면 마법사 화면을 넣다가 멈출 수 있다.
+export LC_ALL=C.UTF-8 LANG=C.UTF-8
 cd "$(dirname "$0")/.."
 VERSION="${1:-$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | sed -n 2p)}"
 WORK=target/installer

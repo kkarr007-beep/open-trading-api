@@ -48,7 +48,7 @@
 
 ## 설치해서 쓰기 (Windows)
 
-`AuditRecord-Setup.exe`를 실행하면 바탕화면과 시작 메뉴에 **감사기록** 아이콘이 생깁니다.
+`AuditRecord-Setup.exe`를 실행하면 바탕화면과 시작 메뉴에 **감사 포털** 아이콘이 생깁니다. 받는 방법은 [download/README.md](download/README.md)에 있습니다.
 
 - 관리자 권한이 필요 없고, Java를 따로 설치하지 않아도 됩니다(실행 환경과 화면 엔진을 함께 넣었습니다).
 - 아이콘을 누르면 **프로그램 자체 창**이 뜹니다. Edge나 Chrome을 쓰지 않습니다. 창을 닫으면 프로그램도 끝납니다.
