@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>개정 타임라인 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>개정 타임라인</h1>
+        <p class="hint">모든 사규의 제정·개정을 시행일 순서로 봅니다. 개정판은 앞 판과 견줄 수 있습니다.</p>
+    </div>
+</div>
+<p class="empty" th:if="${#lists.isEmpty(events)}">개정 이력이 없습니다.</p>
+<ol class="tl card" th:unless="${#lists.isEmpty(events)}">
+    <li th:each="e : ${events}">
+        <div class="d" th:text="${#strings.isEmpty(e.date()) ? '시행일 없음' : e.date()}"></div>
+        <a th:href="@{|/rules/${e.regId()}|(v=${e.versionId()})}"><strong th:text="${e.regTitle()}"></strong></a> — <span th:text="${e.label()}"></span>
+        <span class="small muted" th:text="|조 ${e.articles()}개${#strings.isEmpty(e.note()) ? '' : ' · ' + e.note()}|"></span>
+        <a class="btn btn-quiet" th:if="${e.prevVersionId() != null}" th:href="@{/rules/compare(reg=${e.regId()},v1=${e.prevVersionId()},v2=${e.versionId()})}">신구 비교</a>
+    </li>
+</ol>
+</th:block>
+</body>
+</html>

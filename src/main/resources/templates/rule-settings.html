@@ -6,7 +6,7 @@
 <div class="page-head">
     <div>
         <h1>사규 설정</h1>
-        <p class="hint" th:text="|사규 ${stats.regs}건 · 조문 ${stats.articles}개 · 데이터는 감사기록과 같은 파일에 저장되고, 관리 화면의 백업에 함께 들어갑니다.|"></p>
+        <p class="hint" th:text="|사규 ${stats.regs}건 · 조문 ${stats.articles}개 · 데이터는 감사 포털의 데이터 파일 하나에 함께 저장되고, 관리 화면의 백업에 함께 들어갑니다.|"></p>
     </div>
 </div>
 <section class="card" id="import">
@@ -34,6 +34,20 @@
     <h2>내보내기</h2>
     <p class="hint">예전 HTML 판의 백업과 같은 모양입니다. 그쪽에서 그대로 불러올 수 있습니다.</p>
     <p><a class="btn" href="/rules/data/export">JSON 내려받기</a></p>
+</section>
+<section class="card">
+    <h2>동의어 사전</h2>
+    <p class="hint">같은 뜻으로 쓰는 회사 말을 묶어 두면 사규 찾기와 상황 질의가 함께 찾습니다. 예) 겸직, 부업, 투잡</p>
+    <div class="inline-row" th:each="g : ${synonyms}">
+        <span class="wide" th:text="${#strings.listJoin(g.words, ', ')}" style="flex:1 1 300px"></span>
+        <form method="post" action="/rules/settings/synonym/delete" data-write="1"><input type="hidden" name="id" th:value="${g.id}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </div>
+    <form method="post" action="/rules/settings/synonym/add" data-write="1" class="inline-form inline-row" style="margin-top:10px">
+        <label class="field wide">새 묶음 (쉼표로 나눔)<input name="words" required maxlength="300" placeholder="겸직, 부업, 투잡" /></label>
+        <button type="submit" class="btn btn-primary">더하기</button>
+    </form>
+    <details style="margin-top:10px"><summary class="small muted" th:text="|기본으로 들어 있는 묶음 ${#lists.size(builtin)}개|"></summary>
+        <div class="small muted" th:each="g : ${builtin}" th:text="${#strings.listJoin(g, ', ')}"></div></details>
 </section>
 <section class="card">
     <h2>카테고리</h2>

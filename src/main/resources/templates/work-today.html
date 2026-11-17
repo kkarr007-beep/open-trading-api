@@ -69,7 +69,7 @@
             </ul>
         </section>
         <section class="card" th:if="${!#lists.isEmpty(v.audit)}">
-            <div class="card-head"><h2>감사 조치 회신기한 <span class="sub">감사기록에서</span></h2><a class="btn btn-quiet" href="/todo">감사 할 일</a></div>
+            <div class="card-head"><h2>감사 조치 회신기한 <span class="sub">감사 건에서</span></h2><a class="btn btn-quiet" href="/todo">감사 할 일</a></div>
             <ul class="wlist">
                 <li class="wrow" th:each="a : ${v.audit}">
                     <div class="t"><a th:href="|/cases/${a.CaseId}#action-${a.ActionId}|" th:text="${a.CaseTitle}"></a><small th:text="|${a.Sequence}. ${a.Title} · ${a.Target} · ${a.ActionState}|"></small></div>

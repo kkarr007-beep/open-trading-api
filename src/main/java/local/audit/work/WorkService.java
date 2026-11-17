@@ -34,6 +34,27 @@ public class WorkService {
     }
 
     public WorkConfig config() { return store.config(); }
+
+    /** 되돌릴 수 있게 남기고 작업한다. 실패하면 남긴 것을 버린다. */
+    public synchronized Op change(String label, java.util.function.Supplier<Op> work) {
+        store.snapshot(label);
+        Op op;
+        try {
+            op = work.get();
+        } catch (RuntimeException e) {
+            store.dropSnapshot();
+            throw e;
+        }
+        if (!op.ok) store.dropSnapshot();
+        return op;
+    }
+
+    public Op undo() {
+        String label = store.undo();
+        return label == null ? Op.bad("되돌릴 작업이 없습니다.") : Op.ok("되돌렸습니다: " + label);
+    }
+
+    public String undoLabel() { return store.undoLabel(); }
     public List<WorkItem> all() { return store.all(); }
     public WorkItem get(String id) { return store.get(id); }
 

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>인사이트·리포트 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>인사이트·리포트</h1>
+        <p class="hint">기한 준수, 처리 속도, 정기 업무 이행, 담당별 실적을 봅니다. 회의 자료와 월간 업무계획 초안을 여기서 뽑습니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" href="/work/report/weekly">주간 회의 자료</a>
+        <a class="btn" href="/work/report/month/export">다음 달 업무계획 초안 (TXT)</a>
+        <a class="btn" href="/work/export?scope=all">전체 업무 CSV</a>
+    </div>
+</div>
+<ul class="metrics">
+    <li class="metric-ok"><a href="/work/list?scope=done"><span class="metric-top" th:text="|기한 준수율 · ${v.rateSub}|">기한 준수율</span><strong th:text="${v.rate}">-</strong></a></li>
+    <li class="metric-ok"><a href="/work/list?scope=done"><span class="metric-top">평균 처리 일수 (등록~완료)</span><strong th:text="${v.avg}">-</strong></a></li>
+    <li class="metric-ok"><a href="/work/annual"><span class="metric-top" th:text="|정기 업무 이행률 · ${v.regSub}|">정기 업무</span><strong th:text="${v.regRate}">-</strong></a></li>
+    <li class="metric-warn"><a href="/work/list?scope=late"><span class="metric-top">지연 · 정체</span><strong th:text="${v.lateStall}">0</strong></a></li>
+</ul>
+<section class="card">
+    <h2>살펴볼 점</h2>
+    <ul class="tips"><li th:each="t : ${v.tips}" th:text="${t}"></li></ul>
+</section>
+<div class="cols-3">
+    <section class="card" th:each="g : ${ {'월별 유입 · 완료','담당별 실적','유형별 업무'} }" th:with="rows=${g == '월별 유입 · 완료'} ? ${v.months} : (${g == '담당별 실적'} ? ${v.owners} : ${v.types})">
+        <h2 th:text="${g}"></h2>
+        <p class="empty" th:if="${#lists.isEmpty(rows)}">자료가 없습니다.</p>
+        <div class="hbars">
+            <div class="hb" th:each="r : ${rows}">
+                <span class="hb-name" th:text="${r.name()}"></span>
+                <div class="hb-set">
+                    <div class="hb-line" th:each="e : ${r.values()}">
+                        <i th:class="|k-${e.key}|" th:style="|width:${e.value * 100.0 / v.max}%|"></i><b th:text="|${e.key} ${e.value}|"></b>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<section class="card">
+    <h2>기한을 자주 미룬 업무 <span class="sub">처음 기한이 빠듯했는지 보는 자리</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(v.moved)}">기한을 미룬 업무가 없습니다.</p>
+    <ul class="wlist">
+        <li class="wrow" th:each="x : ${v.moved}">
+            <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a><small th:text="|${W.ownerName(x.ownerId)} · 처음 기한 ${x.due0} → 지금 ${x.due}|"></small></div>
+            <span class="pill warn" th:text="|${#lists.size(x.dueLog)}회 · +${R.postponedDays(x)}일|"></span>
+        </li>
+    </ul>
+</section>
+</th:block>
+</body>
+</html>

@@ -209,7 +209,16 @@ public class RuleService {
                 }
             }
         }
-        List<String> terms = terms(query);
+        List<String> base = tokenize(query);
+        if (base.isEmpty()) base = terms(query);
+        Map<String, Double> ex = expand(base);
+        List<String> shown = new ArrayList<>(ex.keySet());
+        Map<String, List<String>> rel = new LinkedHashMap<>();
+        for (String t : base) {
+            List<String> ws = new ArrayList<>();
+            for (String w : ex.keySet()) if (w.equals(t) || related(t, w)) ws.add(w);
+            rel.put(t, ws);
+        }
         String phrase = Rules.nk(query);
         Map<String, Object> notes = Rules.map(state(), "notes");
         for (Map<String, Object> r : regs()) {
@@ -225,28 +234,94 @@ public class RuleService {
                 double s = 0;
                 int matched = 0;
                 if (phrase.length() >= 3 && body.contains(phrase)) s += 12;
-                for (String t : terms) {
-                    String k = Rules.nk(t);
-                    if (k.isEmpty()) continue;
-                    double f = 0;
-                    if (head.contains(k)) f += 5;
-                    if (rt.contains(k)) f += 3;
-                    int tc = count(body, k);
-                    if (tc > 0) f += 1 + Math.log(1 + tc) * 2;
-                    if (note.contains(k)) f += 2;
-                    if (tags.contains(k)) f += 3;
-                    if (f > 0) matched++;
-                    s += f;
+                for (String t : base) {
+                    boolean hit = false;
+                    for (String w : rel.get(t)) {
+                        String k = Rules.nk(w);
+                        if (k.isEmpty()) continue;
+                        double f = 0;
+                        if (head.contains(k)) f += 5;
+                        if (rt.contains(k)) f += 3;
+                        int tc = count(body, k);
+                        if (tc > 0) f += 1 + Math.log(1 + tc) * 2;
+                        if (note.contains(k)) f += 2;
+                        if (tags.contains(k)) f += 3;
+                        if (f > 0) hit = true;
+                        s += f * ex.get(w);
+                    }
+                    if (hit) matched++;
                 }
                 if (s <= 0) continue;
-                if (terms.size() > 1 && matched == terms.size()) s *= 1.6;
-                String why = matched == terms.size() ? "모든 낱말" : matched + "/" + terms.size() + " 낱말";
+                if (base.size() > 1 && matched == base.size()) s *= 1.6;
+                String why = base.isEmpty() ? "" : matched == base.size() ? "모든 낱말" : matched + "/" + base.size() + " 낱말";
                 hits.add(new Hit(Rules.str(r, "id"), Rules.str(r, "title"), Rules.str(a, "id"), Rules.artLabel(a),
-                    RuleRender.snippet(Rules.str(a, "content"), terms, 180), s, why));
+                    RuleRender.snippet(Rules.str(a, "content"), shown, 180), s, why));
             }
         }
         hits.sort(Comparator.comparingDouble(Hit::score).reversed());
         return hits.size() > limit ? hits.subList(0, limit) : hits;
+    }
+
+    /** t를 찾다가 동의어 w로 넓혀 찾았는지. */
+    private boolean related(String t, String w) {
+        for (List<String> g : synGroups()) if (inGroup(g, t) && g.contains(w)) return true;
+        for (Gloss gl : glossary()) if (gl.term().equals(t) && gl.aliases().contains(w)) return true;
+        return false;
+    }
+
+    // ───── 동의어·낱말 다듬기 ─────
+    public static final List<List<String>> BUILTIN_SYN = List.of(
+        List.of("음주운전", "음주", "주취", "음주측정", "면허취소", "면허정지", "품위"),
+        List.of("괴롭힘", "직장내괴롭힘", "폭언", "폭행", "갑질", "모욕", "따돌림", "성희롱", "고충"),
+        List.of("개인정보", "유출", "정보보호", "보안", "기밀", "누설", "정보주체"),
+        List.of("겸직", "영리업무", "부업", "겸업", "이중취업"),
+        List.of("지각", "근태", "결근", "무단결근", "조퇴", "출근"),
+        List.of("징계", "해고", "파면", "해임", "정직", "감봉", "견책", "징계위원회", "양정"),
+        List.of("퇴직", "퇴사", "사직", "면직"),
+        List.of("금품", "향응", "뇌물", "청탁", "접대"),
+        List.of("휴가", "연차", "병가"),
+        List.of("출장", "여비"),
+        List.of("횡령", "배임", "유용"),
+        List.of("소명", "진술", "의견진술"),
+        List.of("조사", "사실조사", "진상조사"),
+        List.of("재심", "이의신청", "불복"));
+    static final Set<String> STOP = Set.of(("의 가 이 은 는 을 를 에 에서 와 과 로 으로 및 또는 등 한 할 하는 한다 하여 해야 했을 때 경우 관련 대한 어떻게 처리 "
+        + "해야하나 하나요 되나요 있나요 무엇 직원 사원 회사 팀원 들어왔다 됐습니다 됐어요 몰래 상습 고객 거래처").split(" "));
+
+    public static List<String> tokenize(String q) {
+        List<String> out = new ArrayList<>();
+        for (String w : Txt.str(q).replaceAll("[「」『』\"'“”‘’.,?!()·]", " ").split("\\s+")) {
+            String x = w.replaceFirst("(으로|에서|에게|하면|했을|하는|했다|하다|한다|이다|이란|란|은|는|이|가|을|를|에|와|과|의|로|도|만)$", "");
+            if (!x.isEmpty() && !STOP.contains(x) && !out.contains(x)) out.add(x);
+        }
+        return out;
+    }
+
+    public List<List<String>> synGroups() {
+        List<List<String>> g = new ArrayList<>(BUILTIN_SYN);
+        for (Map<String, Object> s : Rules.maps(state(), "synonyms")) {
+            List<String> words = Rules.list(s, "words").stream().map(String::valueOf).filter(w -> !w.isBlank()).toList();
+            if (!words.isEmpty()) g.add(words);
+        }
+        return g;
+    }
+
+    public List<Map<String, Object>> userSynonyms() { return Rules.maps(state(), "synonyms"); }
+
+    static boolean inGroup(List<String> g, String t) {
+        for (String w : g) if (w.equals(t) || (t.length() >= 2 && w.length() >= 2 && (w.contains(t) || t.contains(w)))) return true;
+        return false;
+    }
+
+    /** 찾을 말을 동의어·별칭으로 넓힌다. 원래 말은 1, 넓힌 말은 0.55~0.6. */
+    public Map<String, Double> expand(List<String> terms) {
+        Map<String, Double> out = new LinkedHashMap<>();
+        for (String t : terms) out.put(t, 1.0);
+        for (String t : terms) {
+            for (List<String> g : synGroups()) if (inGroup(g, t)) for (String w : g) out.putIfAbsent(w, .55);
+            for (Gloss gl : glossary()) if (gl.term().equals(t)) for (String a : gl.aliases()) out.putIfAbsent(a, .6);
+        }
+        return out;
     }
 
     static int count(String hay, String k) {
@@ -582,5 +657,376 @@ public class RuleService {
             sb.append(Rules.str(a, "content")).append("\n\n");
         }
         return sb.toString();
+    }
+
+    // ───── 용어 사전 ─────
+    public record Gloss(String term, String def, String regId, String regTitle, String articleId, String label, String customId, List<String> aliases) { }
+
+    private List<Gloss> glossCache;
+    private long glossVersion = -1;
+
+    /** 조문의 "○○"이란 … 정의를 뽑고, 직접 넣은 용어를 더한다. */
+    public synchronized List<Gloss> glossary() {
+        if (glossCache != null && glossVersion == store.version()) return glossCache;
+        List<Gloss> g = new ArrayList<>();
+        Pattern def = Pattern.compile("[\"“‘']([^\"”’']{1,20})[\"”’']\\s*(?:이)?란\\s*([^.\\n]{3,200})");
+        for (Map<String, Object> r : regs())
+            for (Map<String, Object> a : Rules.arts(r)) {
+                Matcher m = def.matcher(Rules.str(a, "content"));
+                while (m.find()) g.add(new Gloss(m.group(1).strip(), m.group(2).strip(), Rules.str(r, "id"), Rules.str(r, "title"),
+                    Rules.str(a, "id"), Rules.artLabel(a), null, List.of()));
+            }
+        for (Map<String, Object> c : Rules.maps(state(), "glossaryCustom"))
+            g.add(new Gloss(Rules.str(c, "term"), Rules.str(c, "def"), null, null, null, null, Rules.str(c, "id"),
+                Rules.list(c, "aliases").stream().map(String::valueOf).toList()));
+        glossCache = g;
+        glossVersion = store.version();
+        return g;
+    }
+
+    public Op glossaryEdit(String what, Map<String, String> p) {
+        List<Map<String, Object>> list = Rules.maps(state(), "glossaryCustom");
+        if ("delete".equals(what)) {
+            if (!list.removeIf(x -> Rules.str(x, "id").equals(p.get("id")))) return Op.fail(404, "용어를 찾을 수 없습니다.");
+            store.saveState();
+            return Op.ok("용어를 지웠습니다.");
+        }
+        String term = Txt.clean(p.get("term"), 40, false);
+        String def = Txt.clean(p.get("def"), 1000, true);
+        if (Txt.blank(term) || def == null) return Op.bad("용어와 정의를 확인하세요.");
+        Map<String, Object> x = new LinkedHashMap<>();
+        x.put("id", Rules.uid("g"));
+        x.put("term", term);
+        x.put("def", def);
+        List<String> al = new ArrayList<>();
+        for (String a : Txt.str(p.get("aliases")).split("[,，]")) if (!a.isBlank()) al.add(a.strip());
+        x.put("aliases", al);
+        list.add(x);
+        store.saveState();
+        return Op.ok("용어를 넣었습니다. 찾기와 상황 질의에서 별칭까지 함께 찾습니다.");
+    }
+
+    public Op synonymEdit(String what, Map<String, String> p) {
+        List<Map<String, Object>> list = Rules.maps(state(), "synonyms");
+        if ("delete".equals(what)) {
+            if (!list.removeIf(x -> Rules.str(x, "id").equals(p.get("id")))) return Op.fail(404, "동의어 묶음을 찾을 수 없습니다.");
+            store.saveState();
+            return Op.ok("동의어 묶음을 지웠습니다.");
+        }
+        List<String> words = new ArrayList<>();
+        for (String w : Txt.str(p.get("words")).split("[,，\\s]+")) if (!w.isBlank() && !words.contains(w.strip())) words.add(w.strip());
+        if (words.size() < 2) return Op.bad("같은 뜻의 말을 쉼표로 둘 이상 적으세요.");
+        Map<String, Object> x = new LinkedHashMap<>();
+        x.put("id", Rules.uid("sy"));
+        x.put("words", words);
+        list.add(x);
+        store.saveState();
+        return Op.ok("동의어 묶음을 넣었습니다.");
+    }
+
+    // ───── 상황 질의 ─────
+    static final Pattern MISCONDUCT = Pattern.compile("(음주|괴롭힘|폭언|폭행|성희롱|유출|누설|횡령|배임|금품|향응|겸직|부업|영리|결근|지각|무단|위반|비위|부정|도박|허위|사고)");
+    public static final Map<String, String> ROLE = new LinkedHashMap<>();
+    static {
+        ROLE.put("ground", "① 근거 (의무·금지)");
+        ROLE.put("cause", "② 징계 사유");
+        ROLE.put("level", "③ 처벌·징계 수위");
+        ROLE.put("proc", "④ 절차 (조사·소명·위원회)");
+        ROLE.put("remedy", "⑤ 재심·구제");
+        ROLE.put("etc", "기타 관련 조항");
+    }
+
+    static String roleOf(String title, String text) {
+        String t = title + " " + text;
+        if (Pattern.compile("재심|이의").matcher(title).find()) return "remedy";
+        if (Pattern.compile("징계\\s*사유|해고\\s*사유|징계\\s*대상").matcher(title).find()) return "cause";
+        if (Pattern.compile("양정|가중|감경").matcher(title).find() || (title.contains("종류") && Pattern.compile("징계|해고").matcher(t).find())) return "level";
+        if (Pattern.compile("징계\\s*위원회|절차|소명|조사|의결|통보|출석").matcher(title).find()) return "proc";
+        if (Pattern.compile("(하여서는|아니\\s*된다|금지|하여야\\s*한다|의무)").matcher(t).find()) return "ground";
+        return "etc";
+    }
+
+    public static List<String> sentences(String t) {
+        List<String> out = new ArrayList<>();
+        for (String s : RuleParser.mdStrip(Txt.str(t)).replace('\n', ' ').split("(?<=[다.])\\s+")) if (!s.isBlank()) out.add(s.strip());
+        return out;
+    }
+
+    public record Cite(String text, String regId, String articleId, String source) { }
+    public record SolHit(Hit hit, String role) { }
+
+    public Map<String, Object> solve(String q) {
+        String query = Txt.str(q).strip();
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("q", query);
+        if (query.isEmpty()) return v;
+        List<Hit> found = search(query, null, 200);
+        List<Hit> pool = new ArrayList<>();
+        for (Hit h : found) if (h.score() >= 1.5 || "조 번호 일치".equals(h.why())) { pool.add(h); if (pool.size() >= 14) break; }
+        boolean mis = MISCONDUCT.matcher(query).find();
+        if (!mis) for (int i = 0; i < Math.min(5, pool.size()); i++) if (articleText(pool.get(i)).contains("징계")) mis = true;
+        if (mis) {
+            Set<String> have = new HashSet<>();
+            for (Hit h : pool) have.add(h.regId() + "::" + h.articleId());
+            for (Map<String, Object> r : regs())
+                for (Map<String, Object> a : Rules.arts(r))
+                    if (Pattern.compile("징계|양정|재심|소명|사실\\s*조사|의결").matcher(Rules.str(a, "title")).find()
+                        && have.add(Rules.str(r, "id") + "::" + Rules.str(a, "id")))
+                        pool.add(new Hit(Rules.str(r, "id"), Rules.str(r, "title"), Rules.str(a, "id"), Rules.artLabel(a),
+                            RuleRender.snippet(Rules.str(a, "content"), List.of(), 180), .5, "징계 절차 자동 연계"));
+        }
+        List<String> terms = new ArrayList<>(expand(tokenize(query)).keySet());
+        Map<String, List<SolHit>> groups = new LinkedHashMap<>();
+        for (String k : ROLE.keySet()) groups.put(k, new ArrayList<>());
+        Map<String, Integer> levels = new LinkedHashMap<>();
+        List<Cite> cautions = new ArrayList<>(), deadlines = new ArrayList<>(), notesOut = new ArrayList<>();
+        List<String> risks = new ArrayList<>();
+        Map<String, Object> notes = Rules.map(state(), "notes");
+        Pattern lv = Pattern.compile("파면|해임|해고|강등|정직(?:\\s*\\d+\\s*개월(?:\\s*이상)?)?|감봉(?:\\s*\\d+\\s*개월)?|견책");
+        Pattern dl = Pattern.compile("\\d+\\s*(?:일|개월|시간)\\s*(?:이내|전까지|전|까지)");
+        Pattern caution = Pattern.compile("다만|예외|불구하고|가중|감경|아니한다|병과|지체\\s*없이");
+        Set<String> dlSeen = new HashSet<>();
+        for (Hit h : pool) {
+            Map<String, Object> a = article(h.regId(), h.articleId());
+            if (a == null || Rules.bool(a, "supp")) continue;
+            String text = RuleParser.mdStrip(Rules.str(a, "content"));
+            String role = roleOf(Rules.str(a, "title"), text);
+            groups.get(role).add(new SolHit(h, role));
+            String src = h.regTitle() + " " + Rules.str(a, "number");
+            String[] lines = text.split("\n");
+            boolean anyRel = false;
+            for (String l : lines) if (relevant(l, terms)) anyRel = true;
+            for (String l : lines) {
+                boolean rel = relevant(l, terms);
+                if (!rel && !("level".equals(role) && !anyRel)) continue;
+                Matcher m = lv.matcher(l);
+                while (m.find()) levels.merge(m.group().replaceAll("\\s+", " "), rel ? 3 : 1, Integer::sum);
+            }
+            for (String sn : sentences(text)) {
+                if (caution.matcher(sn).find() && (relevant(sn, terms) || !"etc".equals(role)) && cautions.size() < 7)
+                    cautions.add(new Cite(sn, h.regId(), h.articleId(), src));
+                Matcher d = dl.matcher(sn);
+                while (d.find()) if (dlSeen.add(d.group() + h.articleId()) && deadlines.size() < 6) deadlines.add(new Cite(d.group(), h.regId(), h.articleId(), src));
+            }
+            Object note = notes.get(h.regId() + "::" + h.articleId());
+            if (note != null && !note.toString().isBlank()) notesOut.add(new Cite(note.toString(), h.regId(), h.articleId(), src));
+            if (Rules.bool(a, "difficult")) risks.add(Rules.artLabel(a) + " — 해석 어려운 조항으로 표시됨: 인사·법무 확인 권장");
+        }
+        if (query.contains("음주")) risks.add("형사처벌(도로교통법)과 별개로 사내 징계가 가능합니다. 혈중알코올농도·사고 여부·업무 관련성(사내 차량, 근무시간)이 양정의 핵심 사실관계입니다.");
+        if (Pattern.compile("괴롭힘|성희롱").matcher(query).find()) risks.add("근로기준법 제76조의3: 신고자·피해자에 대한 불리한 처우 금지, 조사 중 피해자 보호조치 의무(위반 시 형사처벌). 조사 내용 비밀 유지.");
+        if (Pattern.compile("개인정보|유출").matcher(query).find()) risks.add("개인정보 보호법상 유출 통지·신고 기한(72시간)을 놓치면 회사가 과징금·과태료 대상이 됩니다. 징계보다 통지·신고를 먼저 처리하세요.");
+        if (Pattern.compile("겸직|부업|영리").matcher(query).find()) risks.add("근무시간 외 겸직을 일률 금지하면 다툼 소지가 있습니다. 업무 지장·경업·회사 명예 침해 여부를 기준으로 판단하세요.");
+        if (Pattern.compile("지각|결근").matcher(query).find()) risks.add("징계 전 근태 기록(출입 기록·승인 내역)과 사전 경고 이력을 확보해야 양정의 정당성이 인정됩니다.");
+        if (mis || levels.keySet().stream().anyMatch(k -> Pattern.compile("해고|파면|해임").matcher(k).find()))
+            risks.add("해고 등 중징계는 사유·시기를 서면 통지해야 효력이 있고(근로기준법 제27조), 소명 기회 미부여 등 절차 하자 시 부당징계 위험이 있습니다.");
+        List<Map.Entry<String, Integer>> le = new ArrayList<>(levels.entrySet());
+        le.sort((x, y) -> y.getValue() - x.getValue());
+        if (le.stream().anyMatch(x -> x.getValue() >= 3)) le.removeIf(x -> x.getValue() < 3);
+        List<String> lvList = le.stream().map(Map.Entry::getKey).toList();
+        String top = lvList.stream().filter(l -> Pattern.compile("파면|해임|해고").matcher(l).find()).findFirst()
+            .orElse(lvList.stream().filter(l -> Pattern.compile("정직|강등|감봉").matcher(l).find()).findFirst().orElse(lvList.isEmpty() ? null : lvList.get(0)));
+        groups.values().removeIf(List::isEmpty);
+        v.put("groups", groups);
+        v.put("count", groups.values().stream().mapToInt(List::size).sum());
+        v.put("levels", lvList);
+        v.put("top", top);
+        v.put("cautions", cautions);
+        v.put("deadlines", deadlines);
+        v.put("risks", risks);
+        v.put("notes", notesOut);
+        v.put("terms", String.join("|", terms));
+        return v;
+    }
+
+    public static String levelTone(String l) {
+        return Pattern.compile("파면|해임|해고").matcher(l).find() ? "hi" : Pattern.compile("정직|강등|감봉").matcher(l).find() ? "md" : "lo";
+    }
+
+    private static boolean relevant(String s, List<String> terms) {
+        String n = Rules.nk(s);
+        for (String t : terms) if (!Rules.nk(t).isEmpty() && n.contains(Rules.nk(t))) return true;
+        return false;
+    }
+
+    private String articleText(Hit h) {
+        Map<String, Object> a = article(h.regId(), h.articleId());
+        return a == null ? "" : Rules.str(a, "content");
+    }
+
+    Map<String, Object> article(String regId, String aid) {
+        Map<String, Object> r = reg(regId);
+        if (r == null) return null;
+        for (Map<String, Object> a : Rules.arts(r)) if (Rules.str(a, "id").equals(aid)) return a;
+        return null;
+    }
+
+    // ───── 개정 타임라인 ─────
+    public record Event(String regId, String regTitle, String versionId, String prevVersionId, String label, String date, int articles, String note) { }
+
+    public List<Event> timeline() {
+        List<Event> ev = new ArrayList<>();
+        for (Map<String, Object> r : regs()) {
+            List<Map<String, Object>> vs = Rules.maps(r, "versions");
+            for (int i = 0; i < vs.size(); i++) {
+                Map<String, Object> v = vs.get(i);
+                String note = Rules.str(v, "note").isEmpty() ? Rules.str(v, "reason") : Rules.str(v, "note");
+                ev.add(new Event(Rules.str(r, "id"), Rules.str(r, "title"), Rules.str(v, "id"), i > 0 ? Rules.str(vs.get(i - 1), "id") : null,
+                    Rules.str(v, "label"), date(Rules.str(v, "effectiveDate")), Rules.maps(v, "articles").size(), note));
+            }
+        }
+        ev.sort(Comparator.comparing(Event::date).reversed());
+        return ev;
+    }
+
+    // ───── 전체 목차 ─────
+    public record IndexArt(String id, String number, String title, String chapter, boolean newChapter) { }
+    public record IndexReg(RegRow reg, List<IndexArt> arts, int hits) { }
+    public record IndexGroup(String name, List<IndexReg> regs) { }
+
+    public List<IndexGroup> masterIndex(String q) {
+        String k = Rules.nk(q);
+        List<IndexGroup> out = new ArrayList<>();
+        for (Group g : groups()) {
+            List<IndexReg> rs = new ArrayList<>();
+            for (RegRow row : g.regs()) {
+                Map<String, Object> r = reg(row.id());
+                boolean regHit = k.isEmpty() || Rules.nk(row.title()).contains(k);
+                List<IndexArt> as = new ArrayList<>();
+                String last = null;
+                for (Map<String, Object> a : Rules.arts(r)) {
+                    boolean hit = regHit || Rules.nk(Rules.str(a, "number") + " " + Rules.str(a, "title")).contains(k)
+                        || Rules.nk(RuleParser.mdStrip(Rules.str(a, "content"))).contains(k);
+                    if (!hit) continue;
+                    String ch = Rules.str(a, "chapter");
+                    as.add(new IndexArt(Rules.str(a, "id"), Rules.str(a, "number"), Rules.str(a, "title"), ch, !ch.isEmpty() && !ch.equals(last) && k.isEmpty()));
+                    last = ch;
+                }
+                if (regHit || !as.isEmpty()) rs.add(new IndexReg(row, as, as.size()));
+            }
+            if (!rs.isEmpty()) out.add(new IndexGroup(g.name(), rs));
+        }
+        return out;
+    }
+
+    // ───── 감사점검 추출·체크리스트 ─────
+    static final List<String> AUDIT_KW = List.of("하여야 한다", "아니 된다", "금지", "승인", "보고", "보관", "점검", "기록", "통지", "신고", "이내");
+    public record ScanItem(String key, String regId, String regTitle, String articleId, String label, String sentence, List<String> keywords) { }
+
+    public List<ScanItem> auditScan(String filter) {
+        String f = Rules.nk(filter);
+        List<ScanItem> out = new ArrayList<>();
+        for (Map<String, Object> r : regs())
+            for (Map<String, Object> a : Rules.arts(r)) {
+                List<String> ss = sentences(Rules.str(a, "content"));
+                for (int i = 0; i < ss.size(); i++) {
+                    String sn = ss.get(i);
+                    List<String> k = AUDIT_KW.stream().filter(sn::contains).toList();
+                    if (k.isEmpty()) continue;
+                    if (!f.isEmpty() && !Rules.nk(sn + " " + Rules.str(r, "title") + " " + Rules.str(a, "number")).contains(f)) continue;
+                    out.add(new ScanItem(Rules.str(r, "id") + "::" + Rules.str(a, "id") + "::" + i, Rules.str(r, "id"), Rules.str(r, "title"),
+                        Rules.str(a, "id"), Rules.str(r, "title") + " " + Rules.str(a, "number"), sn, k));
+                }
+            }
+        return out;
+    }
+
+    public Op checklistFromScan(String title, List<String> keys) {
+        if (keys == null || keys.isEmpty()) return Op.bad("항목을 고르세요.");
+        Map<String, ScanItem> all = new LinkedHashMap<>();
+        for (ScanItem x : auditScan(null)) all.put(x.key(), x);
+        List<Object> items = new ArrayList<>();
+        for (String k : keys) {
+            ScanItem x = all.get(k);
+            if (x == null) continue;
+            Map<String, Object> it = new LinkedHashMap<>();
+            it.put("id", Rules.uid("ci"));
+            it.put("text", x.sentence());
+            it.put("done", false);
+            Map<String, Object> ref = new LinkedHashMap<>();
+            ref.put("regId", x.regId());
+            ref.put("articleId", x.articleId());
+            it.put("refs", new ArrayList<>(List.of(ref)));
+            items.add(it);
+        }
+        if (items.isEmpty()) return Op.bad("고른 항목을 찾지 못했습니다. 화면을 새로 고치세요.");
+        Map<String, Object> c = new LinkedHashMap<>();
+        c.put("id", Rules.uid("cl"));
+        String t = Txt.clean(title, 120, false);
+        c.put("title", Txt.blank(t) ? "감사 점검 " + Kst.today() : t);
+        c.put("items", items);
+        Rules.list(state(), "checklists").add(0, c);
+        store.saveState();
+        return Op.ok("체크리스트를 만들었습니다 · 항목 " + items.size() + "개.", Rules.str(c, "id"));
+    }
+
+    public record CheckRef(String regId, String articleId, String label) { }
+    public record CheckItem(String id, String text, boolean done, List<CheckRef> refs) { }
+    public record Checklist(String id, String title, List<CheckItem> items, int done) { }
+
+    public List<Checklist> checklists() {
+        List<Checklist> out = new ArrayList<>();
+        for (Map<String, Object> c : Rules.maps(state(), "checklists")) {
+            List<CheckItem> items = new ArrayList<>();
+            int d = 0;
+            for (Map<String, Object> it : Rules.maps(c, "items")) {
+                if (Rules.str(it, "id").isEmpty()) it.put("id", Rules.uid("ci"));
+                List<CheckRef> refs = new ArrayList<>();
+                for (Map<String, Object> rf : Rules.maps(it, "refs")) {
+                    Mark m = mark(Rules.str(rf, "regId"), Rules.str(rf, "articleId"), "", "");
+                    if (m != null) refs.add(new CheckRef(m.regId(), m.articleId(), m.regTitle() + " " + m.label()));
+                }
+                boolean done = Rules.bool(it, "done");
+                if (done) d++;
+                items.add(new CheckItem(Rules.str(it, "id"), Rules.str(it, "text"), done, refs));
+            }
+            if (Rules.str(c, "id").isEmpty()) c.put("id", Rules.uid("cl"));
+            out.add(new Checklist(Rules.str(c, "id"), Rules.str(c, "title"), items, d));
+        }
+        return out;
+    }
+
+    public Op checklist(String what, Map<String, String> p) {
+        List<Map<String, Object>> lists = Rules.maps(state(), "checklists");
+        if ("new".equals(what)) {
+            String t = Txt.clean(p.get("title"), 120, false);
+            if (Txt.blank(t)) return Op.bad("체크리스트 이름을 적어 주세요.");
+            Map<String, Object> c = new LinkedHashMap<>();
+            c.put("id", Rules.uid("cl"));
+            c.put("title", t);
+            c.put("items", new ArrayList<>());
+            Rules.list(state(), "checklists").add(0, c);
+            store.saveState();
+            return Op.ok("체크리스트를 만들었습니다.");
+        }
+        Map<String, Object> c = lists.stream().filter(x -> Rules.str(x, "id").equals(p.get("id"))).findFirst().orElse(null);
+        if (c == null) return Op.fail(404, "체크리스트를 찾을 수 없습니다.");
+        List<Map<String, Object>> items = Rules.maps(c, "items");
+        Map<String, Object> it = items.stream().filter(x -> Rules.str(x, "id").equals(p.get("item"))).findFirst().orElse(null);
+        switch (what) {
+            case "delete" -> lists.remove(c);
+            case "add" -> {
+                String t = Txt.clean(p.get("text"), 4000, true);
+                if (Txt.blank(t)) return Op.bad("항목을 적어 주세요.");
+                for (String line : t.split("\n")) {
+                    if (line.isBlank()) continue;
+                    Map<String, Object> x = new LinkedHashMap<>();
+                    x.put("id", Rules.uid("ci"));
+                    x.put("text", line.strip());
+                    x.put("done", false);
+                    x.put("refs", new ArrayList<>());
+                    items.add(x);
+                }
+            }
+            case "toggle" -> { if (it == null) return Op.fail(404, "항목을 찾을 수 없습니다."); it.put("done", !Rules.bool(it, "done")); }
+            case "remove" -> { if (it == null) return Op.fail(404, "항목을 찾을 수 없습니다."); items.remove(it); }
+            case "rename" -> {
+                String t = Txt.clean(p.get("title"), 120, false);
+                if (Txt.blank(t)) return Op.bad("이름을 적어 주세요.");
+                c.put("title", t);
+            }
+            default -> { return Op.fail(404, "없는 작업입니다."); }
+        }
+        store.saveState();
+        return Op.ok("delete".equals(what) ? "체크리스트를 지웠습니다." : "체크리스트를 고쳤습니다.");
     }
 }

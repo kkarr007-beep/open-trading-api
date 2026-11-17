@@ -10,6 +10,29 @@
     }
   }, true);
 
+  // 모두 고르기
+  document.addEventListener("change", function (event) {
+    var all = event.target.closest && event.target.closest("[data-check-all]");
+    if (!all) return;
+    var form = all.form || document;
+    form.querySelectorAll('input[type=checkbox][name="' + all.getAttribute("data-check-all") + '"]').forEach(function (c) { c.checked = all.checked; });
+  });
+
+  // 업무 일정 화면에서 Ctrl+Z: 마지막 작업을 되돌린다
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== "z") return;
+    if (location.pathname.indexOf("/work") !== 0) return;
+    var a = document.activeElement;
+    if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable)) return;
+    event.preventDefault();
+    fetch("/work/undo", { method: "POST", headers: { "X-Audit-Fetch": "1" } })
+      .then(function (r) { return r.json(); })
+      .then(function (p) {
+        if (window.auditToast) window.auditToast(p.message || "");
+        if (p.ok) setTimeout(function () { location.reload(); }, 500);
+      }).catch(function () { });
+  });
+
   // 고르면 바로 보낸다
   document.addEventListener("change", function (event) {
     var el = event.target;

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>점검 체크리스트 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>점검 체크리스트</h1>
+        <p class="hint">감사점검 추출에서 고른 문장이나 직접 적은 항목으로 체크리스트를 만들고, 점검하면서 표시합니다. 근거 조문으로 바로 갑니다.</p>
+    </div>
+    <a class="btn" href="/rules/scan">감사점검 추출</a>
+</div>
+<section class="card">
+    <form method="post" action="/rules/checklists/new" data-write="1" class="inline-form inline-row">
+        <label class="field wide">새 체크리스트<input name="title" required maxlength="120" placeholder="예) 2026 하반기 개인정보 점검" /></label>
+        <button type="submit" class="btn btn-primary">만들기</button>
+    </form>
+</section>
+<p class="empty" th:if="${#lists.isEmpty(lists)}">체크리스트가 없습니다. 감사점검 추출에서 만들 수 있습니다.</p>
+<section class="card" th:each="c : ${lists}">
+    <div class="card-head">
+        <h2 th:text="${c.title()}"></h2>
+        <span class="pill" th:classappend="${c.done() == #lists.size(c.items()) and c.done() > 0} ? 'ok'" th:text="|${c.done()}/${#lists.size(c.items())}|"></span>
+        <button type="button" class="btn btn-quiet" data-print>인쇄</button>
+        <form method="post" action="/rules/checklists/delete" data-write="1" th:data-confirm="|'${c.title()}' 체크리스트를 지울까요?|">
+            <input type="hidden" name="id" th:value="${c.id()}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </div>
+    <div class="prog" style="margin-bottom:8px"><i th:style="|width:${#lists.isEmpty(c.items()) ? 0 : c.done() * 100 / #lists.size(c.items())}%|"></i></div>
+    <div class="cl-item" th:each="x : ${c.items()}" th:classappend="${x.done()} ? 'd'">
+        <form method="post" action="/rules/checklists/toggle" data-write="1">
+            <input type="hidden" name="id" th:value="${c.id()}" /><input type="hidden" name="item" th:value="${x.id()}" />
+            <button type="submit" class="chk" th:classappend="${x.done()} ? 'on'" th:text="${x.done()} ? '✓' : ''" th:aria-label="${x.done()} ? '점검 취소' : '점검 완료'"></button>
+        </form>
+        <span><th:block th:text="${x.text()}"></th:block>
+            <a class="small" th:each="r : ${x.refs()}" th:href="|/rules/${r.regId()}#a-${r.articleId()}|" th:text="| · ${r.label()}|"></a></span>
+        <form method="post" action="/rules/checklists/remove" data-write="1">
+            <input type="hidden" name="id" th:value="${c.id()}" /><input type="hidden" name="item" th:value="${x.id()}" />
+            <button type="submit" class="btn btn-quiet" aria-label="항목 지우기">✕</button>
+        </form>
+    </div>
+    <form method="post" action="/rules/checklists/add" data-write="1" style="margin-top:8px">
+        <input type="hidden" name="id" th:value="${c.id()}" />
+        <label class="field grow">항목 더하기 <span class="field-note">여러 줄을 넣으면 줄마다 항목이 됩니다.</span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
+        <p style="margin-top:6px"><button type="submit" class="btn">더하기</button></p>
+    </form>
+</section>
+</th:block>
+</body>
+</html>

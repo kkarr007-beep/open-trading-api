@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>주간 회의 자료 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|${cfg.partName} · 출력 ${today}|">파트</p>
+        <h1 th:text="${v.title}">주간 업무 회의 자료</h1>
+    </div>
+    <div class="row-actions no-print">
+        <a class="btn" href="/work/insight">인사이트</a>
+        <button type="button" class="btn btn-primary" data-print>인쇄</button>
+    </div>
+</div>
+<section class="card report" th:each="s : ${v.sections}">
+    <h2 th:text="|${s.key} (${#lists.size(s.value)})|"></h2>
+    <p class="empty" th:if="${#lists.isEmpty(s.value)}">없음</p>
+    <div class="table-wrap" th:unless="${#lists.isEmpty(s.value)}">
+        <table class="data">
+            <thead><tr><th scope="col">업무</th><th scope="col">담당</th><th scope="col">상태</th><th scope="col" class="num">기한</th><th scope="col">다음 행동</th></tr></thead>
+            <tbody><tr th:each="x : ${s.value}">
+                <th scope="row"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a></th>
+                <td class="nowrap" th:text="${W.ownerName(x.ownerId)}"></td>
+                <td class="nowrap" th:text="${x.statusName}"></td>
+                <td class="num nowrap" th:text="${x.due}"></td>
+                <td th:text="${x.next}"></td>
+            </tr></tbody>
+        </table>
+    </div>
+</section>
+<section class="card report">
+    <h2 th:text="|미처리 지시 (${#lists.size(v.dirs)})|"></h2>
+    <p class="empty" th:if="${#lists.isEmpty(v.dirs)}">없음</p>
+    <div class="table-wrap" th:unless="${#lists.isEmpty(v.dirs)}">
+        <table class="data">
+            <thead><tr><th scope="col">지시</th><th scope="col">지시한 곳</th><th scope="col">담당</th><th scope="col" class="num">기한</th></tr></thead>
+            <tbody><tr th:each="x : ${v.dirs}">
+                <th scope="row" th:text="${x.title}"></th><td th:text="${x.from}"></td><td th:text="${W.ownerName(x.ownerId)}"></td><td class="num" th:text="${x.due}"></td>
+            </tr></tbody>
+        </table>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

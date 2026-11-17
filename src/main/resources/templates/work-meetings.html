@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>회의·쟁점 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>회의·쟁점</h1>
+        <p class="hint">회의록을 넣으면 결정 사항과 조치 후보를 뽑아 줍니다. 고른 조치만 업무로 올립니다. 쟁점은 회의마다 되풀이되는 주제로, 회의록에 이름이 나오면 언급 이력이 붙습니다.</p>
+    </div>
+</div>
+<nav class="section-tabs" aria-label="회의·쟁점">
+    <a href="/work/meetings" th:aria-current="${tab == 'meet'} ? 'page'" th:text="|회의록 (${#lists.size(meetings)})|">회의록</a>
+    <a href="/work/meetings?tab=issue" th:aria-current="${tab == 'issue'} ? 'page'" th:text="|쟁점 (${#lists.size(issues)})|">쟁점</a>
+    <a href="/work/meetings?tab=new" th:aria-current="${tab == 'new'} ? 'page'">회의록 넣기</a>
+</nav>
+
+<section class="card" th:if="${tab == 'new'}">
+    <h2>회의록 넣기</h2>
+    <form method="post" action="/work/meetings/new" data-write="1" enctype="multipart/form-data">
+        <div class="form-grid">
+            <label class="field grow">회의명 <span class="field-note">파일을 고르고 비워 두면 파일 이름을 씁니다.</span><input name="title" maxlength="200" placeholder="예) 영업사업부 정례회의" /></label>
+            <label class="field">날짜<input name="mdate" type="date" th:value="${today}" /></label>
+            <label class="field">조직<input name="org" maxlength="80" placeholder="OO사업부" /></label>
+        </div>
+        <div class="drop">
+            <p class="drop-copy"><strong>회의록 파일을 고르거나 끌어 놓으세요</strong> (txt, 한글, 워드, PDF)</p>
+            <input type="file" name="upload" accept=".txt,.md,.hwp,.hwpx,.docx,.doc,.pdf" aria-label="회의록 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <label class="field grow" style="margin-top:12px">회의록 붙여 넣기<textarea name="text" rows="14" class="textarea-wide"></textarea></label>
+        <p class="hint">'결정' 제목 아래 줄은 결정 사항으로, '요청·검토·보고·제출·회신·까지·담당' 같은 말이 든 줄은 조치 후보로 뽑습니다.</p>
+        <p style="margin-top:10px"><button type="submit" class="btn btn-primary">넣고 조치 후보 뽑기</button></p>
+    </form>
+</section>
+
+<th:block th:if="${tab == 'issue'}">
+<section class="card">
+    <h2>쟁점 등록</h2>
+    <form method="post" action="/work/issues/new" data-write="1" class="inline-form inline-row">
+        <label class="field wide">쟁점 이름<input name="title" required maxlength="120" placeholder="예) 판매채널 수수료" /></label>
+        <label class="field">조직<input name="org" maxlength="80" /></label>
+        <button type="submit" class="btn btn-primary">등록</button>
+    </form>
+    <form method="post" action="/work/issues/scan" data-write="1"><button type="submit" class="btn">회의록 다시 훑기</button></form>
+</section>
+<section class="card">
+    <h2>쟁점 <span class="count" th:text="${#lists.size(issues)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(issues)}">쟁점이 없습니다.</p>
+    <div class="issue" th:each="x : ${issues}" th:with="ms=${R.mentions(x)}">
+        <div class="wrow">
+            <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                <small th:text="|${x.org ?: ''} · 언급 ${#lists.size(ms)}회${#lists.isEmpty(ms) ? '' : ' · 최근 ' + ms[#lists.size(ms) - 1].mdate}|"></small></div>
+            <form method="post" th:action="|/work/issues/${x.id}/state|" data-write="1">
+                <select name="state" data-autosubmit aria-label="쟁점 상태" class="mini-select">
+                    <option value="open" th:selected="${R.issueState(x) == 'open'}">진행</option>
+                    <option value="watch" th:selected="${R.issueState(x) == 'watch'}">지켜보기</option>
+                    <option value="closed" th:selected="${R.issueState(x) == 'closed'}">종결</option>
+                </select>
+            </form>
+            <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
+        </div>
+        <ul class="loglist" th:unless="${#lists.isEmpty(ms)}" style="margin:0 0 10px 12px">
+            <li th:each="m : ${ms}"><small th:text="${m.mdate}"></small><a th:href="|/work/meetings?id=${m.meetId}|" th:text="${#strings.isEmpty(m.t) ? '(회의명에 언급)' : m.t}"></a></li>
+        </ul>
+    </div>
+</section>
+</th:block>
+
+<div class="meet-layout" th:if="${tab == 'meet'}">
+    <section class="card">
+        <h2>회의록</h2>
+        <p class="empty" th:if="${#lists.isEmpty(meetings)}">회의록이 없습니다. '회의록 넣기'를 누르세요.</p>
+        <ul class="wlist">
+            <li class="wrow" th:each="m : ${meetings}" th:classappend="${cur != null and cur.id == m.id} ? 'sel'">
+                <div class="t"><a th:href="|/work/meetings?id=${m.id}|" th:text="${m.title}"></a><small th:text="|${m.mdate ?: m.created} ${m.org ?: ''}|"></small></div>
+            </li>
+        </ul>
+    </section>
+    <section class="card" th:if="${cur != null}">
+        <div class="card-head"><h2 th:text="${cur.title}"></h2><span class="sub" th:text="|${cur.mdate ?: ''} ${cur.org ?: ''}|"></span>
+            <a class="btn btn-quiet" th:href="|/work/item/${cur.id}|">고치기</a><button type="button" class="btn btn-quiet" data-print>인쇄</button></div>
+        <h3 class="h3">결정 사항</h3>
+        <p class="empty" th:if="${#lists.isEmpty(decisions)}">결정 사항이 없습니다.</p>
+        <ul class="tips"><li th:each="d : ${decisions}" th:text="${d}"></li></ul>
+        <h3 class="h3">이 회의에서 나온 업무</h3>
+        <p class="empty" th:if="${#lists.isEmpty(made)}">없음</p>
+        <ul class="wlist"><th:block th:each="x : ${made}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
+        <h3 class="h3">조치 후보 <span class="sub">고른 것만 업무로 올립니다</span></h3>
+        <p class="empty" th:if="${#lists.isEmpty(actions)}">조치로 보이는 줄이 없습니다.</p>
+        <form th:unless="${#lists.isEmpty(actions)}" method="post" th:action="|/work/meetings/${cur.id}/actions|" data-write="1">
+            <label class="check-line" th:each="a : ${actions}"><input type="checkbox" name="line" th:value="${a}" /><span th:text="${a}"></span></label>
+            <div class="inline-row" style="margin-top:10px">
+                <label class="field">담당 (줄에 @이름이 없을 때)<select name="ownerId"><option th:each="o : ${cfg.owners}" th:if="${o.on}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
+                <button type="submit" class="btn btn-primary">고른 줄을 업무로</button>
+            </div>
+        </form>
+        <h3 class="h3">원문</h3>
+        <div class="meet-text" th:text="${cur.content}"></div>
+    </section>
+</div>
+</th:block>
+</body>
+</html>

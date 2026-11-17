@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>타임라인 · 업무 일정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="${v.range}">기간</p>
+        <h1>타임라인</h1>
+        <p class="hint">시작일·기한이 있는 업무를 막대로 봅니다. 막대 안 밝은 부분은 진척률, 붉은 막대는 지연, 초록 막대는 완료입니다. 막대를 누르면 상세 화면에서 날짜를 고칩니다.</p>
+    </div>
+    <div class="row-actions">
+        <a class="btn" th:href="@{/work/timeline(start=${v.prev},scale=${v.scale},owner=${owner})}">◀ 앞으로</a>
+        <a class="btn" th:href="@{/work/timeline(scale=${v.scale},owner=${owner})}">오늘</a>
+        <a class="btn" th:href="@{/work/timeline(start=${v.next},scale=${v.scale},owner=${owner})}">뒤로 ▶</a>
+        <button type="button" class="btn" data-print>인쇄</button>
+    </div>
+</div>
+<form method="get" action="/work/timeline" class="toolbar" style="margin-bottom:12px">
+    <input type="hidden" name="start" th:value="${v.start}" />
+    <label class="field">단위
+        <select name="scale" data-autosubmit>
+            <option value="day" th:selected="${v.scale == 'day'}">일 (6주)</option>
+            <option value="week" th:selected="${v.scale == 'week'}">주 (14주)</option>
+            <option value="month" th:selected="${v.scale == 'month'}">월 (1년)</option>
+        </select>
+    </label>
+    <label class="field">담당
+        <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
+    </label>
+</form>
+<p class="empty" th:if="${#lists.isEmpty(v.bars)}">시작일·기한이 있는 업무가 없습니다.</p>
+<div class="gantt card" th:unless="${#lists.isEmpty(v.bars)}">
+    <div class="g-row g-head">
+        <div class="g-label"><strong th:text="|업무 ${#lists.size(v.bars)}|"></strong></div>
+        <div class="g-track">
+            <span th:each="t : ${v.ticks}" th:if="${#strings.isEmpty(t.label())}" class="g-off" th:style="|left:${t.left()}%;width:${t.width()}%|"></span>
+            <span th:each="t : ${v.ticks}" th:unless="${#strings.isEmpty(t.label())}" class="g-tick" th:classappend="${t.off()} ? 'off'" th:style="|left:${t.left()}%;width:${t.width()}%|" th:text="${t.label()}"></span>
+        </div>
+    </div>
+    <div class="g-body">
+        <div class="g-today" th:if="${v.todayLeft >= 0}" th:style="|left:calc(260px + (100% - 260px) * ${v.todayLeft} / 100)|"></div>
+        <div class="g-row" th:each="b : ${v.bars}">
+            <div class="g-label"><span class="pri" th:classappend="${b.item().pri}" th:text="${b.item().priIcon}"></span>
+                <a th:href="|/work/item/${b.item().id}|" th:text="${b.item().title}"></a> <small th:text="${W.ownerName(b.item().ownerId)}"></small></div>
+            <div class="g-track">
+                <a th:if="${b.visible()}" class="g-bar" th:classappend="${b.tone()}" th:href="|/work/item/${b.item().id}|"
+                   th:style="|left:${b.left()}%;width:${b.width()}%|" th:title="|${b.item().title} · ${b.range()} · 진척 ${b.pct()}%|">
+                    <i th:style="|width:${b.pct()}%|"></i><span th:text="${b.item().title}"></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</th:block>
+</body>
+</html>

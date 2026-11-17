@@ -44,13 +44,15 @@ public class Web {
         String path = req.getRequestURI();
         String nav = path.startsWith("/cases") ? "cases" : path.startsWith("/files") ? "files" : path.startsWith("/discipline") ? "discipline"
             : path.startsWith("/inbox") ? "inbox" : path.startsWith("/admin") ? "admin" : path.startsWith("/settings") ? "settings"
-            : path.startsWith("/work") || path.startsWith("/rules") ? "module" : path.startsWith("/search") ? "search" : "todo";
+            : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") ? "module" : path.startsWith("/search") ? "search" : "todo";
         model.addAttribute("nav", nav);
         // 업무 일정·사규 메뉴의 현재 위치: work, work/list, rules, rules/search …
         String navKey = "";
-        java.util.regex.Matcher km = java.util.regex.Pattern.compile("^/(work|rules)(?:/(list|board|calendar|annual|team|directives|notes|settings|search|marks|compare|new))?").matcher(path);
+        java.util.regex.Matcher km = java.util.regex.Pattern.compile("^/(work|rules)(?:/(list|board|calendar|timeline|annual|team|directives|notes|meetings|insight|report|settings|search|marks|compare|new|solution|index|glossary|scan|checklists))?").matcher(path);
         if (km.find()) navKey = km.group(1) + (km.group(2) == null ? "" : "/" + km.group(2));
         if (path.startsWith("/work/item/")) navKey = "work/list";
+        if (path.startsWith("/work/report")) navKey = "work/insight";
+        if (path.equals("/import")) navKey = "import";
         model.addAttribute("navKey", navKey);
         model.addAttribute("workUrgent", work.urgentCount());
         model.addAttribute("workDirs", work.openDirectives());
@@ -67,7 +69,7 @@ public class Web {
         model.addAttribute("appVersion", version);
         // 목록으로 돌아가는 단추
         String listHref = path.matches("/cases/.+") ? "/cases" : path.matches("/discipline/.+") ? "/discipline"
-            : path.startsWith("/work/item/") ? "/work/list" : path.matches("/rules/(?!search|marks|compare|settings|new|import|export)[0-9a-zA-Z_]+") ? "/rules" : null;
+            : path.startsWith("/work/item/") ? "/work/list" : path.matches("/rules/(?!search|marks|compare|settings|new|import|export|solution|timeline|index|glossary|scan|checklists|data)[0-9a-zA-Z_]+") ? "/rules" : null;
         model.addAttribute("listHref", listHref);
         model.addAttribute("listLabel", "/discipline".equals(listHref) ? "징계기록 목록" : "/work/list".equals(listHref) ? "업무 목록"
             : "/rules".equals(listHref) ? "사규 목록" : "건 목록");

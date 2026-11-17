@@ -92,10 +92,75 @@ public class RuleController {
         return "rule-new";
     }
 
+    @GetMapping("/rules/solution")
+    public String solution(@RequestParam(required = false) String q, Model model) {
+        model.addAttribute("v", rules.solve(q));
+        model.addAttribute("ROLE", RuleService.ROLE);
+        model.addAttribute("RS", rules);
+        return "rule-solution";
+    }
+
+    @GetMapping("/rules/timeline")
+    public String timeline(Model model) {
+        model.addAttribute("events", rules.timeline());
+        return "rule-timeline";
+    }
+
+    @GetMapping("/rules/index")
+    public String index(@RequestParam(required = false) String q, Model model) {
+        model.addAttribute("q", Txt.str(q));
+        model.addAttribute("groups", rules.masterIndex(q));
+        model.addAttribute("stats", rules.stats());
+        return "rule-index";
+    }
+
+    @GetMapping("/rules/glossary")
+    public String glossary(Model model) {
+        model.addAttribute("items", rules.glossary());
+        return "rule-glossary";
+    }
+
+    @PostMapping("/rules/glossary/{what}")
+    public Object glossaryEdit(@PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
+        return Web.reply(req, rules.glossaryEdit(what, p), null);
+    }
+
+    @PostMapping("/rules/settings/synonym/{what}")
+    public Object synonymEdit(@PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
+        return Web.reply(req, rules.synonymEdit(what, p), null);
+    }
+
+    @GetMapping("/rules/scan")
+    public String scan(@RequestParam(required = false) String f, Model model) {
+        model.addAttribute("f", Txt.str(f));
+        model.addAttribute("items", rules.auditScan(f));
+        model.addAttribute("today", Kst.today().toString());
+        return "rule-scan";
+    }
+
+    @PostMapping("/rules/scan/checklist")
+    public Object scanToChecklist(@RequestParam(required = false) java.util.List<String> key, @RequestParam(required = false) String title, HttpServletRequest req) {
+        Op op = rules.checklistFromScan(title, key);
+        return Web.reply(req, op, op.ok ? "/rules/checklists" : null);
+    }
+
+    @GetMapping("/rules/checklists")
+    public String checklists(Model model) {
+        model.addAttribute("lists", rules.checklists());
+        return "rule-checklists";
+    }
+
+    @PostMapping("/rules/checklists/{what}")
+    public Object checklist(@PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
+        return Web.reply(req, rules.checklist(what, p), null);
+    }
+
     @GetMapping("/rules/settings")
     public String settings(Model model) {
         model.addAttribute("cats", rules.categories());
         model.addAttribute("stats", rules.stats());
+        model.addAttribute("synonyms", rules.userSynonyms());
+        model.addAttribute("builtin", RuleService.BUILTIN_SYN);
         return "rule-settings";
     }
 

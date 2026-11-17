@@ -27,6 +27,9 @@ public class WorkStore {
     private final Settings settings;
     private List<WorkItem> cache;
     private WorkConfig config;
+    /** 되돌리기: 바꾸기 직전의 전체 모습. 최근 40번까지. 프로그램을 끄면 비워진다. */
+    private final java.util.Deque<String[]> undo = new java.util.ArrayDeque<>();
+    private static final int UNDO_MAX = 40;
 
     public WorkStore(Db db, Settings settings) {
         this.db = db;
@@ -123,12 +126,47 @@ public class WorkStore {
             x.id, x.kind, x.title, Txt.str(x.due), Txt.str(x.date), ord, json, Kst.stamp());
     }
 
+    /** 바꾸기 직전의 모습을 남긴다. */
+    public synchronized void snapshot(String label) {
+        try {
+            undo.push(new String[] { label, Work.JSON.writeValueAsString(all()), Work.JSON.writeValueAsString(config()) });
+        } catch (Exception e) {
+            return;
+        }
+        while (undo.size() > UNDO_MAX) undo.removeLast();
+    }
+
+    /** 실패한 작업이 남긴 모습은 버린다. */
+    public synchronized void dropSnapshot() { if (!undo.isEmpty()) undo.pop(); }
+
+    public synchronized String undoLabel() { return undo.isEmpty() ? null : undo.peek()[0]; }
+
+    /** 마지막 작업 직전으로 돌린다. 돌린 작업 이름을, 돌릴 것이 없으면 null을 돌려준다. */
+    public synchronized String undo() {
+        if (undo.isEmpty()) return null;
+        String[] u = undo.pop();
+        try {
+            List<WorkItem> items = new ArrayList<>();
+            for (WorkItem x : Work.JSON.readValue(u[1], WorkItem[].class)) items.add(fix(x));
+            WorkConfig c = Work.JSON.readValue(u[2], WorkConfig.class);
+            java.util.Deque<String[]> keep = new java.util.ArrayDeque<>(undo);
+            replaceAll(items, c);
+            undo.clear();
+            undo.addAll(keep);
+            return u[0];
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** 빈칸을 채워 화면에서 null을 만나지 않게 한다. */
     static WorkItem fix(WorkItem x) {
         if (x.id == null || x.id.isBlank()) x.id = Txt.newId();
         if (x.kind == null) x.kind = "work";
         if (x.title == null) x.title = "";
         if (x.content == null) x.content = "";
+        if ("issue".equals(x.kind) && x.status != null && java.util.List.of("open", "watch", "closed").contains(x.status)
+            && !x.other().containsKey("issueState")) x.put("issueState", x.status);
         if (x.status == null || !Work.STATUS.containsKey(x.status)) x.status = "todo";
         if (x.ownerId == null) x.ownerId = "ow0";
         if (x.typeId == null) x.typeId = "ty6";

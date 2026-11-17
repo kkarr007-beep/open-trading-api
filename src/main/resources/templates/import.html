@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>백업 옮겨 오기 · 감사 포털</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>백업 옮겨 오기</h1>
+        <p class="hint" th:text="|지금 업무·일정 항목 ${workCount}건, 사규 ${ruleCount}건이 있습니다.|"></p>
+    </div>
+</div>
+<section class="card">
+    <h2>예전 프로그램의 백업 파일</h2>
+    <p class="hint">여러 파일을 한 번에 넣을 수 있습니다. 파일마다 내용을 보고 알아서 나눠 넣습니다.</p>
+    <ul class="tips">
+        <li><strong>업무 일정</strong> · 예전 '업무·일정 관리'(v2와 그 이전 판)에서 <em>설정 · 데이터 → JSON 내보내기</em>로 받은 파일, 또는 이 프로그램의 업무 설정에서 내려받은 파일</li>
+        <li><strong>사규</strong> · 예전 '사규 관리 시스템'(v4와 v3)에서 <em>설정·백업 → JSON 백업</em>으로 받은 파일, 또는 이 프로그램의 사규 설정에서 내려받은 파일</li>
+        <li><strong>감사 건·징계기록</strong> · 서버판 감사기록은 <a href="/admin">관리 화면</a>의 '이전 판에서 옮겨 오기'로 가져옵니다.</li>
+    </ul>
+    <form method="post" action="/import" data-write="1" enctype="multipart/form-data" style="margin-top:12px">
+        <div class="drop">
+            <p class="drop-copy"><strong>JSON 백업 파일을 고르거나 끌어 놓으세요</strong> (여러 개 가능)</p>
+            <input type="file" name="upload" multiple required accept=".json,application/json" aria-label="백업 파일" />
+            <span class="drop-name" data-file-name hidden></span>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+            <label class="field">방법
+                <select name="mode">
+                    <option value="merge">합치기 — 없는 항목만 더하고, 같은 항목은 더 최근 것으로 (여러 백업을 차례로 넣을 때)</option>
+                    <option value="replace">전부 바꾸기 — 처음 옮길 때. 같은 종류 파일이 여럿이면 첫 파일로 바꾸고 나머지는 합침</option>
+                </select>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">옮겨 오기</button>
+    </form>
+    <p class="hint" style="margin-top:12px" th:text="|전부 바꾸기 전에는 지금 데이터를 ${backupFolder} 폴더에 JSON으로 남깁니다. 업무 일정은 Ctrl+Z(되돌리기)로도 바로 돌릴 수 있습니다.|"></p>
+</section>
+</th:block>
+</body>
+</html>

@@ -28,8 +28,16 @@ import local.audit.work.WorkService;
 @Controller
 public class WorkController {
     private final WorkService work;
+    private final local.audit.work.WorkReports reports;
+    private final local.audit.extract.TextReader reader;
+    private final local.audit.Paths2 paths;
 
-    public WorkController(WorkService work) { this.work = work; }
+    public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths) {
+        this.work = work;
+        this.reports = reports;
+        this.reader = reader;
+        this.paths = paths;
+    }
 
     private void common(Model model) {
         model.addAttribute("cfg", work.config());
@@ -155,6 +163,98 @@ public class WorkController {
         return "work-item";
     }
 
+    @GetMapping("/work/timeline")
+    public String timeline(@RequestParam(required = false) String start, @RequestParam(required = false) String scale,
+                           @RequestParam(required = false) String owner, Model model) {
+        common(model);
+        model.addAttribute("owner", Txt.str(owner));
+        model.addAttribute("v", reports.timeline(start, scale, owner));
+        return "work-timeline";
+    }
+
+    @GetMapping("/work/insight")
+    public String insight(Model model) {
+        common(model);
+        model.addAttribute("v", reports.insight());
+        model.addAttribute("R", reports);
+        return "work-insight";
+    }
+
+    @GetMapping("/work/report/weekly")
+    public String weekly(Model model) {
+        common(model);
+        model.addAttribute("v", reports.weekly());
+        return "work-weekly";
+    }
+
+    /** 다음 달 업무계획 초안을 글 파일로. */
+    @GetMapping("/work/report/month/export")
+    public ResponseEntity<byte[]> monthPlan() {
+        java.time.YearMonth ym = java.time.YearMonth.from(Kst.today()).plusMonths(1);
+        return Web.plain("월간업무계획-" + ym.toString().replace("-", "") + ".txt", reports.monthPlan(), true);
+    }
+
+    @GetMapping("/work/meetings")
+    public String meetings(@RequestParam(required = false) String tab, @RequestParam(required = false) String id, Model model) {
+        common(model);
+        String t = "issue".equals(tab) || "new".equals(tab) ? tab : "meet";
+        model.addAttribute("tab", t);
+        List<WorkItem> ms = reports.meetings();
+        model.addAttribute("meetings", ms);
+        WorkItem cur = id == null ? (ms.isEmpty() ? null : ms.get(0)) : work.get(id);
+        model.addAttribute("cur", cur);
+        if (cur != null) {
+            model.addAttribute("decisions", local.audit.work.WorkReports.decisions(cur.content));
+            model.addAttribute("actions", local.audit.work.WorkReports.actions(cur.content));
+            model.addAttribute("made", reports.fromMeeting(cur.id));
+        }
+        model.addAttribute("issues", reports.issues());
+        model.addAttribute("R", reports);
+        return "work-meetings";
+    }
+
+    @PostMapping("/work/meetings/new")
+    public Object addMeeting(@RequestParam Map<String, String> p, @RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
+        String text = p.get("text");
+        if (upload != null && !upload.isEmpty()) {
+            String name = Txt.str(upload.getOriginalFilename());
+            java.nio.file.Path tmp = java.nio.file.Files.createTempFile(paths.tmp, "meet", Txt.ext(name).isEmpty() ? ".txt" : Txt.ext(name));
+            try {
+                upload.transferTo(tmp);
+                local.audit.extract.TextReader.Result res = reader.read(tmp, name);
+                if (!res.ok() || Txt.blank(res.text())) return Web.reply(req, Op.bad("파일에서 글을 읽지 못했습니다. " + Txt.str(res.note())), null);
+                text = (Txt.blank(text) ? "" : text + "\n\n") + res.text();
+                if (Txt.blank(p.get("title"))) p.put("title", Txt.stem(name));
+            } finally {
+                java.nio.file.Files.deleteIfExists(tmp);
+            }
+        }
+        String body = text;
+        Op op = work.change("회의록 넣기", () -> reports.addMeeting(p, body));
+        return Web.reply(req, op, op.ok ? "/work/meetings?id=" + op.id : null);
+    }
+
+    @PostMapping("/work/meetings/{id}/actions")
+    public Object meetingActions(@PathVariable String id, @RequestParam(required = false) List<String> line,
+                                 @RequestParam(required = false) String ownerId, HttpServletRequest req) {
+        return Web.reply(req, work.change("회의 조치 업무로", () -> reports.actionsToWork(id, line, ownerId)), null);
+    }
+
+    @PostMapping("/work/issues/new")
+    public Object addIssue(@RequestParam Map<String, String> p, HttpServletRequest req) {
+        return Web.reply(req, work.change("쟁점 등록", () -> reports.addIssue(p)), null);
+    }
+
+    @PostMapping("/work/issues/scan")
+    public Object scanIssues(HttpServletRequest req) {
+        return Web.reply(req, work.change("쟁점 다시 훑기", reports::scanIssues), null);
+    }
+
+    @PostMapping("/work/issues/{id}/state")
+    public Object issueState(@PathVariable String id, @RequestParam(required = false) String state, HttpServletRequest req) {
+        return Web.reply(req, work.change("쟁점 상태", () -> reports.issueStatus(id, Txt.str(state))), null);
+    }
+
     @GetMapping("/work/settings")
     public String settings(Model model) {
         common(model);
@@ -167,24 +267,24 @@ public class WorkController {
     @PostMapping("/work/quick")
     public Object quick(@RequestParam(required = false) String text, @RequestParam(required = false) String owner, HttpServletRequest req) {
         String me = "mine".equals(owner) ? work.config().me : owner;
-        return Web.reply(req, work.quickAdd(text, me), null);
+        return Web.reply(req, work.change("빠른 추가", () -> work.quickAdd(text, me)), null);
     }
 
     @PostMapping("/work/new/{kind}")
     public Object create(@PathVariable String kind, @RequestParam Map<String, String> p, HttpServletRequest req) {
-        Op op = work.create(kind, p);
+        Op op = work.change(local.audit.work.Work.kindName(kind) + " 추가", () -> work.create(kind, p));
         boolean open = "1".equals(p.get("open"));
         return Web.reply(req, op, op.ok && open ? "/work/item/" + op.id : null);
     }
 
     @PostMapping("/work/item/{id}")
     public Object update(@PathVariable String id, @RequestParam Map<String, String> p, HttpServletRequest req) {
-        return Web.reply(req, work.update(id, p), null);
+        return Web.reply(req, work.change("내용 저장", () -> work.update(id, p)), null);
     }
 
     @PostMapping("/work/item/{id}/{what}")
     public Object action(@PathVariable String id, @PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
-        Op op = switch (what) {
+        Op op = work.change(ACTION_NAMES.getOrDefault(what, "작업"), () -> switch (what) {
             case "status" -> work.status(id, Txt.str(p.get("status")));
             case "stage" -> work.stage(id, Txt.intOrNull(p.get("stage")) == null ? -1 : Txt.intOrNull(p.get("stage")));
             case "todo" -> work.todo(id, Txt.str(p.get("op")), Txt.intOrNull(p.get("i")), p.get("text"));
@@ -194,27 +294,37 @@ public class WorkController {
             case "delete" -> work.delete(id);
             case "towork" -> work.toWork(id);
             default -> Op.fail(404, "없는 작업입니다.");
-        };
+        });
         String go = null;
         if (op.ok && "delete".equals(what)) go = Txt.blank(p.get("back")) ? "/work/list" : p.get("back");
         if (op.ok && "towork".equals(what)) go = "/work/item/" + op.id;
         return Web.reply(req, op, go);
     }
 
+    private static final Map<String, String> ACTION_NAMES = Map.of("status", "상태 변경", "stage", "단계 변경", "todo", "체크리스트",
+        "log", "진행 기록", "check", "정기 이행 표시", "delete", "지우기", "towork", "업무로 옮기기");
+
+    /** 되돌리기 (Ctrl+Z). */
+    @PostMapping("/work/undo")
+    public Object undo(HttpServletRequest req) {
+        return Web.reply(req, work.undo(), null);
+    }
+
     @PostMapping("/work/settings/basics")
     public Object basics(@RequestParam Map<String, String> p, HttpServletRequest req) {
-        return Web.reply(req, work.saveBasics(p), null);
+        return Web.reply(req, work.change("기본 설정", () -> work.saveBasics(p)), null);
     }
 
     @PostMapping("/work/settings/{what}")
     public Object entry(@PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
-        return Web.reply(req, work.saveEntry(what, p), null);
+        return Web.reply(req, work.change("설정", () -> work.saveEntry(what, p)), null);
     }
 
     @PostMapping("/work/import")
     public Object importJson(@RequestParam(required = false) MultipartFile upload, @RequestParam(required = false) String mode, HttpServletRequest req) throws IOException {
         if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("예전 프로그램에서 내보낸 JSON 파일을 고르세요."), null);
         if (upload.getSize() > 100L * 1024 * 1024) return Web.reply(req, Op.bad("파일이 너무 큽니다."), null);
-        return Web.reply(req, work.importJson(upload.getBytes(), "merge".equals(mode)), null);
+        byte[] bytes = upload.getBytes();
+        return Web.reply(req, work.change("옮겨 오기", () -> work.importJson(bytes, "merge".equals(mode))), null);
     }
 }

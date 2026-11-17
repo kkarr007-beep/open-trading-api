@@ -17,7 +17,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * 감사기록 - 한 사람이 자기 컴퓨터에서 쓰는 프로그램.
+ * 감사 포털 - 한 사람이 자기 컴퓨터에서 쓰는 프로그램.
  * 아이콘을 누르면 전용 창이 뜨고, 창을 닫으면 프로그램도 끝난다.
  */
 @SpringBootApplication
@@ -86,7 +86,7 @@ public class App {
     @EventListener(ApplicationReadyEvent.class)
     public void ready() {
         String url = "http://127.0.0.1:" + env.getProperty("local.server.port", env.getProperty("server.port", "47321"));
-        System.out.println("감사기록이 켜졌습니다: " + url);
+        System.out.println("감사 포털이 켜졌습니다: " + url);
         if (desktopActive) return; // 자체 창이 화면을 맡는다
         String mode = env.getProperty("audit.window", "app");
         if ("false".equalsIgnoreCase(env.getProperty("audit.open-browser", "true")) || "none".equals(mode)) return;

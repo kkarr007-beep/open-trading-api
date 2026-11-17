@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>감사점검 추출 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>감사점검 항목 추출</h1>
+        <p class="hint">의무(하여야 한다)·금지·승인·보고·보관·기한 같은 문장을 사규에서 뽑습니다. 고른 문장으로 점검 체크리스트를 만듭니다.</p>
+    </div>
+    <a class="btn" href="/rules/checklists">점검 체크리스트</a>
+</div>
+<form method="get" action="/rules/scan" class="toolbar" style="margin-bottom:12px">
+    <div class="search-row">
+        <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="sr">추리기</span>
+            <input name="f" th:value="${f}" placeholder="문장·사규 이름으로 추리기 (예: 개인정보, 보고)" maxlength="80" />
+        </label>
+        <button class="btn" type="submit">추리기</button>
+    </div>
+</form>
+<p class="empty" th:if="${#lists.isEmpty(items)}">추출할 문장이 없습니다. 사규를 먼저 등록하세요.</p>
+<form th:unless="${#lists.isEmpty(items)}" method="post" action="/rules/scan/checklist" data-write="1" class="card">
+    <div class="inline-row">
+        <label class="field wide">체크리스트 이름<input name="title" maxlength="120" th:value="|감사 점검 ${today}|" /></label>
+        <label class="check"><input type="checkbox" data-check-all="key" /> 모두 고르기</label>
+        <button type="submit" class="btn btn-primary">고른 항목으로 체크리스트 만들기</button>
+    </div>
+    <p class="count-line" th:text="|${#lists.size(items)}개 문장|"></p>
+    <label class="scan-item" th:each="x : ${items}">
+        <input type="checkbox" name="key" th:value="${x.key()}" />
+        <span><span class="pill acc" th:text="${#strings.listJoin(x.keywords().size() > 2 ? x.keywords().subList(0, 2) : x.keywords(), ' · ')}"></span> <span th:text="${x.sentence()}"></span></span>
+        <a class="src" th:href="|/rules/${x.regId()}#a-${x.articleId()}|" th:text="${x.label()}"></a>
+    </label>
+</form>
+</th:block>
+</body>
+</html>

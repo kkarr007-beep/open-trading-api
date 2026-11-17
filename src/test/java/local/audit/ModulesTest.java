@@ -268,4 +268,112 @@ class ModulesTest {
         assertTrue(work.delete(moved.id).ok);
         assertNull(work.get(moved.id));
     }
+
+    // ───────────── 2차: 되돌리기, 타임라인, 인사이트, 회의·쟁점 ─────────────
+
+    @Test
+    void undoRestoresPreviousState() throws Exception {
+        local.audit.work.WorkStore store = new local.audit.work.WorkStore(db, settings);
+        WorkService w = new WorkService(store, db);
+        Op made = w.change("추가", () -> w.create("work", new HashMap<>(Map.of("title", "되돌릴 업무"))));
+        assertTrue(made.ok);
+        assertTrue(w.change("상태", () -> w.status(made.id, "done")).ok);
+        assertEquals("done", w.get(made.id).status);
+        assertTrue(w.undo().ok);
+        assertEquals("todo", w.get(made.id).status);
+        // 데이터베이스에도 되돌린 모습이 남는다
+        assertEquals("todo", new WorkService(new local.audit.work.WorkStore(db, settings), db).get(made.id).status);
+        assertTrue(w.undo().ok);
+        assertNull(w.get(made.id));
+        assertFalse(w.undo().ok, "더 되돌릴 것이 없음");
+        // 실패한 작업은 되돌리기 목록에 남지 않는다
+        assertFalse(w.change("빈 제목", () -> w.create("work", new HashMap<>())).ok);
+        assertNull(w.undoLabel());
+    }
+
+    @Test
+    void timelineInsightWeeklyMonthPlan() throws Exception {
+        assertTrue(work.importJson(resource("work-v2-sample.json"), false).ok);
+        local.audit.work.WorkReports rep = new local.audit.work.WorkReports(work, storeOf(work));
+        Map<String, Object> tl = rep.timeline(null, "month", null);
+        assertFalse(((List<?>) tl.get("bars")).isEmpty());
+        assertFalse(((List<?>) tl.get("ticks")).isEmpty());
+        Map<String, Object> in = rep.insight();
+        assertNotNull(in.get("rate"));
+        assertFalse(((List<?>) in.get("tips")).isEmpty());
+        assertEquals(6, ((List<?>) in.get("months")).size());
+        assertEquals(4, ((Map<?, ?>) rep.weekly().get("sections")).size());
+        String plan = rep.monthPlan();
+        assertTrue(plan.contains("2026년 12월 업무계획"));
+        assertTrue(plan.contains("1. 정기 업무"));
+    }
+
+    static local.audit.work.WorkStore storeOf(WorkService w) throws Exception {
+        java.lang.reflect.Field f = WorkService.class.getDeclaredField("store");
+        f.setAccessible(true);
+        return (local.audit.work.WorkStore) f.get(w);
+    }
+
+    @Test
+    void meetingDecisionsActionsAndIssues() throws Exception {
+        local.audit.work.WorkReports rep = new local.audit.work.WorkReports(work, storeOf(work));
+        String text = "1. 안건\n- 판매채널 수수료 현황 공유\n## 결정\n- 수수료 상한을 3%로 하기로 함\n## 조치\n- 박준서 수수료 자료 금요일까지 제출\n- 법무 검토 요청\n";
+        assertTrue(rep.addIssue(new HashMap<>(Map.of("title", "판매채널 수수료"))).ok);
+        Op m = rep.addMeeting(new HashMap<>(Map.of("title", "정례회의", "mdate", "2026-11-16")), text);
+        assertTrue(m.ok, m.message);
+        assertEquals(List.of("수수료 상한을 3%로 하기로 함"), local.audit.work.WorkReports.decisions(text));
+        List<String> acts = local.audit.work.WorkReports.actions(text);
+        assertTrue(acts.contains("박준서 수수료 자료 금요일까지 제출"), acts.toString());
+        assertTrue(rep.actionsToWork(m.id, acts, "ow1").ok);
+        WorkItem made = rep.fromMeeting(m.id).get(0);
+        assertEquals("2026-11-20", made.due, "금요일까지 → 기한");
+        WorkItem issue = rep.issues().get(0);
+        assertEquals(1, local.audit.work.WorkReports.mentions(issue).size());
+        assertTrue(rep.issueStatus(issue.id, "watch").ok);
+        assertEquals("watch", local.audit.work.WorkReports.issueState(work.get(issue.id)));
+    }
+
+    // ───────────── 2차: 사규 상황 질의, 용어, 목차, 감사점검, 체크리스트 ─────────────
+
+    @Test
+    void solutionGlossaryIndexScanChecklist() throws Exception {
+        assertTrue(rules.importJson(resource("rule-v4-sample.json"), false).ok);
+        Map<String, Object> sol = rules.solve("팀원이 주말에 음주운전으로 면허가 취소됐습니다");
+        assertTrue((Integer) sol.get("count") > 0);
+        assertFalse(((List<?>) sol.get("risks")).isEmpty());
+        assertFalse(((List<?>) sol.get("levels")).isEmpty(), "징계 수위를 뽑아야 함");
+
+        // 동의어: '주취'로 찾아도 음주 조항이 나온다
+        assertFalse(rules.search("주취", null, 20).isEmpty());
+        assertTrue(rules.synonymEdit("add", Map.of("words", "투잡, 겸직")).ok);
+        assertFalse(rules.search("투잡", null, 20).isEmpty(), "직접 넣은 동의어로도 찾음");
+
+        assertTrue(rules.glossaryEdit("add", Map.of("term", "비위", "def", "규정 위반 행위", "aliases", "비행")).ok);
+        assertTrue(rules.glossary().stream().anyMatch(g -> "비위".equals(g.term()) && g.customId() != null));
+
+        assertFalse(rules.masterIndex(null).isEmpty());
+        assertFalse(rules.masterIndex("징계").isEmpty());
+        assertFalse(rules.timeline().isEmpty());
+
+        List<RuleService.ScanItem> scan = rules.auditScan(null);
+        assertFalse(scan.isEmpty());
+        Op cl = rules.checklistFromScan("점검", List.of(scan.get(0).key(), scan.get(1).key()));
+        assertTrue(cl.ok, cl.message);
+        RuleService.Checklist c = rules.checklists().stream().filter(x -> x.id().equals(cl.id)).findFirst().orElseThrow();
+        assertEquals(2, c.items().size());
+        assertFalse(c.items().get(0).refs().isEmpty());
+        assertTrue(rules.checklist("toggle", Map.of("id", c.id(), "item", c.items().get(0).id())).ok);
+        assertTrue(rules.checklist("add", Map.of("id", c.id(), "text", "현장 확인\n서류 확인")).ok);
+        RuleService.Checklist c2 = rules.checklists().stream().filter(x -> x.id().equals(cl.id)).findFirst().orElseThrow();
+        assertEquals(4, c2.items().size());
+        assertEquals(1, c2.done());
+    }
+
+    @Test
+    void importDetectsBackupKind() throws Exception {
+        assertEquals("work", local.audit.web.ImportController.kindOf(resource("work-v2-sample.json")));
+        assertEquals("rules", local.audit.web.ImportController.kindOf(resource("rule-v4-sample.json")));
+        assertNull(local.audit.web.ImportController.kindOf("{\"a\":1}".getBytes(StandardCharsets.UTF_8)));
+        assertNull(local.audit.web.ImportController.kindOf("not json".getBytes(StandardCharsets.UTF_8)));
+    }
 }

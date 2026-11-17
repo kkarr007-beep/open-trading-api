@@ -100,7 +100,7 @@ public final class Desktop {
 
     private static void build(String[] args, Path home) {
         Stage s = new Stage();
-        s.setTitle("감사기록");
+        s.setTitle("감사 포털");
         for (String icon : new String[] { "/static/icons/app.png", "/static/icons/app-256.png" }) {
             try (InputStream in = Desktop.class.getResourceAsStream(icon)) {
                 if (in != null) s.getIcons().add(new Image(in));
@@ -114,14 +114,14 @@ public final class Desktop {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.OK, ButtonType.CANCEL);
             alert.initOwner(s);
             alert.setHeaderText(null);
-            alert.setTitle("감사기록");
+            alert.setTitle("감사 포털");
             return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
         });
         engine.setOnAlert(e -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION, e.getData(), ButtonType.OK);
             alert.initOwner(s);
             alert.setHeaderText(null);
-            alert.setTitle("감사기록");
+            alert.setTitle("감사 포털");
             alert.showAndWait();
         });
         bridge = new Bridge();
@@ -152,7 +152,7 @@ public final class Desktop {
         try (InputStream in = Desktop.class.getResourceAsStream("/static/icons/app-256.png")) {
             if (in != null) logo.setImage(new Image(in, 96, 96, true, true));
         } catch (Exception ignored) { }
-        Label name = new Label("감사기록");
+        Label name = new Label("감사 포털");
         name.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1d1d1f;");
         splashNote = new Label("여는 중…");
         splashNote.setStyle("-fx-font-size: 13px; -fx-text-fill: #6e6e73;");

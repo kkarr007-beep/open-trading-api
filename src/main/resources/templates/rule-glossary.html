@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>용어 사전 · 사규</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>용어 사전</h1>
+        <p class="hint">조문의 "○○"이란 … 정의를 저절로 모으고, 직접 넣은 용어를 더합니다. 직접 넣은 용어의 별칭은 사규 찾기와 상황 질의에서 함께 찾습니다.</p>
+    </div>
+</div>
+<section class="card">
+    <h2>용어 넣기</h2>
+    <form method="post" action="/rules/glossary/add" data-write="1">
+        <div class="form-grid">
+            <label class="field">용어<input name="term" required maxlength="40" /></label>
+            <label class="field">별칭 <span class="field-note">쉼표로 나눕니다</span><input name="aliases" maxlength="300" /></label>
+            <label class="field grow">정의<textarea name="def" rows="2" maxlength="1000" required></textarea></label>
+        </div>
+        <button type="submit" class="btn btn-primary">넣기</button>
+    </form>
+</section>
+<p class="count-line" th:text="|${#lists.size(items)}개 용어|"></p>
+<p class="empty" th:if="${#lists.isEmpty(items)}">용어가 없습니다.</p>
+<div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(items)}">
+    <table class="data gl-table">
+        <thead><tr><th scope="col">용어</th><th scope="col">정의</th><th scope="col">출처</th><th scope="col"></th></tr></thead>
+        <tbody>
+        <tr th:each="x : ${items}">
+            <th scope="row"><span th:text="${x.term()}"></span><div class="small muted" th:unless="${#lists.isEmpty(x.aliases())}" th:text="|별칭: ${#strings.listJoin(x.aliases(), ', ')}|"></div></th>
+            <td th:text="${x.def()}"></td>
+            <td class="nowrap"><a th:if="${x.regId() != null}" th:href="|/rules/${x.regId()}#a-${x.articleId()}|" th:text="|${x.regTitle()} ${x.label()}|"></a><span th:if="${x.regId() == null}">직접 입력</span></td>
+            <td><form th:if="${x.customId() != null}" method="post" action="/rules/glossary/delete" data-write="1" th:data-confirm="|'${x.term()}'를 지울까요?|">
+                <input type="hidden" name="id" th:value="${x.customId()}" /><button type="submit" class="btn btn-quiet">지우기</button></form></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</th:block>
+</body>
+</html>
