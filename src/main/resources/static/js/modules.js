@@ -130,3 +130,15 @@
     document.querySelectorAll(".bcol.drop-on").forEach(function (c) { c.classList.remove("drop-on"); });
   });
 })();
+
+// 사규 읽기: 조의 '수정' 단추 → 그 조의 메모·수정 칸을 열고 제목 칸으로
+document.addEventListener("click", function (event) {
+  var b = event.target.closest && event.target.closest("[data-open]");
+  if (!b) return;
+  var d = document.getElementById(b.getAttribute("data-open"));
+  if (!d) return;
+  d.open = true;
+  d.scrollIntoView({ behavior: "smooth", block: "center" });
+  var f = d.querySelector("form[action$='/edit'] input[name=title]");
+  if (f) setTimeout(function () { f.focus(); }, 250);
+});

@@ -86,9 +86,20 @@ public class RuleController {
     }
 
     @GetMapping("/rules/new")
-    public String fresh(@RequestParam(required = false) String revise, Model model) {
+    public String fresh(@RequestParam(required = false) String revise, @RequestParam(required = false) String edit, Model model) throws IOException {
         model.addAttribute("cats", rules.categories());
         model.addAttribute("revise", rules.reg(revise));
+        Map<String, Object> er = edit == null ? null : rules.reg(edit);
+        model.addAttribute("edit", er);
+        if (er != null) {
+            java.util.List<Map<String, Object>> list = new java.util.ArrayList<>();
+            for (Map<String, Object> a : local.audit.rule.Rules.arts(er)) {
+                Map<String, Object> x = new java.util.LinkedHashMap<>();
+                for (String k : new String[] { "id", "number", "title", "content", "chapter", "section", "supp", "attach" }) if (a.get(k) != null) x.put(k, a.get(k));
+                list.add(x);
+            }
+            model.addAttribute("editArts", new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(list));
+        }
         model.addAttribute("today", Kst.today().toString());
         return "rule-new";
     }
@@ -259,7 +270,8 @@ public class RuleController {
         for (String k : new String[] { "title", "categoryId", "label", "effectiveDate", "note", "reviseOf", "mode" }) p.put(k, Txt.str(body.get(k)));
         Object raw = body.get("articles");
         java.util.List<Map<String, Object>> arts = RuleService.cleanArticles(raw instanceof java.util.List<?> l ? (java.util.List<Map<String, Object>>) l : null);
-        Op op = rules.addArticles(p, arts);
+        String editOf = Txt.str(body.get("editOf"));
+        Op op = editOf.isEmpty() ? rules.addArticles(p, arts) : rules.replaceArticles(editOf, arts);
         Map<String, Object> out = new java.util.LinkedHashMap<>();
         out.put("ok", op.ok);
         out.put("message", op.message);

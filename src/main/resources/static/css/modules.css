@@ -863,3 +863,16 @@ tr.bd-add td { background: var(--paper-2); }
 .bd-entry table.data th:nth-child(5) { width: 100px; }
 .bd-entry table.data td, .bd-entry table.data th { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 700px) { .bd-entry table.data { table-layout: auto; } }
+
+/* 표: 스크롤바 없이 화면 폭 안에 전체가 보이게(칸 안에서 줄바꿈) — 조문 표·문서 읽은 내용·편집기 공통 */
+.ctblw, .rich .tw { overflow: visible; max-width: 100%; }
+.ctbl, .abody table, .rich table, .rte-body table { width: 100% !important; max-width: 100%; min-width: 0 !important; table-layout: auto; }
+.ctbl th, .ctbl td, .abody table th, .abody table td, .rich th, .rich td, .rte-body th, .rte-body td {
+  white-space: normal; overflow-wrap: anywhere; word-break: keep-all; min-width: 0; width: auto !important;
+}
+.ctbl img, .abody img, .rich img { max-width: 100%; height: auto; }
+.abody .para .ctblw { white-space: normal; }
+/* 사규: 조문 전체 고치기 모드에서는 파일·정보 칸을 숨기고 편집기만 */
+#rule-import.hidden-edit { display: none; }
+.art .acts .danger-text { color: var(--danger); }
+.art .acts form { display: inline; margin: 0; }

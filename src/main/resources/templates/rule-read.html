@@ -31,7 +31,10 @@
         <a class="btn" th:href="@{/rules/new(revise=${row.id()})}">개정판 넣기</a>
         <a class="btn" th:href="|/rules/${row.id()}/export|">글로 내려받기</a>
         <button type="button" class="btn" data-print>인쇄</button>
-        <button type="button" class="btn" data-dialog="meta-dialog">사규 정보</button>
+        <button type="button" class="btn" data-dialog="meta-dialog">사규 수정</button>
+        <a class="btn" th:href="@{/rules/new(edit=${row.id()})}" th:if="${m.current}" title="분석 미리보기 편집기에서 조를 고치고·합치고·나누고·지웁니다">조문 전체 고치기</a>
+        <form method="post" th:action="|/rules/${row.id()}/delete|" data-write="1" class="inline-form" th:data-confirm="|「${row.title()}」를 지울까요? 모든 판과 메모·북마크가 함께 지워집니다.|">
+            <button type="submit" class="btn btn-danger">사규 삭제</button></form>
     </div>
 </div>
 <form method="get" th:action="|/rules/${row.id()}|" class="toolbar" style="margin-bottom:14px">
@@ -63,12 +66,15 @@
                             <button type="submit" th:class="${a.difficult()} ? 'on'">해석 어려움</button>
                         </form>
                         <a th:href="@{/discipline/new(ruleText=${row.title() + ' ' + a.label()})}" title="이 조문을 관련규정으로 넣어 징계기록 등재">징계 등재</a>
+                        <button type="button" th:attr="data-open=|ed-${a.id()}|">수정</button>
+                        <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/remove|" data-write="1" th:data-confirm="|${a.label()}를 지울까요? 지금 판에서만 지워집니다.|">
+                            <button type="submit" class="danger-text">삭제</button></form>
                     </div>
                 </header>
                 <div class="abody" th:utext="${a.html()}"></div>
                 <div class="anote rich" th:if="${!#strings.isEmpty(a.note())}" th:utext="${a.noteHtml()}"></div>
-                <details th:if="${m.current}" style="margin-top:8px">
-                    <summary class="small muted">메모 · 조문 고치기</summary>
+                <details th:if="${m.current}" style="margin-top:8px" th:id="|ed-${a.id()}|">
+                    <summary class="small muted">메모 · 조문 수정</summary>
                     <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/note|" data-write="1" style="margin-top:8px">
                         <label class="field grow">메모<textarea name="text" rows="4" maxlength="20000" th:text="${a.note()}" data-rich="html" th:attr="data-html=${a.noteHtml()}"></textarea></label>
                         <p style="margin-top:6px"><button type="submit" class="btn">메모 저장</button></p>

@@ -676,4 +676,33 @@ class ModulesTest {
         assertFalse(b.saveOrg(Map.of("name", "디지털사업부")).ok);
         assertFalse(b.saveKpi(Map.of("org", "c1", "name", "생산성", "target", "90")).ok);
     }
+
+    @Test
+    void ruleArticlesCanBeEditedWholeAndRemoved() {
+        Op made = rules.addArticles(Map.of("title", "보안규칙2"), RuleService.cleanArticles(rules.preview("제1조(목적) 목적이다.\n제2조(정의) 정의다.\n제3조(적용) 적용한다.")));
+        assertTrue(made.ok, made.message);
+        List<Map<String, Object>> arts = local.audit.rule.Rules.arts(rules.reg(made.id));
+        String id2 = (String) arts.get(1).get("id");
+        assertTrue(rules.article(made.id, id2, "difficult", Map.of()).ok);
+        // 전체 고치기: 제2조 내용만 바꾸고 제3조 빼고 제4조 새로
+        List<Map<String, Object>> edited = new java.util.ArrayList<>();
+        for (Map<String, Object> a : arts) edited.add(new java.util.LinkedHashMap<>(a));
+        edited.get(1).put("content", "정의를 고쳤다.");
+        edited.remove(2);
+        edited.add(new java.util.LinkedHashMap<>(Map.of("number", "제4조", "title", "시행", "content", "새 조")));
+        Op re = rules.replaceArticles(made.id, RuleService.cleanArticles(edited));
+        assertTrue(re.ok, re.message);
+        List<Map<String, Object>> after = local.audit.rule.Rules.arts(rules.reg(made.id));
+        assertEquals(List.of("제1조", "제2조", "제4조"), after.stream().map(a -> (String) a.get("number")).toList());
+        assertEquals(id2, after.get(1).get("id"), "같은 조 번호는 ID 유지");
+        assertEquals(Boolean.TRUE, after.get(1).get("difficult"), "어려움 표시 유지");
+        assertEquals("정의를 고쳤다.", after.get(1).get("content"));
+        assertEquals(1, ((List<?>) rules.reg(made.id).get("versions")).size(), "새 판을 만들지 않고 지금 판을 고침");
+        // 조 삭제
+        assertTrue(rules.article(made.id, (String) after.get(2).get("id"), "remove", Map.of()).ok);
+        assertEquals(2, local.audit.rule.Rules.arts(rules.reg(made.id)).size());
+        assertTrue(rules.article(made.id, (String) after.get(1).get("id"), "remove", Map.of()).ok);
+        assertFalse(rules.article(made.id, (String) after.get(0).get("id"), "remove", Map.of()).ok, "마지막 조는 못 지움");
+        assertFalse(rules.replaceArticles(made.id, List.of()).ok);
+    }
 }

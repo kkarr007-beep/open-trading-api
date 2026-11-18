@@ -4,6 +4,7 @@
   var root = document.getElementById("rule-import");
   if (!root) return;
   var revise = root.getAttribute("data-revise") || "";
+  var editOf = root.getAttribute("data-edit") || "";
   var prev = document.getElementById("imPrev");
   var DRAFT = null;
   function $(id) { return document.getElementById(id); }
@@ -110,8 +111,8 @@
   function save(mode) {
     sync();
     var body = { title: $("imT").value.trim(), categoryId: $("imC").value, label: $("imV").value, effectiveDate: $("imD").value, note: $("imR").value,
-      reviseOf: revise, mode: mode, articles: DRAFT };
-    if (!revise && !body.title) { toast("사규명을 적으세요."); $("imT").focus(); return; }
+      reviseOf: revise, mode: mode, articles: DRAFT, editOf: editOf };
+    if (!revise && !editOf && !body.title) { toast("사규명을 적으세요."); $("imT").focus(); return; }
     post("/rules/save", body).then(function (r) {
       if (r.ok) { toast(r.message); location.href = r.go; return; }
       if (r.dupId) {
@@ -127,5 +128,10 @@
       }
       toast(r.message || "저장하지 못했습니다.");
     });
+  }
+  // 조문 전체 고치기: 지금 판의 조문을 불러와 바로 편집
+  if (editOf) {
+    try { DRAFT = JSON.parse(root.getAttribute("data-arts") || "[]"); } catch (e) { DRAFT = []; }
+    draw(null);
   }
 })();

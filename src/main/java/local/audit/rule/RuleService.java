@@ -478,6 +478,37 @@ public class RuleService {
         return Op.ok("「" + title + "」를 등록했습니다 · 조 " + arts.size() + "개.", Rules.str(r, "id"));
     }
 
+    /**
+     * 지금 판의 조문을 통째로 고친다(분석 미리보기 편집기에서 고친 목록).
+     * 조 번호가 같은 조는 ID·북마크·메모·어려움 표시를 이어 받고, 내용이 그대로면 서식(HTML)도 남긴다.
+     */
+    public Op replaceArticles(String id, List<Map<String, Object>> arts) {
+        Map<String, Object> r = reg(id);
+        if (r == null) return Op.fail(404, "사규를 찾을 수 없습니다.");
+        if (arts.isEmpty()) return Op.bad("조문이 하나도 없습니다. 사규를 지우려면 '사규 삭제'를 쓰세요.");
+        Map<String, Object> v = Rules.curVer(r);
+        if (v == null) return Op.fail(404, "지금 판을 찾을 수 없습니다.");
+        List<Map<String, Object>> old = Rules.arts(r);
+        java.util.Set<String> taken = new java.util.HashSet<>();
+        for (Map<String, Object> a : arts) {
+            Map<String, Object> match = null;
+            for (Map<String, Object> o : old) {
+                String oid = Rules.str(o, "id");
+                if (taken.contains(oid)) continue;
+                if (oid.equals(Rules.str(a, "id")) || Rules.str(o, "number").equals(Rules.str(a, "number"))) { match = o; break; }
+            }
+            if (match == null) continue;
+            taken.add(Rules.str(match, "id"));
+            a.put("id", match.get("id"));
+            if (match.get("difficult") != null) a.put("difficult", match.get("difficult"));
+            if (match.get("tags") != null) a.put("tags", match.get("tags"));
+            if (match.get("html") != null && Rules.str(match, "content").equals(Rules.str(a, "content"))) a.put("html", match.get("html"));
+        }
+        v.put("articles", arts);
+        store.saveReg(r);
+        return Op.ok("「" + Rules.str(r, "title") + "」 조문을 고쳤습니다 · 조 " + arts.size() + "개.", id);
+    }
+
     /** 붙여 넣은 글이 어떻게 갈라지는지 미리 본다. */
     public List<Map<String, Object>> preview(String text) { return RuleParser.parse(Txt.str(text)); }
 
@@ -579,6 +610,13 @@ public class RuleService {
                 }
                 store.saveState();
                 return Op.ok(t.isBlank() ? "메모를 지웠습니다." : "메모를 저장했습니다.");
+            }
+            case "remove" -> {
+                List<Map<String, Object>> list = Rules.arts(r);
+                if (list.size() <= 1) return Op.bad("마지막 조는 지울 수 없습니다. 사규를 지우려면 '사규 삭제'를 쓰세요.");
+                list.remove(a);
+                store.saveReg(r);
+                return Op.ok("'" + Rules.str(a, "number") + "'를 지웠습니다.");
             }
             case "edit" -> {
                 String title = Txt.clean(p.get("title"), 120, false);
