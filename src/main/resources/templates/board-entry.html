@@ -46,7 +46,7 @@
 <div class="card-split">
     <section class="card">
         <h2>엑셀에서 붙여 넣기 <span class="sub">'지표 이름 · 값' 줄 · 조직 이름이 앞에 있어도 됩니다</span></h2>
-        <form method="post" action="/board/entry/paste">
+        <form method="post" action="/board/entry/paste" data-write="1">
             <input type="hidden" name="date" th:value="${date}" />
             <textarea name="text" rows="6" class="textarea-wide mono" aria-label="붙여 넣을 실적" placeholder="생산성&#9;97&#10;고객2 사업부 S/L 지표&#9;88.5&#10;IVR 수신율 (장기물)&#9;93" th:text="${pasteText}"></textarea>
             <p class="row-actions" style="margin-top:8px"><button type="submit" class="btn">칸에 채우기</button></p>

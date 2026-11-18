@@ -31,6 +31,8 @@ import local.audit.board.BoardService;
 @Controller
 public class BoardController {
     private final BoardService board;
+    /** 붙여 넣은 글을 잠시 맡아 두는 곳(입력 화면으로 넘어가는 동안만). */
+    private final Map<String, Object[]> pastes = new java.util.concurrent.ConcurrentHashMap<>();
 
     public BoardController(BoardService board) { this.board = board; }
 
@@ -88,7 +90,7 @@ public class BoardController {
     }
 
     @GetMapping("/board/entry")
-    public String entry(@RequestParam(required = false) String date, Model model) {
+    public String entry(@RequestParam(required = false) String date, @RequestParam(required = false) String paste, Model model) {
         BoardData d = board.load();
         BoardCalc c = new BoardCalc(d, "d", BoardService.date(date));
         common(model, c);
@@ -107,22 +109,32 @@ public class BoardController {
         Map<String, List<BoardData.Kpi>> byOrg = new LinkedHashMap<>();
         for (BoardData.Kpi k : d.kpis) byOrg.computeIfAbsent(k.org, x -> new ArrayList<>()).add(k);
         model.addAttribute("byOrg", byOrg);
+        Object[] kept = paste == null ? null : pastes.get(paste);
+        if (kept != null) {
+            String text = (String) kept[0];
+            List<BoardService.PasteRow> rows = board.paste(text);
+            Map<String, String> filled = new LinkedHashMap<>();
+            for (BoardService.PasteRow x : rows) if (x.ok()) filled.put(x.kid(), BoardCalc.plain(x.value()));
+            values.putAll(filled);
+            model.addAttribute("pasteRows", rows);
+            model.addAttribute("pasteText", text);
+            model.addAttribute("filled", filled);
+        }
         return "board-entry";
     }
 
-    /** 붙여 넣은 표를 지표에 맞춰 입력 칸에 채워 보여 준다(저장은 '실적 저장'에서). */
+    /** 붙여 넣은 표를 맡아 두고, 입력 화면이 그 값을 칸에 채워 보여 준다(저장은 '실적 저장'에서). */
     @PostMapping("/board/entry/paste")
-    public String paste(@RequestParam(required = false) String date, @RequestParam(required = false) String text, Model model) {
-        String r = entry(date, model);
-        List<BoardService.PasteRow> rows = board.paste(text);
-        Map<String, String> filled = new LinkedHashMap<>();
-        for (BoardService.PasteRow x : rows) if (x.ok()) filled.put(x.kid(), BoardCalc.plain(x.value()));
-        @SuppressWarnings("unchecked") Map<String, String> values = (Map<String, String>) model.getAttribute("values");
-        values.putAll(filled);
-        model.addAttribute("pasteRows", rows);
-        model.addAttribute("pasteText", text);
-        model.addAttribute("filled", filled);
-        return r;
+    public Object paste(@RequestParam Map<String, String> p, HttpServletRequest req) {
+        String text = Txt.str(p.get("text"));
+        if (text.isBlank()) return Web.reply(req, Op.bad("붙여 넣은 내용이 없습니다."), null);
+        if (text.length() > 200_000) return Web.reply(req, Op.bad("붙여 넣은 내용이 너무 깁니다."), null);
+        pastes.entrySet().removeIf(e -> System.currentTimeMillis() - (long) e.getValue()[1] > 30 * 60_000L);
+        String id = Txt.newId();
+        pastes.put(id, new Object[] { text, System.currentTimeMillis() });
+        LocalDate d = BoardService.date(p.get("date"));
+        long ok = board.paste(text).stream().filter(BoardService.PasteRow::ok).count();
+        return Web.reply(req, Op.ok(ok + "개 지표를 칸에 채웠습니다. 확인 후 '실적 저장'을 누르세요."), "/board/entry?date=" + d + "&paste=" + id);
     }
 
     @PostMapping("/board/entry")
