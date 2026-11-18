@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 기간·기준일 고르기 -->
+<th:block th:fragment="periodbar(base)">
+<form method="get" th:action="${base}" class="bd-period no-print">
+    <nav class="seg" aria-label="기간">
+        <a th:each="e : ${PERIODS}" th:href="@{${base}(p=${e.key},date=${date})}" th:classappend="${period == e.key} ? 'on'" th:text="${e.value}"></a>
+    </nav>
+    <input type="hidden" name="p" th:value="${period}" />
+    <label class="field bd-date"><span class="sr">기준일</span><input type="date" name="date" th:value="${date}" data-autosubmit aria-label="기준일" /></label>
+</form>
+</th:block>
+<!-- 지표 한 줄: 이름 · 막대 · 실적·달성률 -->
+<th:block th:fragment="kpirow(r)">
+<a class="bd-kr" th:href="@{|/board/kpi/${r.k().id}|(p=${period},date=${date})}" th:classappend="|st-${r.state()}|">
+    <span class="nm"><b th:text="${r.k().name}"></b><small th:text="${r.none()} ? (${r.k().weekly()} ? '주간 지표 · 미입력' : '미입력') : |${r.sub()}${r.k().weekly() ? ' · 주간' : ''}|"></small></span>
+    <span class="bar" th:unless="${r.none()}" th:title="|달성률 ${r.pct()}|">
+        <i class="fill" th:style="|width:${#numbers.formatDecimal(r.bar(), 1, 1, 'POINT')}%|"></i>
+        <i class="tick" style="left:83.3%"></i>
+        <i class="tick st" th:if="${r.stretchMark() > 0}" th:style="|left:${#numbers.formatDecimal(r.stretchMark(), 1, 1, 'POINT')}%|"></i>
+    </span>
+    <span class="bar empty" th:if="${r.none()}"></span>
+    <span class="val"><b th:text="${r.show()}"></b>
+        <span class="pill" th:classappend="${r.none()} ? '' : (${r.state() == 'miss'} ? 'bad' : (${r.state() == 'warn'} ? 'warn' : 'ok'))" th:text="${r.none()} ? '미입력' : ${r.pct()}"></span>
+        <small class="land" th:if="${r.landing() != null}" th:classappend="${r.landing().pct() < 97} ? 'dn' : (${r.landing().pct() < 99} ? 'fl' : 'up')"
+               th:text="|→ ${#numbers.formatDecimal(r.landing().pct(), 1, 0)}%|" title="현 추세 유지 시 기말 전망"></small>
+    </span>
+</a>
+</th:block>
+</body>
+</html>

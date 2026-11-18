@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>지표 추이 · 경영 현황판</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|${orgName} · ${k.grpName()} · ${k.calcName()}${k.weekly() ? ' · 주간' : ' · 일별'}|">조직</p>
+        <h1 th:text="${k.name}">지표</h1>
+        <p class="hint" th:text="|목표 ${c.num(k.target, k.uom)}${k.stretch > 0 ? ' · 도전 목표 ' + c.num(k.stretch, k.uom) : ''} · ${k.calc == 'sum' ? '기간 합계를 목표와 비교' : (k.calc == 'lower' ? '낮을수록 좋음(목표 ÷ 실적)' : '기간 평균을 목표와 비교')}|"></p>
+    </div>
+    <div class="row-actions no-print">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <a class="btn" th:href="@{/board(p=${period},date=${date})}">← 종합 현황</a>
+        <a class="btn btn-primary" th:href="@{/board/entry(date=${date})}">실적 입력</a>
+    </div>
+</div>
+<div th:replace="~{board-parts :: periodbar(|/board/kpi/${k.id}|)}"></div>
+<ul class="metrics">
+    <li class="metric-ok"><a href="#trend"><span class="metric-top" th:text="|${range.label()} 실적|">실적</span><strong th:text="${r.show()}">—</strong><span class="metric-sub" th:text="${r.sub()}"></span></a></li>
+    <li th:class="${r.none()} ? 'metric-ok' : (${r.state() == 'miss'} ? 'metric-bad' : (${r.state() == 'warn'} ? 'metric-warn' : 'metric-ok'))"><a href="#trend">
+        <span class="metric-top">달성률</span><strong th:text="${r.none()} ? '미입력' : ${r.pct()}">—</strong>
+        <span class="metric-sub" th:text="${r.none()} ? '' : (${r.state() == 'miss'} ? '계획 이탈(목표 -3%p 이하)' : (${r.state() == 'warn'} ? '주의(목표 -1~-3%p)' : '정상'))"></span></a></li>
+    <li class="metric-ok"><a href="#trend"><span class="metric-top">직전 기간 대비</span>
+        <strong th:text="${r.delta() == null} ? '—' : (${r.delta() >= 0} ? '▲ ' : '▼ ') + ${#numbers.formatDecimal(r.delta() >= 0 ? r.delta() : -r.delta(), 1, 1)} + '%p'">—</strong>
+        <span class="metric-sub" th:text="${r.prev() == null} ? '직전 기간 자료 없음' : |직전 기간 ${#numbers.formatDecimal(r.prev(), 1, 1)}%|"></span></a></li>
+    <li class="metric-ok"><a href="#trend"><span class="metric-top">기말 전망</span>
+        <strong th:text="${r.landing() == null} ? '—' : ${#numbers.formatDecimal(r.landing().pct(), 1, 0)} + '%'">—</strong>
+        <span class="metric-sub" th:text="${r.landing() == null} ? '당일·주간 지표는 전망하지 않습니다' : '현 추세가 이어질 때'"></span></a></li>
+</ul>
+<section class="card" id="trend">
+    <h2 th:text="${k.weekly()} ? '최근 8주' : '최근 14일(입력한 날)'">최근 흐름</h2>
+    <p class="empty" th:if="${#lists.isEmpty(trend)}">입력한 값이 없습니다.</p>
+    <div class="bd-trend" th:unless="${#lists.isEmpty(trend)}">
+        <div class="col" th:each="t : ${trend}" th:classappend="${t[2] < 97} ? 'miss' : (${t[2] < 99} ? 'warn' : 'ok')" th:title="|${t[0]} · 달성률 ${#numbers.formatDecimal(t[2], 1, 1)}%|">
+            <b th:text="${#numbers.formatDecimal(t[1], 1, 'COMMA', 2, 'POINT')}"></b>
+            <i th:style="|height:${t[2] > 130 ? 130 : (t[2] < 4 ? 4 : t[2])}px|"></i>
+            <small th:text="${t[0]}"></small>
+        </div>
+        <span class="goal" style="bottom:calc(100px + 34px)" title="목표(100%)"></span>
+    </div>
+</section>
+</th:block>
+</body>
+</html>

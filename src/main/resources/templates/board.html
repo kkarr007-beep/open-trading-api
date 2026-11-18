@@ -1,10 +1,110 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>경영 현황판 · Portal</title></head>
+<head><title>종합 현황 · 경영 현황판</title></head>
 <body>
 <th:block id="content">
-<iframe class="board-frame" src="/board/app" title="경영 현황판"></iframe>
-<p class="hint no-print" style="margin-top:6px">경영 현황판의 입력·설정은 Portal 데이터 파일에 저장되고 관리 화면의 백업에 함께 들어갑니다. 예전 현황판 파일에 있던 내용은 그쪽 '백업·복원'으로 내보낸 뒤 이 화면의 '백업·복원'에서 불러오세요.</p>
+<div class="page-head">
+    <div>
+        <p class="kicker">경영 현황판</p>
+        <h1 th:text="|종합 현황 — ${range.label()}|">종합 현황</h1>
+        <p class="hint" th:text="${period == 'd'} ? |${date} 하루 실적 기준| : |${range.start()} ~ ${date} · 기간 진행 ${#numbers.formatDecimal(pace.pct() * 100, 1, 0)}% (영업일 ${pace.done()}/${pace.total()}일)|"></p>
+    </div>
+    <div class="row-actions no-print">
+        <button type="button" class="btn" data-print>인쇄</button>
+        <a class="btn" th:href="@{/board/report(p=${period},date=${date})}">보고 문구</a>
+        <a class="btn btn-primary" th:href="@{/board/entry(date=${date})}">실적 입력</a>
+    </div>
+</div>
+<div th:replace="~{board-parts :: periodbar('/board')}"></div>
+<p class="banner info" th:unless="${hasData}">아직 저장된 현황판 자료가 없어 기본 조직·지표로 보여 줍니다. '실적 입력'으로 시작하거나, 예전 현황판의 백업 파일을 <a href="/board/settings#data">현황판 설정 → 데이터</a>에서 불러오세요.</p>
+<p class="banner warn no-print" th:if="${pending[0] + pending[1] > 0 and date == today}">
+    <span><th:block th:text="|오늘 아직 넣지 않은 지표가 ${pending[0] + pending[1]}개 있습니다(일별 ${pending[0]} · 주간 ${pending[1]}).|"></th:block>
+    <a th:href="@{/board/entry(date=${date})}">실적 입력 →</a></span></p>
+<ul class="metrics bd-metrics" th:with="gb=${c.groupAvg('base')}, gv=${c.groupAvg('vu')}, pb=${c.groupPrev('base')}, pv=${c.groupPrev('vu')}, lb=${c.groupLanding('base')}, lv=${c.groupLanding('vu')}, miss=${c.missing()}">
+    <li th:class="${gb == null} ? 'metric-ok' : (${gb < 97} ? 'metric-bad' : (${gb < 99} ? 'metric-warn' : 'metric-ok'))"><a href="#orgs">
+        <span class="metric-top">기본 KPI 종합</span>
+        <strong th:text="${gb == null} ? '—' : ${#numbers.formatDecimal(gb, 1, 1)} + '%'">—</strong>
+        <span class="metric-sub"><th:block th:if="${gb != null and pb != null}" th:text="|직전 기간 대비 ${gb - pb >= 0 ? '▲' : '▼'} ${#numbers.formatDecimal((gb - pb >= 0 ? gb - pb : pb - gb), 1, 1)}%p|"></th:block>
+            <th:block th:if="${lb != null}" th:text="|${gb != null and pb != null ? ' · ' : ''}기말 전망 ${#numbers.formatDecimal(lb, 1, 0)}%|"></th:block><th:block th:if="${gb == null}">미입력</th:block></span></a></li>
+    <li th:class="${gv == null} ? 'metric-ok' : (${gv < 97} ? 'metric-bad' : (${gv < 99} ? 'metric-warn' : 'metric-ok'))"><a href="#orgs">
+        <span class="metric-top">Value-up 종합</span>
+        <strong th:text="${gv == null} ? '—' : ${#numbers.formatDecimal(gv, 1, 1)} + '%'">—</strong>
+        <span class="metric-sub"><th:block th:if="${gv != null and pv != null}" th:text="|직전 기간 대비 ${gv - pv >= 0 ? '▲' : '▼'} ${#numbers.formatDecimal((gv - pv >= 0 ? gv - pv : pv - gv), 1, 1)}%p|"></th:block>
+            <th:block th:if="${lv != null}" th:text="|${gv != null and pv != null ? ' · ' : ''}기말 전망 ${#numbers.formatDecimal(lv, 1, 0)}%|"></th:block><th:block th:if="${gv == null}">미입력</th:block></span></a></li>
+    <li th:class="${#lists.isEmpty(miss)} ? 'metric-ok' : 'metric-bad'"><a href="#attn">
+        <span class="metric-top">계획 이탈 지표</span><strong th:text="|${#lists.size(miss)}건|">0</strong>
+        <span class="metric-sub" th:text="|주의 ${c.warnCount()} · 정상 ${c.okCount()} · 미입력 ${c.noneCount()}|"></span></a></li>
+    <li th:class="${c.highIssues() > 0} ? 'metric-bad' : 'metric-warn'"><a href="/board/issues">
+        <span class="metric-top">진행 중 이슈</span><strong th:text="|${c.openIssues(null)}건|">0</strong>
+        <span class="metric-sub" th:text="|중대(상) ${c.highIssues()}건|"></span></a></li>
+</ul>
+<div class="bd-cards" th:if="${!#lists.isEmpty(d.cards)}">
+    <div class="bd-card" th:each="x : ${d.cards}" th:classappend="|st-${x.st}|">
+        <span th:text="${x.lab}"></span><strong><th:block th:text="${x.val}"></th:block><small th:text="${x.uom}"></small></strong><em th:text="${x.sub}"></em>
+    </div>
+</div>
+<div class="card-split" id="attn">
+    <section class="card">
+        <h2>확인 필요 <span class="sub">계획 이탈 · 전기 대비 악화 · 중대 이슈 · IVR 격차</span></h2>
+        <p class="empty" th:if="${#lists.isEmpty(attn)}">확인할 항목이 없습니다.</p>
+        <ul class="bd-attn" th:unless="${#lists.isEmpty(attn)}">
+            <li th:each="a : ${attn}"><a th:href="${a.link().startsWith('/board/kpi/')} ? @{${a.link()}(p=${period},date=${date})} : ${a.link()}">
+                <span class="pill" th:classappend="${a.kind()}" th:text="${a.label()}"></span>
+                <span class="t"><b th:text="${a.name()}"></b><small th:text="${a.org()}"></small></span>
+                <strong th:text="${a.val()}"></strong></a></li>
+        </ul>
+    </section>
+    <section class="card">
+        <h2>이번 주 집중 사항 <a class="sub no-print" href="/board/settings#cards">고치기</a></h2>
+        <p class="empty" th:if="${#lists.isEmpty(d.focus)}">집중 사항이 없습니다. 현황판 설정에서 적습니다.</p>
+        <ol class="bd-focus" th:unless="${#lists.isEmpty(d.focus)}">
+            <li th:each="f : ${d.focus}"><b th:text="${f.t}"></b><small th:if="${!#strings.isEmpty(f.w)}" th:text="${f.w}"></small></li>
+        </ol>
+    </section>
+</div>
+<h2 class="bd-h" id="orgs">사업부별 현황 <span class="sub">막대의 세로선은 목표(100%), 옅은 선은 도전 목표 · 지표를 누르면 추이</span></h2>
+<div class="bd-orgs">
+    <section class="card bd-org" th:each="o : ${orgs}">
+        <div class="bd-org-head">
+            <div><h3 th:text="${o.org.name}"></h3>
+                <small th:text="|${o.org.kind}${#lists.isEmpty(o.org.units) ? '' : ' · ' + #strings.listJoin(o.org.units, ', ')}|"></small></div>
+            <div class="bd-org-score">
+                <strong th:text="${o.avg == null} ? '미입력' : ${#numbers.formatDecimal(o.avg, 1, 1)} + '%'"
+                        th:classappend="${o.avg == null} ? '' : (${o.avg < 97} ? 'bad' : (${o.avg < 99} ? 'warn' : 'ok'))"></strong>
+                <small><th:block th:if="${o.avg != null and o.prev != null}" th:text="|직전 ${o.avg - o.prev >= 0 ? '▲' : '▼'}${#numbers.formatDecimal((o.avg - o.prev >= 0 ? o.avg - o.prev : o.prev - o.avg), 1, 1)}%p|"></th:block>
+                    <th:block th:if="${o.land != null}" th:text="|${o.avg != null and o.prev != null ? ' · ' : ''}전망 ${#numbers.formatDecimal(o.land, 1, 0)}%|"></th:block>
+                    <a th:if="${o.issues > 0}" th:href="@{/board/issues(org=${o.org.id})}" th:text="| · 이슈 ${o.issues}|"></a></small>
+            </div>
+        </div>
+        <p class="bd-grp" th:if="${!#lists.isEmpty(o.base)}">기본 KPI</p>
+        <th:block th:each="r : ${o.base}"><div th:replace="~{board-parts :: kpirow(${r})}"></div></th:block>
+        <p class="bd-grp" th:if="${!#lists.isEmpty(o.vu)}">Value-up</p>
+        <th:block th:each="r : ${o.vu}"><div th:replace="~{board-parts :: kpirow(${r})}"></div></th:block>
+        <p class="empty" th:if="${#lists.isEmpty(o.base) and #lists.isEmpty(o.vu)}">이 조직에 지표가 없습니다.</p>
+    </section>
+</div>
+<section class="card" th:if="${ivr[0] != null and ivr[1] != null}">
+    <h2>주간 IVR 수신율 <span class="sub">최근 8주 · 목표 대비</span></h2>
+    <div class="bd-ivr">
+        <div th:each="k : ${ivr}" th:with="ser=${c.weekSeries(k, 8)}">
+            <h3 th:text="${k.name}"></h3>
+            <p class="empty" th:if="${#lists.isEmpty(ser)}">입력한 주가 없습니다.</p>
+            <div class="bd-weeks" th:unless="${#lists.isEmpty(ser)}">
+                <div th:each="w : ${c.weekBars(k, 8)}" class="wk"><b th:text="${w[1]} + '%'"></b>
+                    <i th:style="|height:${w[2]}px|" th:classappend="${w[3]} ? 'low'"></i><small th:text="${w[0]}"></small></div>
+            </div>
+            <p class="small muted" th:text="|목표 ${c.num(k.target, '%')} · 도전 ${c.num(k.stretch, '%')}|"></p>
+        </div>
+    </div>
+</section>
+<section class="card">
+    <h2 th:text="|${#strings.substring(date, 0, 7)} 일별 입력 현황|">일별 입력 현황</h2>
+    <div class="bd-days">
+        <a th:each="x : ${days}" th:href="@{/board/entry(date=${x[0]})}" th:classappend="${x[4]} ? 'off' : (${x[5]} ? 'future' : (${x[2] == 0} ? 'none' : (${x[2] >= x[3]} ? 'full' : 'part')))"
+           th:title="|${x[0]} · 일별 지표 ${x[2]}/${x[3]} 입력|"><b th:text="${x[1]}"></b><small th:unless="${x[4]}" th:text="|${x[2]}/${x[3]}|"></small></a>
+    </div>
+    <p class="small muted"><span class="bd-key full"></span> 모두 입력 <span class="bd-key part"></span> 일부 <span class="bd-key none"></span> 없음 · 날짜를 누르면 그날 실적 입력으로 갑니다.</p>
+</section>
 </th:block>
 </body>
 </html>

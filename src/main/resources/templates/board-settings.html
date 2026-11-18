@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>현황판 설정 · 경영 현황판</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">경영 현황판</p>
+        <h1>현황판 설정</h1>
+        <p class="hint">조직(사업부·하위 조직), 지표(목표·도전 목표·계산 방식), 이번 주 집중 사항, 현황판 맨 위 보고 항목, 데이터 백업을 관리합니다.</p>
+    </div>
+    <nav class="seg no-print" aria-label="설정 바로가기"><a href="#org">조직</a><a href="#kpi">지표</a><a href="#cards">집중 사항·보고 항목</a><a href="#data">데이터</a></nav>
+</div>
+<section class="card" id="org">
+    <h2>조직 <span class="sub">하위 조직은 쉼표로 나눕니다 · 지표가 있는 조직은 지울 수 없습니다</span></h2>
+    <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">조직 이름</th><th scope="col">종류</th><th scope="col">하위 조직</th><th scope="col" class="num">지표</th><th scope="col"></th></tr></thead>
+        <tbody>
+        <tr th:each="o : ${d.orgs}">
+            <td><input th:form="|of-${o.id}|" name="name" required maxlength="60" th:value="${o.name}" aria-label="조직 이름" /></td>
+            <td><select th:form="|of-${o.id}|" name="kind" aria-label="종류"><option th:selected="${o.kind == '사업부'}">사업부</option><option th:selected="${o.kind == '스탭'}">스탭</option></select></td>
+            <td><input th:form="|of-${o.id}|" name="units" maxlength="600" th:value="${#strings.listJoin(o.units, ', ')}" aria-label="하위 조직" style="width:100%" /></td>
+            <td class="num" th:text="${kpiCount[o.id] ?: 0}"></td>
+            <td class="nowrap"><form th:id="|of-${o.id}|" method="post" action="/board/settings/org" data-write="1" class="inline-form"><input type="hidden" name="id" th:value="${o.id}" /><button type="submit" class="btn">저장</button></form>
+                <form method="post" action="/board/settings/org-delete" data-write="1" class="inline-form" th:data-confirm="|'${o.name}' 조직을 지울까요?|"><input type="hidden" name="id" th:value="${o.id}" /><button type="submit" class="btn btn-quiet">지우기</button></form></td>
+        </tr>
+        <tr class="bd-add">
+            <td><input form="of-new" name="name" required maxlength="60" placeholder="새 조직 이름" aria-label="새 조직 이름" /></td>
+            <td><select form="of-new" name="kind" aria-label="새 조직 종류"><option>사업부</option><option>스탭</option></select></td>
+            <td><input form="of-new" name="units" maxlength="600" placeholder="예: 1파트, 2파트" aria-label="새 조직 하위 조직" style="width:100%" /></td>
+            <td></td>
+            <td><form id="of-new" method="post" action="/board/settings/org" data-write="1" class="inline-form"><button type="submit" class="btn btn-primary">추가</button></form></td>
+        </tr>
+        </tbody>
+    </table></div>
+</section>
+<section class="card" id="kpi">
+    <h2>지표 <span class="sub">누적형 = 기간 합계 · 평균형 = 기간 평균 · 역방향 = 낮을수록 좋음 · 주간 지표는 주 단위로 입력</span></h2>
+    <div class="table-wrap bd-kpi-table"><table class="data">
+        <thead><tr><th scope="col">조직</th><th scope="col">지표 이름</th><th scope="col">구분</th><th scope="col">계산</th><th scope="col">주기</th>
+            <th scope="col" class="num">목표</th><th scope="col" class="num">도전 목표</th><th scope="col">단위</th><th scope="col"></th></tr></thead>
+        <tbody>
+        <tr th:each="k : ${d.kpis}" th:with="f=|kf-${k.id}|">
+            <td><select th:form="${f}" name="org" aria-label="조직"><option th:each="o : ${d.orgs}" th:value="${o.id}" th:text="${o.name}" th:selected="${o.id == k.org}"></option></select></td>
+            <td><input th:form="${f}" name="name" required maxlength="80" th:value="${k.name}" aria-label="지표 이름" /></td>
+            <td><select th:form="${f}" name="grp" aria-label="구분"><option value="base" th:selected="${k.grp != 'vu'}">기본</option><option value="vu" th:selected="${k.grp == 'vu'}">Value-up</option></select></td>
+            <td><select th:form="${f}" name="calc" aria-label="계산"><option value="avg" th:selected="${k.calc == 'avg'}">평균형</option><option value="sum" th:selected="${k.calc == 'sum'}">누적형</option><option value="lower" th:selected="${k.calc == 'lower'}">역방향</option></select></td>
+            <td><select th:form="${f}" name="cycle" aria-label="주기"><option value="d" th:selected="${!k.weekly()}">일별</option><option value="w" th:selected="${k.weekly()}">주간</option></select></td>
+            <td class="num"><input th:form="${f}" name="target" type="number" step="any" required th:value="${c.plain(k.target)}" aria-label="목표" style="width:90px" /></td>
+            <td class="num"><input th:form="${f}" name="stretch" type="number" step="any" th:value="${k.stretch > 0 ? c.plain(k.stretch) : ''}" aria-label="도전 목표" style="width:90px" /></td>
+            <td><input th:form="${f}" name="uom" maxlength="12" th:value="${k.uom}" aria-label="단위" style="width:64px" /></td>
+            <td class="nowrap"><form th:id="${f}" method="post" action="/board/settings/kpi" data-write="1" class="inline-form"><input type="hidden" name="id" th:value="${k.id}" /><button type="submit" class="btn">저장</button></form>
+                <form method="post" action="/board/settings/kpi-delete" data-write="1" class="inline-form" th:data-confirm="|'${k.name}' 지표를 지울까요? 입력했던 값은 백업에만 남습니다.|"><input type="hidden" name="id" th:value="${k.id}" /><button type="submit" class="btn btn-quiet">지우기</button></form></td>
+        </tr>
+        <tr class="bd-add">
+            <td><select form="kf-new" name="org" aria-label="새 지표 조직"><option th:each="o : ${d.orgs}" th:value="${o.id}" th:text="${o.name}"></option></select></td>
+            <td><input form="kf-new" name="name" required maxlength="80" placeholder="새 지표 이름" aria-label="새 지표 이름" /></td>
+            <td><select form="kf-new" name="grp" aria-label="새 지표 구분"><option value="base">기본</option><option value="vu">Value-up</option></select></td>
+            <td><select form="kf-new" name="calc" aria-label="새 지표 계산"><option value="avg">평균형</option><option value="sum">누적형</option><option value="lower">역방향</option></select></td>
+            <td><select form="kf-new" name="cycle" aria-label="새 지표 주기"><option value="d">일별</option><option value="w">주간</option></select></td>
+            <td class="num"><input form="kf-new" name="target" type="number" step="any" required aria-label="새 지표 목표" style="width:90px" /></td>
+            <td class="num"><input form="kf-new" name="stretch" type="number" step="any" aria-label="새 지표 도전 목표" style="width:90px" /></td>
+            <td><input form="kf-new" name="uom" maxlength="12" aria-label="새 지표 단위" style="width:64px" /></td>
+            <td><form id="kf-new" method="post" action="/board/settings/kpi" data-write="1" class="inline-form"><button type="submit" class="btn btn-primary">추가</button></form></td>
+        </tr>
+        </tbody>
+    </table></div>
+</section>
+<div class="card-split" id="cards">
+    <section class="card">
+        <h2>이번 주 집중 사항 <span class="sub">한 줄에 하나 · '내용 | 담당·기한' 꼴</span></h2>
+        <form method="post" action="/board/settings/focus" data-write="1">
+            <textarea name="text" rows="7" class="textarea-wide" aria-label="이번 주 집중 사항" placeholder="고객1 S/L 지표 회복 | 상품콜 1파트 · 금요일까지" th:text="${focusText}"></textarea>
+            <p class="row-actions" style="margin-top:8px"><button type="submit" class="btn btn-primary">저장</button></p>
+        </form>
+    </section>
+    <section class="card">
+        <h2>보고 항목 <span class="sub">종합 현황 맨 위에 보이는 직접 입력 값</span></h2>
+        <ul class="wlist" th:if="${!#lists.isEmpty(d.cards)}">
+            <li class="wrow" th:each="x, st : ${d.cards}">
+                <div class="t"><b th:text="|${x.lab} ${x.val}${x.uom}|"></b><small th:text="${x.sub}"></small></div>
+                <form method="post" action="/board/settings/card-delete" data-write="1" class="inline-form" th:data-confirm="|'${x.lab}' 항목을 내릴까요?|"><input type="hidden" name="index" th:value="${st.index}" /><button type="submit" class="btn btn-quiet">내리기</button></form>
+            </li>
+        </ul>
+        <form method="post" action="/board/settings/card" data-write="1">
+            <div class="form-grid">
+                <label class="field">항목 이름<input name="lab" required maxlength="60" placeholder="예: 민원 접수" /></label>
+                <label class="field">값<input name="val" required maxlength="40" placeholder="예: 12" /></label>
+                <label class="field">단위<input name="uom" maxlength="20" placeholder="건" /></label>
+                <label class="field">색<select name="st"><option value="">기본</option><option value="g">정상(초록)</option><option value="a">주의(주황)</option><option value="r">이탈(빨강)</option></select></label>
+                <label class="field grow">설명 <span class="field-note">선택</span><input name="sub" maxlength="120" placeholder="예: 전주 대비 +3" /></label>
+            </div>
+            <p class="row-actions"><button type="submit" class="btn btn-primary">추가</button></p>
+        </form>
+    </section>
+</div>
+<section class="card" id="data">
+    <h2>데이터</h2>
+    <p class="hint">현황판 자료는 Portal 데이터 파일에 저장되어 '관리' 화면의 백업에 함께 들어갑니다. 따로 보관하려면 내려받으세요.
+        예전 현황판(HTML)의 '백업 · 복원 → 지금 파일로 내보내기'로 받은 파일도 그대로 불러올 수 있습니다.</p>
+    <p class="row-actions"><a class="btn" href="/board/data/export">현황판 데이터 내려받기 (JSON)</a></p>
+    <form method="post" action="/board/import" data-write="1" enctype="multipart/form-data" data-confirm="불러오면 지금 현황판 자료(조직·지표·실적·이슈)를 파일 내용으로 모두 바꿉니다. 계속할까요?">
+        <div class="drop"><p class="drop-copy"><strong>현황판 백업 파일(JSON)을 고르세요</strong> — 지금 자료를 바꿉니다</p>
+            <input type="file" name="upload" accept=".json,application/json" aria-label="현황판 백업 파일" /><span class="drop-name" data-file-name hidden></span></div>
+        <p class="row-actions" style="margin-top:10px"><button type="submit" class="btn">불러오기</button></p>
+    </form>
+</section>
+</th:block>
+</body>
+</html>

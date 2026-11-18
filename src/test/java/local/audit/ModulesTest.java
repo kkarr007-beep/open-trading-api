@@ -606,4 +606,71 @@ class ModulesTest {
         assertEquals("bad", bf.get("tone"));
         assertEquals(9, bf.get("worstDigit"));
     }
+
+    @Test
+    void boardCalculatesLikeTheOldBoardAndKeepsFormat() throws Exception {
+        local.audit.board.BoardService b = new local.audit.board.BoardService(db);
+        // 예전 현황판(판 3)의 백업: 장기·일반 보상 조직이 따로, IVR 지표가 하나
+        String old = """
+            {"v":3,"orgs":[{"id":"c1","name":"고객1 사업부","kind":"사업부","units":["상품콜 1파트"]},
+                           {"id":"lt","name":"장기보상","kind":"사업부","units":["장기 지급심사파트"]},
+                           {"id":"gn","name":"일반보상","kind":"사업부","units":["일반 지급심사파트"]}],
+             "kpis":[{"id":"k1","org":"c1","grp":"base","name":"생산성","calc":"avg","cycle":"d","target":95,"stretch":110,"uom":"콜"},
+                     {"id":"k4","org":"c1","grp":"vu","name":"계약유지","calc":"sum","cycle":"d","target":2,"stretch":0,"uom":"억원"},
+                     {"id":"p1","org":"lt","grp":"base","name":"지급 처리일수","calc":"lower","cycle":"d","target":3.5,"stretch":2.8,"uom":"일"},
+                     {"id":"ivr","org":"c1","grp":"base","name":"IVR 수신율","calc":"avg","cycle":"w","target":92,"stretch":95,"uom":"%"}],
+             "entries":{"2026-11-02":{"k1":90,"k4":0.1,"p1":4},"2026-11-03":{"k1":100,"k4":0.1,"p1":3}},
+             "weeks":{"2026-11-02":{"ivr":90}},
+             "issues":{"i1":{"org":"gn","lv":"상","st":"진행","title":"지급 지연","cat":"민원","at":"2026-11-03T00:00:00Z"}},
+             "layout":[{"id":"orgs","on":true}]}""";
+        assertTrue(b.importJson(old).ok);
+        local.audit.board.BoardData d = b.load();
+        assertEquals(List.of("c1", "cp"), d.orgs.stream().map(o -> o.id).toList());
+        assertEquals("cp", d.kpi("p1").org);
+        assertEquals("cp", d.issues.get("i1").org);
+        assertNotNull(d.kpi("ivr_lt"));
+        assertNotNull(d.kpi("ivr_lf"));
+        assertEquals(90.0, d.week("2026-11-02", "ivr_lt"));
+        assertNotNull(d.other().get("layout"), "모르는 항목(화면 배치)은 보존");
+        // 저장 형식: Meta board.store 안의 exec-board-v3 글
+        String raw = (String) db.row("SELECT Value FROM Meta WHERE Key='board.store'").get("Value");
+        assertTrue(raw.contains("exec-board-v3"));
+
+        // 2026-11-17(화) 기준 월 누적: 영업일 21일 중 12일 진행(11/1은 일요일)
+        local.audit.board.BoardCalc c = b.calc("m", java.time.LocalDate.of(2026, 11, 17));
+        assertEquals(12, c.pace().done());
+        assertEquals(21, c.pace().total());
+        local.audit.board.BoardCalc.Result k1 = c.calc(d.kpi("k1"));
+        assertEquals(95.0 / 95 * 100, k1.a(), 0.001); // 평균 95 / 목표 95
+        assertEquals("ok", k1.state());
+        local.audit.board.BoardCalc.Result k4 = c.calc(d.kpi("k4"));
+        assertEquals(0.2 / (2 * (12.0 / 21)) * 100, k4.a(), 0.001); // 누적형: 합계 / (목표 × 진행률)
+        assertEquals("miss", k4.state());
+        local.audit.board.BoardCalc.Result p1 = c.calc(d.kpi("p1"));
+        assertEquals(3.5 / 3.5 * 100, p1.a(), 0.001); // 역방향: 목표 / 평균
+        assertTrue(c.attention().stream().anyMatch(a -> a.label().equals("중대 이슈")));
+        assertTrue(c.report().contains("계획 이탈 지표 1건"));
+
+        // 실적 저장: 비운 칸은 그 값만 지움, 주간 지표는 그 주에
+        Op saved = b.saveEntries(java.time.LocalDate.of(2026, 11, 17), Map.of("v_k1", "97", "v_k4", "", "v_ivr_lt", "93.5", "v_p1", "abc"));
+        assertTrue(saved.ok, saved.message);
+        assertEquals(97.0, b.load().day("2026-11-17", "k1"));
+        assertEquals(93.5, b.load().week("2026-11-16", "ivr_lt"));
+        // 전 영업일 값 채우기(월요일 16일이 비어 있으면 금요일 13일, 그것도 없으면 실패)
+        assertFalse(b.fillPrev(java.time.LocalDate.of(2026, 11, 16)).ok);
+        assertTrue(b.fillPrev(java.time.LocalDate.of(2026, 11, 4)).ok);
+        assertEquals(100.0, b.load().day("2026-11-04", "k1"));
+        // 붙여 넣기: 조직 이름이 앞에 붙어도, 단위·쉼표가 있어도
+        List<local.audit.board.BoardService.PasteRow> rows = b.paste("고객1 사업부 생산성\t96.5콜\n계약유지  1,200\n없는지표\t3\n제목만");
+        assertEquals("k1", rows.get(0).kid());
+        assertEquals(96.5, rows.get(0).value());
+        assertEquals(1200.0, rows.get(1).value());
+        assertFalse(rows.get(2).ok());
+        assertFalse(rows.get(3).ok());
+        // 계획 이탈 → 이슈 초안, 두 번째는 건너뜀
+        assertTrue(b.autoIssues("m", java.time.LocalDate.of(2026, 11, 17)).ok);
+        assertFalse(b.autoIssues("m", java.time.LocalDate.of(2026, 11, 17)).ok);
+        // 조직: 지표가 있으면 못 지움
+        assertFalse(b.deleteOrg("c1").ok);
+    }
 }

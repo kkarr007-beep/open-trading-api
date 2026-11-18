@@ -59,7 +59,8 @@ public class Web {
         if (path.startsWith("/work/report")) navKey = "work/insight";
         if (path.equals("/import")) navKey = "import";
         if (path.startsWith("/library")) navKey = path.equals("/library/new") ? "library/new" : path.equals("/library/categories") ? "library/categories" : "library";
-        if (path.startsWith("/board")) navKey = "board";
+        if (path.startsWith("/board")) navKey = path.startsWith("/board/entry") ? "board/entry" : path.startsWith("/board/issues") ? "board/issues"
+            : path.startsWith("/board/report") ? "board/report" : path.startsWith("/board/settings") ? "board/settings" : "board";
         if (path.startsWith("/tools")) navKey = path.startsWith("/tools/card/settings") ? "tools/card/settings" : path.startsWith("/tools/card/exceptions") ? "tools/card/exceptions" : "tools/card";
         model.addAttribute("navKey", navKey);
         model.addAttribute("caseCategories", cases.categories());
