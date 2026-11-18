@@ -258,7 +258,7 @@ html[data-theme="dark"] .hit mark { background: #6b5d00; }
 /* ── 타임라인 ── */
 .gantt { padding: 0; overflow-x: auto; }
 .gantt .g-row { display: grid; grid-template-columns: 260px minmax(560px, 1fr); border-bottom: 1px solid var(--line); min-height: 34px; }
-.gantt .g-head { position: sticky; top: 0; z-index: 2; background: var(--paper); min-height: 30px; }
+.gantt .g-head { background: var(--paper); min-height: 30px; }
 .gantt .g-label { padding: 6px 10px; font-size: 13px; display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; border-right: 1px solid var(--line); }
 .gantt .g-label a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 .gantt .g-label small { color: var(--faint); font-size: 11.5px; }
