@@ -448,7 +448,7 @@ public final class BoardCalc {
             }
         }
         L.add("");
-        L.add("※ 경영 현황판에서 " + local.audit.Kst.today() + " 자동 정리");
+        L.add("※ 경영현황에서 " + local.audit.Kst.today() + " 자동 정리");
         return String.join("\n", L);
     }
 }

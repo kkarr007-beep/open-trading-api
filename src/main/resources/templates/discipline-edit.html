@@ -52,7 +52,7 @@
                     <span class="field-note">목록에서 감사번호를 고르거나 건 제목을 적습니다.</span>
                 </label>
                 <label class="field grow">위반내용<textarea name="violationText" required maxlength="500" rows="3" th:text="${item?.ViolationText}"></textarea></label>
-                <label class="field grow">관련규정 <span class="field-note"><a href="/rules/search" target="_self">사규에서 찾기</a> · 사규 읽기 화면의 '징계 등재'로 오면 채워져 있습니다.</span><textarea name="ruleText" maxlength="240" rows="2" th:text="${item != null} ? ${item.RuleText} : ${ruleTextInit}"></textarea></label>
+                <label class="field grow"><span class="flabel">관련규정 <span class="field-note"><a href="/rules/search" target="_self">사규에서 찾기</a> · 사규 읽기 화면의 '징계 등재'로 오면 채워져 있습니다.</span></span><textarea name="ruleText" maxlength="240" rows="2" th:text="${item != null} ? ${item.RuleText} : ${ruleTextInit}"></textarea></label>
                 <label class="field grow">비고<textarea name="remark" maxlength="500" rows="2" th:text="${item?.Remark}"></textarea></label>
             </div>
             <datalist id="case-refs">

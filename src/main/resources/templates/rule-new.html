@@ -16,7 +16,7 @@
         <label class="field">카테고리<select id="imC" th:disabled="${revise != null}"><option value="">미분류</option><option th:each="c : ${cats}" th:value="${c.id}" th:text="${c.name}"></option></select></label>
         <label class="field">버전 이름<input id="imV" maxlength="60" th:value="${revise != null} ? |개정 ${#lists.size(revise.versions) + 1}| : '제정'" /></label>
         <label class="field">시행일<input id="imD" type="date" th:value="${today}" /></label>
-        <label class="field grow">개정 사유 <span class="field-note">선택</span><input id="imR" maxlength="500" /></label>
+        <label class="field grow"><span class="flabel">개정 사유 <span class="field-note">선택</span></span><input id="imR" maxlength="500" /></label>
     </div>
     <div class="drop">
         <p class="drop-copy"><strong>사규 문서 파일을 고르거나 끌어 놓으세요</strong> — 고르면 바로 읽어서 분석합니다</p>

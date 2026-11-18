@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>이슈 · 경영 현황판</title></head>
+<head><title>이슈 · 경영현황</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <p class="kicker">경영 현황판</p>
+        <p class="kicker">경영현황</p>
         <h1>이슈</h1>
         <p class="hint">사업부별 이슈를 등급(상·중·하)과 상태로 관리합니다. '상' 등급의 진행 중 이슈는 종합 현황의 '확인 필요'에 나옵니다.</p>
     </div>
@@ -22,12 +22,12 @@
         <div class="form-grid">
             <label class="field">조직<select name="org" required>
                 <option th:each="o : ${d.orgs}" th:value="${o.id}" th:text="${o.name}" th:selected="${ed != null and ed.org == o.id}"></option></select></label>
-            <label class="field">하위 조직 <span class="field-note">선택</span><input name="unit" list="units" maxlength="80" th:value="${ed != null ? ed.unit : ''}" /></label>
+            <label class="field"><span class="flabel">하위 조직 <span class="field-note">선택</span></span><input name="unit" list="units" maxlength="80" th:value="${ed != null ? ed.unit : ''}" /></label>
             <label class="field">구분<select name="cat"><option th:each="x : ${CATS}" th:value="${x}" th:text="${x}" th:selected="${ed != null and ed.cat == x}"></option></select></label>
             <label class="field">등급<select name="lv"><option th:each="x : ${LEVELS}" th:value="${x}" th:text="${x}" th:selected="${ed != null ? ed.level() == x : x == '중'}"></option></select></label>
             <label class="field">상태<select name="st"><option th:each="x : ${STATES}" th:value="${x}" th:text="${x}" th:selected="${ed != null and ed.st == x}"></option></select></label>
             <label class="field grow">제목<input name="title" required maxlength="200" th:value="${ed != null ? ed.title : ''}" /></label>
-            <label class="field grow">내용 <span class="field-note">원인·조치 계획·기한</span><textarea name="note" rows="3" maxlength="4000" th:text="${ed != null ? ed.note : ''}"></textarea></label>
+            <label class="field grow"><span class="flabel">내용 <span class="field-note">원인·조치 계획·기한</span></span><textarea name="note" rows="3" maxlength="4000" th:text="${ed != null ? ed.note : ''}"></textarea></label>
         </div>
         <datalist id="units"><th:block th:each="o : ${d.orgs}"><option th:each="u : ${o.units}" th:value="${u}"></option></th:block></datalist>
         <p class="row-actions"><button type="submit" class="btn btn-primary" th:text="${ed != null} ? '고친 내용 저장' : '등록'">등록</button>

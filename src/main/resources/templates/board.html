@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>종합 현황 · 경영 현황판</title></head>
+<head><title>종합 현황 · 경영현황</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <p class="kicker">경영 현황판</p>
+        <p class="kicker">경영현황</p>
         <h1 th:text="|종합 현황 — ${range.label()}|">종합 현황</h1>
         <p class="hint" th:text="${period == 'd'} ? |${date} 하루 실적 기준| : |${range.start()} ~ ${date} · 기간 진행 ${#numbers.formatDecimal(pace.pct() * 100, 1, 0)}% (영업일 ${pace.done()}/${pace.total()}일)|"></p>
     </div>
@@ -70,7 +70,7 @@
                 <small th:text="|${o.org.kind}${#lists.isEmpty(o.org.units) ? '' : ' · ' + #strings.listJoin(o.org.units, ', ')}|"></small></div>
             <div class="bd-org-score">
                 <strong th:text="${o.avg == null} ? '미입력' : ${#numbers.formatDecimal(o.avg, 1, 1)} + '%'"
-                        th:classappend="${o.avg == null} ? '' : (${o.avg < 97} ? 'bad' : (${o.avg < 99} ? 'warn' : 'ok'))"></strong>
+                        th:classappend="${o.avg == null} ? 'none' : (${o.avg < 97} ? 'bad' : (${o.avg < 99} ? 'warn' : 'ok'))"></strong>
                 <small><th:block th:if="${o.avg != null and o.prev != null}" th:text="|직전 ${o.avg - o.prev >= 0 ? '▲' : '▼'}${#numbers.formatDecimal((o.avg - o.prev >= 0 ? o.avg - o.prev : o.prev - o.avg), 1, 1)}%p|"></th:block>
                     <th:block th:if="${o.land != null}" th:text="|${o.avg != null and o.prev != null ? ' · ' : ''}전망 ${#numbers.formatDecimal(o.land, 1, 0)}%|"></th:block>
                     <a th:if="${o.issues > 0}" th:href="@{/board/issues(org=${o.org.id})}" th:text="| · 이슈 ${o.issues}|"></a></small>

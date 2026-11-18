@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>현황판 설정 · 경영 현황판</title></head>
+<head><title>현황판 설정 · 경영현황</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <p class="kicker">경영 현황판</p>
+        <p class="kicker">경영현황</p>
         <h1>현황판 설정</h1>
         <p class="hint">조직(사업부·하위 조직), 지표(목표·도전 목표·계산 방식), 이번 주 집중 사항, 현황판 맨 위 보고 항목, 데이터 백업을 관리합니다.</p>
     </div>
@@ -88,7 +88,7 @@
                 <label class="field">값<input name="val" required maxlength="40" placeholder="예: 12" /></label>
                 <label class="field">단위<input name="uom" maxlength="20" placeholder="건" /></label>
                 <label class="field">색<select name="st"><option value="">기본</option><option value="g">정상(초록)</option><option value="a">주의(주황)</option><option value="r">이탈(빨강)</option></select></label>
-                <label class="field grow">설명 <span class="field-note">선택</span><input name="sub" maxlength="120" placeholder="예: 전주 대비 +3" /></label>
+                <label class="field grow"><span class="flabel">설명 <span class="field-note">선택</span></span><input name="sub" maxlength="120" placeholder="예: 전주 대비 +3" /></label>
             </div>
             <p class="row-actions"><button type="submit" class="btn btn-primary">추가</button></p>
         </form>

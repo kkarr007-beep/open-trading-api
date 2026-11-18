@@ -75,7 +75,7 @@
                     </form>
                     <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/edit|" data-write="1" style="margin-top:12px">
                         <label class="field">조 제목<input name="title" maxlength="120" th:value="${a.title()}" /></label>
-                        <label class="field grow" style="margin-top:6px">본문 <span class="field-note">①②는 항, 1.은 호, 가.는 목으로 들여 씁니다. 표는 | 칸 | 칸 | 꼴로 적습니다.</span>
+                        <label class="field grow" style="margin-top:6px"><span class="flabel">본문 <span class="field-note">①②는 항, 1.은 호, 가.는 목으로 들여 씁니다. 표는 | 칸 | 칸 | 꼴로 적습니다.</span></span>
                             <textarea name="content" rows="10" th:text="${a.raw()}" data-rich="html" th:attr="data-html=${a.editHtml()}"></textarea></label>
                         <p style="margin-top:6px"><button type="submit" class="btn">조문 저장</button></p>
                     </form>
@@ -111,7 +111,7 @@
                 <option th:each="s : ${ {'개정 예정','검토 중','폐지'} }" th:value="${s}" th:text="${s}" th:selected="${row.status() == s}"></option>
             </select></label>
             <label class="field">주관부서<input name="owner" maxlength="60" th:value="${row.owner()}" placeholder="예: 인사팀" /></label>
-            <label class="field">검토 주기(개월) <span class="field-note">비우면 검토 알림 없음</span><input name="reviewMonths" type="number" min="0" max="120" th:value="${row.reviewMonths() > 0 ? row.reviewMonths() : ''}" placeholder="예: 12" /></label>
+            <label class="field"><span class="flabel">검토 주기(개월) <span class="field-note">비우면 검토 알림 없음</span></span><input name="reviewMonths" type="number" min="0" max="120" th:value="${row.reviewMonths() > 0 ? row.reviewMonths() : ''}" placeholder="예: 12" /></label>
         </div>
         <button type="submit" class="btn btn-primary">저장</button>
     </form>

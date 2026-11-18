@@ -40,7 +40,7 @@
     </div>
     <form method="post" action="/rules/checklists/add" data-write="1" style="margin-top:8px">
         <input type="hidden" name="id" th:value="${c.id()}" />
-        <label class="field grow">항목 더하기 <span class="field-note">여러 줄을 넣으면 줄마다 항목이 됩니다.</span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
+        <label class="field grow"><span class="flabel">항목 더하기 <span class="field-note">여러 줄을 넣으면 줄마다 항목이 됩니다.</span></span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
         <p style="margin-top:6px"><button type="submit" class="btn">더하기</button></p>
     </form>
 </section>

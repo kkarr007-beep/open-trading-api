@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>실적 입력 · 경영 현황판</title></head>
+<head><title>실적 입력 · 경영현황</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <p class="kicker">경영 현황판</p>
+        <p class="kicker">경영현황</p>
         <h1 th:text="|실적 입력 — ${date}|">실적 입력</h1>
         <p class="hint" th:text="|일별 지표는 ${date}에, 주간 지표는 ${weekLabel} 주에 저장합니다. ${pending[0] + pending[1] > 0 ? '아직 ' + pending[0] + '개(일별)' + (pending[1] > 0 ? ', ' + pending[1] + '개(주간)' : '') + ' 남았습니다.' : '이 날짜는 모두 입력했습니다.'}|"></p>
     </div>
@@ -34,7 +34,7 @@
             <tbody><tr th:each="k : ${ks}" th:classappend="${filled.containsKey(k.id)} ? 'pasted'">
                 <th scope="row" th:text="${k.name}"></th>
                 <td class="small muted" th:text="|${k.grpName()} · ${k.calcName()}${k.weekly() ? ' · 주간' : ''}|"></td>
-                <td class="num"><input class="bd-in" type="number" step="any" inputmode="decimal" th:name="|v_${k.id}|" th:value="${values[k.id]}" placeholder="숫자" th:aria-label="|${o.name} ${k.name}|" /> <span class="small muted" th:text="${k.uom}"></span></td>
+                <td class="num"><span class="bd-inwrap"><input class="bd-in" type="number" step="any" inputmode="decimal" th:name="|v_${k.id}|" th:value="${values[k.id]}" placeholder="숫자" th:aria-label="|${o.name} ${k.name}|" /><span class="u" th:text="${k.uom}"></span></span></td>
                 <td class="num small" th:text="${c.num(k.target, k.uom)} + (${k.weekly()} ? ' / 주' : '')"></td>
                 <td><span class="pill" th:classappend="${values.containsKey(k.id)} ? 'ok' : ''" th:text="${filled.containsKey(k.id)} ? '붙여 넣음' : (${values.containsKey(k.id)} ? '입력' : '—')"></span></td>
             </tr></tbody>

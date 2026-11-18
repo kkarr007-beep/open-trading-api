@@ -22,8 +22,8 @@
                     <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${cat == s.Id}"></option>
                     <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${cat == c.Id}"></option>
                 </th:block></select></label>
-            <label class="field grow">제목 <span class="field-note">파일 하나일 때만 씁니다. 비우면 파일 이름</span><input name="title" maxlength="200" /></label>
-            <label class="field grow">태그 <span class="field-note">쉼표로 나눕니다. 찾기에 씁니다</span><input name="tags" maxlength="300" placeholder="예: 개인정보, 2026, 점검" /></label>
+            <label class="field grow"><span class="flabel">제목 <span class="field-note">파일 하나일 때만 씁니다. 비우면 파일 이름</span></span><input name="title" maxlength="200" /></label>
+            <label class="field grow"><span class="flabel">태그 <span class="field-note">쉼표로 나눕니다. 찾기에 씁니다</span></span><input name="tags" maxlength="300" placeholder="예: 개인정보, 2026, 점검" /></label>
             <label class="field grow">메모<textarea name="note" rows="2" maxlength="2000"></textarea></label>
         </div>
         <button type="submit" class="btn btn-primary">등재</button>

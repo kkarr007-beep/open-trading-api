@@ -20,7 +20,7 @@
         <i class="tick" style="left:83.3%"></i>
         <i class="tick st" th:if="${r.stretchMark() > 0}" th:style="|left:${#numbers.formatDecimal(r.stretchMark(), 1, 1, 'POINT')}%|"></i>
     </span>
-    <span class="bar empty" th:if="${r.none()}"></span>
+    <span class="bar blank" th:if="${r.none()}"></span>
     <span class="val"><b th:text="${r.show()}"></b>
         <span class="pill" th:classappend="${r.none()} ? '' : (${r.state() == 'miss'} ? 'bad' : (${r.state() == 'warn'} ? 'warn' : 'ok'))" th:text="${r.none()} ? '미입력' : ${r.pct()}"></span>
         <small class="land" th:if="${r.landing() != null}" th:classappend="${r.landing().pct() < 97} ? 'dn' : (${r.landing().pct() < 99} ? 'fl' : 'up')"

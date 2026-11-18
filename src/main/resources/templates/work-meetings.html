@@ -19,7 +19,7 @@
     <h2>회의록 넣기</h2>
     <form method="post" action="/work/meetings/new" data-write="1" enctype="multipart/form-data">
         <div class="form-grid">
-            <label class="field grow">회의명 <span class="field-note">파일을 고르고 비워 두면 파일 이름을 씁니다.</span><input name="title" maxlength="200" placeholder="예) 영업사업부 정례회의" /></label>
+            <label class="field grow"><span class="flabel">회의명 <span class="field-note">파일을 고르고 비워 두면 파일 이름을 씁니다.</span></span><input name="title" maxlength="200" placeholder="예) 영업사업부 정례회의" /></label>
             <label class="field">날짜<input name="mdate" type="date" th:value="${today}" /></label>
             <label class="field">조직<input name="org" maxlength="80" placeholder="OO사업부" /></label>
         </div>

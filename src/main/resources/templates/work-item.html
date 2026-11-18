@@ -86,7 +86,7 @@
     </div>
     <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1" style="margin-top:8px">
         <input type="hidden" name="op" value="add" />
-        <label class="field grow">항목 추가 <span class="field-note">여러 줄을 붙여 넣으면 줄마다 항목이 됩니다.</span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
+        <label class="field grow"><span class="flabel">항목 추가 <span class="field-note">여러 줄을 붙여 넣으면 줄마다 항목이 됩니다.</span></span><textarea name="text" rows="2" maxlength="4000"></textarea></label>
         <p class="row-actions" style="margin-top:8px"><button type="submit" class="btn">추가</button></p>
     </form>
     <form method="post" th:action="|/work/item/${x.id}/todo|" data-write="1" th:if="${x.todoDone > 0}">
@@ -102,7 +102,7 @@
 <section class="card">
     <h2>진행 기록</h2>
     <form method="post" th:action="|/work/item/${x.id}/log|" data-write="1">
-        <label class="field grow">진행 한 줄 <span class="field-note">정체 판정의 근거가 됩니다.</span><input name="text" required maxlength="1000" /></label>
+        <label class="field grow"><span class="flabel">진행 한 줄 <span class="field-note">정체 판정의 근거가 됩니다.</span></span><input name="text" required maxlength="1000" /></label>
         <p style="margin-top:8px"><button type="submit" class="btn">남기기</button></p>
     </form>
     <ul class="loglist" style="margin-top:10px">

@@ -21,8 +21,8 @@
             <button type="button" class="tm-btn" data-show="rules" th:classappend="${navGroup == 'rules'} ? 'on'" th:aria-pressed="${navGroup == 'rules'}">사규</button>
             <button type="button" class="tm-btn" data-show="tools" th:classappend="${navGroup == 'tools'} ? 'on'" th:aria-pressed="${navGroup == 'tools'}">점검툴</button>
             <button type="button" class="tm-btn" data-show="library" th:classappend="${navGroup == 'library'} ? 'on'" th:aria-pressed="${navGroup == 'library'}">자료</button>
-            <button type="button" class="tm-btn" data-show="board" th:classappend="${navGroup == 'board'} ? 'on'" th:aria-pressed="${navGroup == 'board'}">경영 현황판</button>
-            <button type="button" class="tm-btn" data-show="program" th:classappend="${navGroup == 'program'} ? 'on'" th:aria-pressed="${navGroup == 'program'}">프로그램</button>
+            <button type="button" class="tm-btn" data-show="board" th:classappend="${navGroup == 'board'} ? 'on'" th:aria-pressed="${navGroup == 'board'}">경영현황</button>
+            <button type="button" class="tm-btn" data-show="program" th:classappend="${navGroup == 'program'} ? 'on'" th:aria-pressed="${navGroup == 'program'}">설정</button>
         </nav>
         <form method="get" action="/search" class="top-search" role="search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -102,8 +102,8 @@
                 <a href="/library/new" th:aria-current="${navKey == 'library/new'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v8M8 12h8M4.5 4.5h15v15h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>자료 등재</span></a>
                 <a href="/library/categories" th:aria-current="${navKey == 'library/categories'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>분류 추가·관리</span></a>
         </nav>
-        <nav class="sn-group" data-group="board" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'board'}" aria-label="경영 현황판">
-            <p class="sn-title">경영 현황판</p>
+        <nav class="sn-group" data-group="board" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'board'}" aria-label="경영현황">
+            <p class="sn-title">경영현황</p>
                 <a href="/board" th:aria-current="${navKey == 'board'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V11M9.5 19V6M15 19v-5M20.5 19V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>종합 현황</span></a>
                 <a href="/board/entry" th:aria-current="${navKey == 'board/entry'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5zM8.5 9h7M8.5 12.5h7M8.5 16h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>실적 입력</span></a>
                 <a href="/board/issues" th:aria-current="${navKey == 'board/issues'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8.5 15h-17zM12 10v4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>이슈</span></a>
@@ -111,12 +111,12 @@
                 <a href="/board/settings" th:aria-current="${navKey == 'board/settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>현황판 설정</span></a>
                 <a href="/board/data/export" th:aria-current="${navKey == 'board/export'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>데이터 내려받기</span></a>
         </nav>
-        <nav class="sn-group" data-group="program" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'program'}" aria-label="프로그램">
-            <p class="sn-title">프로그램</p>
+        <nav class="sn-group" data-group="program" th:hidden="${(#strings.isEmpty(navGroup) ? 'work' : navGroup) != 'program'}" aria-label="설정">
+            <p class="sn-title">설정</p>
 
                     <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.500 19 6.500v5c0 4.300-2.900 7.400-7 9-4.100-1.600-7-4.700-7-9v-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>관리</span></a>
                     <a href="/import" th:aria-current="${navKey == 'import'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>백업 옮겨 오기</span></a>
-                    <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3.500v3M12 17.500v3M3.500 12h3M17.500 12h3M6 6l2.100 2.100M15.900 15.900 18 18M18 6l-2.100 2.100M8.100 15.900 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>설정</span></a>
+                    <a href="/settings" th:aria-current="${nav == 'settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3.500v3M12 17.500v3M3.500 12h3M17.500 12h3M6 6l2.100 2.100M15.900 15.900 18 18M18 6l-2.100 2.100M8.100 15.900 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>일반 설정</span></a>
                     <a href="/work/settings" th:aria-current="${navKey == 'work/settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>업무 설정</span></a>
                     <a href="/rules/settings" th:aria-current="${navKey == 'rules/settings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>사규 설정</span></a>
         </nav>
