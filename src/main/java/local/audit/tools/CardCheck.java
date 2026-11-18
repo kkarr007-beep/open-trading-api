@@ -931,7 +931,7 @@ public class CardCheck {
         body.append("법인카드 점검 '").append(run.get("Title")).append("'에서 확인이 필요한 건입니다.\n\n");
         Set<String> names = new java.util.TreeSet<>(), depts = new java.util.TreeSet<>();
         long sum = 0;
-        int n = 0;
+        int n = 0, cut = 0;
         for (Long id : ids) {
             Map<String, Object> t = db.row("""
                 SELECT t.*, (SELECT GROUP_CONCAT(Detail, ' · ') FROM CardHits h WHERE h.TxId=t.Id AND h.ExceptionId IS NULL) AS Reasons,
@@ -943,19 +943,27 @@ public class CardCheck {
             sum += ((Number) t.get("Amount")).longValue();
             names.add(Txt.str(t.get("Name")));
             if (!Txt.blank(t.get("Dept"))) depts.add(Txt.str(t.get("Dept")));
-            body.append("- ").append(t.get("TxDate")).append(' ').append(Txt.str(t.get("TxTime"))).append(" · ").append(t.get("Dept")).append(' ').append(t.get("Name"))
+            StringBuilder line = new StringBuilder();
+            line.append("- ").append(t.get("TxDate")).append(' ').append(Txt.str(t.get("TxTime"))).append(" · ").append(t.get("Dept")).append(' ').append(t.get("Name"))
                 .append(" · ").append(t.get("Merchant")).append(" · ").append(won(((Number) t.get("Amount")).longValue()))
                 .append("\n  점검: ").append(Txt.str(t.get("Reasons"))).append(" (점수 ").append(Txt.str(t.get("Score"))).append(")");
-            if (!Txt.blank(t.get("Purpose"))) body.append("\n  사용내역: ").append(t.get("Purpose"));
-            if (!Txt.blank(t.get("Status")) || !Txt.blank(t.get("ReviewNote"))) body.append("\n  처리: ").append(Txt.str(t.get("Status"))).append(' ').append(Txt.str(t.get("ReviewNote")));
-            body.append('\n');
+            if (!Txt.blank(t.get("Purpose"))) line.append("\n  사용내역: ").append(t.get("Purpose"));
+            if (!Txt.blank(t.get("Status")) || !Txt.blank(t.get("ReviewNote"))) line.append("\n  처리: ").append(Txt.str(t.get("Status"))).append(' ').append(Txt.str(t.get("ReviewNote")));
+            line.append('\n');
+            // 감사기록 본문 한도(2만 자) 안에서: 넘치는 건은 수만 적고 내려받기 파일을 보게 한다
+            if (body.length() + line.length() > 18_500) { cut++; continue; }
+            body.append(line);
         }
         if (n == 0) return null;
+        if (cut > 0) body.append("\n※ 이하 ").append(cut).append("건은 본문 길이 때문에 줄였습니다. 법인카드 점검 화면의 '결과 내려받기'로 전체 목록을 붙이세요.\n");
         Map<String, Object> v = new LinkedHashMap<>();
-        v.put("title", "법인카드 사용 확인 — " + String.join(", ", names.stream().limit(3).toList()) + (names.size() > 3 ? " 외 " + (names.size() - 3) + "명" : ""));
-        v.put("target", depts.isEmpty() ? String.join(", ", names) : String.join(", ", depts));
-        v.put("summary", n + "건 " + won(sum) + " 확인 필요");
-        v.put("body", body.toString());
+        String who = String.join(", ", names.stream().limit(3).toList()) + (names.size() > 3 ? " 외 " + (names.size() - 3) + "명" : "");
+        v.put("title", Txt.fit("법인카드 사용 확인 — " + who, 120, false));
+        String target = depts.isEmpty() ? who : String.join(", ", depts.stream().limit(4).toList()) + (depts.size() > 4 ? " 외 " + (depts.size() - 4) + "개 부서" : "");
+        v.put("target", Txt.fit(target, 120, false));
+        v.put("summary", Txt.fit(n + "건 " + won(sum) + " 확인 필요", 160, false));
+        // 엑셀에서 온 글에 섞인 제어 문자는 뺀다(감사기록 본문 검사에 걸리지 않게)
+        v.put("body", body.toString().replaceAll("[\\p{Cntrl}&&[^\\n\\t]]", " "));
         return v;
     }
 

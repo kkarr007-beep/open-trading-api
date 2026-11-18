@@ -884,3 +884,7 @@ tr.bd-add td { background: var(--paper-2); }
 .abody table td, .abody table th { border: 1px solid var(--line-strong); padding: 5px 8px; vertical-align: top; }
 .abody table th { background: var(--bg-accent); }
 .dr .src-fmt { font-size: 11px; }
+/* 표 안쪽 세로 스크롤바 없애기: 화면 스크롤 하나로(가로로 넓은 표만 아래 가로 스크롤) */
+.table-wrap, .people-wrap { max-height: none; }
+.people-wrap { overflow: visible; }
+#hits { scroll-margin-top: 60px; }

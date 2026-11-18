@@ -16,12 +16,12 @@
     </div>
 </div>
 <ul class="metrics">
-    <li class="metric-ok"><a th:href="|/tools/card/${run.Id}|"><span class="metric-top" th:text="|사용내역 · ${#numbers.formatInteger(s.total.Amt, 1, 'COMMA')}원|">사용내역</span>
+    <li class="metric-ok"><a th:href="|/tools/card/${run.Id}?min=1#hits|"><span class="metric-top" th:text="|사용내역 · ${#numbers.formatInteger(s.total.Amt, 1, 'COMMA')}원|">사용내역</span>
         <strong th:text="|${#numbers.formatInteger(s.total.N, 1, 'COMMA')}건|">0</strong></a></li>
-    <li class="metric-warn"><a th:href="|/tools/card/${run.Id}|"><span class="metric-top" th:text="|확인 대상 (20점 이상) · ${#numbers.formatInteger(s.hit.Amt ?: 0, 1, 'COMMA')}원|">확인 대상</span>
+    <li class="metric-warn"><a th:href="|/tools/card/${run.Id}#hits|"><span class="metric-top" th:text="|확인 대상 (20점 이상) · ${#numbers.formatInteger(s.hit.Amt ?: 0, 1, 'COMMA')}원|">확인 대상</span>
         <strong th:text="|${s.hit.N ?: 0}건|">0</strong></a></li>
-    <li class="metric-bad"><a th:href="@{|/tools/card/${run.Id}|(min=40)}"><span class="metric-top">위험 높음 (40점 이상)</span><strong th:text="|${s.hit.High ?: 0}건|">0</strong></a></li>
-    <li class="metric-warn"><a th:href="@{|/tools/card/${run.Id}|(status='open')}"><span class="metric-top">확인 대상 중 처리 안 된 건</span><strong th:text="|${s.hit.Open ?: 0}건|">0</strong></a></li>
+    <li class="metric-bad"><a th:href="@{|/tools/card/${run.Id}|(min=40)} + '#hits'"><span class="metric-top">위험 높음 (40점 이상)</span><strong th:text="|${s.hit.High ?: 0}건|">0</strong></a></li>
+    <li class="metric-warn"><a th:href="@{|/tools/card/${run.Id}|(status='open')} + '#hits'"><span class="metric-top">확인 대상 중 처리 안 된 건</span><strong th:text="|${s.hit.Open ?: 0}건|">0</strong></a></li>
 </ul>
 <p class="hint" th:if="${s.hit.Low != null and s.hit.Low > 0}" th:text="|약한 신호 하나만 있는 낮은 점수(20점 미만) ${s.hit.Low}건은 기본 목록에서 뺐습니다. 아래 '점수: 전체'로 볼 수 있습니다.|"></p>
 <div class="card-split">
@@ -29,7 +29,7 @@
         <h2>규칙별 <span class="sub">누르면 그 규칙에 걸린 건만</span></h2>
         <p class="empty" th:if="${#lists.isEmpty(s.byRule)}">걸린 건이 없습니다.</p>
         <div class="rule-chips" th:unless="${#lists.isEmpty(s.byRule)}">
-            <a th:each="r : ${s.byRule}" th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule},min=1)}" th:classappend="${q['rule'] == r.Rule} ? 'on'">
+            <a th:each="r : ${s.byRule}" th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule},min=1)} + '#hits'" th:classappend="${q['rule'] == r.Rule} ? 'on'">
                 <span th:text="${r.Label}"></span><b th:text="${r.N}"></b><small th:if="${r.Ex > 0}" th:text="|예외 ${r.Ex}|"></small></a>
         </div>
     </section>
@@ -40,7 +40,7 @@
             <thead><tr><th scope="col">이름</th><th scope="col">부서</th><th scope="col" class="num">사용</th><th scope="col" class="num">금액</th>
                 <th scope="col" class="num">확인 대상</th><th scope="col" class="num">점수 합</th><th scope="col" class="num">부서 평균 대비</th><th scope="col" class="num">지난 회차 반복</th></tr></thead>
             <tbody><tr th:each="p : ${s.people}">
-                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})}" th:text="${p.Name}"></a></th>
+                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})} + '#hits'" th:text="${p.Name}"></a></th>
                 <td th:text="${p.Dept}"></td><td class="num" th:text="${p.N}"></td>
                 <td class="num" th:text="${#numbers.formatInteger(p.Amt, 1, 'COMMA')}"></td>
                 <td class="num" th:text="${p.HitN}"></td>
@@ -64,8 +64,8 @@
     <p class="small muted" style="margin:8px 0 0"><span class="bf-key act"></span> 실제 <span class="bf-key exp"></span> 기대(벤포드)
         <th:block th:if="${bf.worstDigit > 0}"> · 기대보다 많은 첫자리 <strong th:text="${bf.worstDigit}"></strong> — 많이 쓴 사람: <th:block th:text="${#strings.listJoin(bf.worstWho, ', ')}"></th:block></th:block></p>
 </section>
-<div class="sticky-tools no-print">
-    <form method="get" th:action="|/tools/card/${run.Id}|" class="toolbar">
+<div class="sticky-tools no-print" id="hits">
+    <form method="get" th:action="|/tools/card/${run.Id}#hits|" class="toolbar">
         <div class="search-row">
             <label class="search"><span class="sr">찾기</span>
                 <input name="q" th:value="${q['q']}" placeholder="가맹점·사용내역·이름·사유" maxlength="80" /></label>
@@ -83,7 +83,7 @@
             <option value="20" th:selected="${q['min'] == '20'}">20점 이상 (확인 대상)</option>
             <option value="40" th:selected="${q['min'] == '40'}">40점 이상 (높음)</option>
             <option value="1" th:selected="${q['min'] == '1'}">전체 (낮음 포함)</option></select></label>
-        <a class="btn" th:href="|/tools/card/${run.Id}|">조건 지우기</a>
+        <a class="btn" th:href="|/tools/card/${run.Id}#hits|">조건 지우기</a>
     </form>
 </div>
 <div class="row-actions no-print" style="justify-content:space-between;margin:6px 0 8px">
@@ -123,7 +123,7 @@
                 <details class="ex-menu"><summary class="btn btn-quiet">예외</summary>
                     <form method="post" action="/tools/card/exception" data-write="1" class="ex-form">
                         <input type="hidden" name="tx" th:value="${t.Id}" />
-                        <input type="hidden" name="back" th:value="|/tools/card/${run.Id}|" />
+                        <input type="hidden" name="back" th:value="|/tools/card/${run.Id}#hits|" />
                         <label class="field">범위<select name="scope">
                             <option value="personDate" th:text="|${t.Name} · ${t.TxDate} (휴일근무·출장 등)|"></option>
                             <option value="shop" th:text="|가맹점 ${t.Merchant}|"></option>
@@ -140,8 +140,8 @@
     </table>
 </div>
 <p class="row-actions no-print" th:if="${v.pages > 1}">
-    <a class="btn" th:if="${v.page > 1}" th:href="@{|/tools/card/${run.Id}|(page=${v.page - 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})}">← 앞쪽</a>
-    <a class="btn" th:if="${v.page < v.pages}" th:href="@{|/tools/card/${run.Id}|(page=${v.page + 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})}">뒤쪽 →</a>
+    <a class="btn" th:if="${v.page > 1}" th:href="@{|/tools/card/${run.Id}|(page=${v.page - 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})} + '#hits'">← 앞쪽</a>
+    <a class="btn" th:if="${v.page < v.pages}" th:href="@{|/tools/card/${run.Id}|(page=${v.page + 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})} + '#hits'">뒤쪽 →</a>
 </p>
 <p class="row-actions no-print" style="margin-top:20px">
     <form method="post" th:action="|/tools/card/${run.Id}/delete|" data-write="1" th:data-confirm="|'${run.Title}' 회차를 지울까요? 소명·예외 기록은 남습니다.|">
