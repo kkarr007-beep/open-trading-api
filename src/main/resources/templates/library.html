@@ -36,21 +36,32 @@
 </form>
 <p class="count-line" th:text="|${v.total}건 · ${v.page}/${v.pages}쪽|"></p>
 <p class="empty" th:if="${v.total == 0}">자료가 없습니다. '자료 등재'로 문서를 넣으세요.</p>
-<ul class="file-list" th:unless="${v.total == 0}">
-    <li class="file-row" th:each="d : ${v.items}">
-        <a class="file-hit" th:href="|/library/${d.Id}|">
-            <span class="file-ico ico-doc" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
-            <span class="file-copy">
-                <span class="file-name" th:text="${d.Title}"></span>
-                <span class="file-meta" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · ${d.RegisteredDisplay}${#strings.isEmpty(d.Tags) ? '' : ' · #' + d.Tags}|"></span>
-                <span class="snippet" th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></span>
-            </span>
-        </a>
-        <div class="file-side">
-            <span class="read-tag" th:data-read="${d.ReadState}" th:text="|내용 ${d.ReadState}|"></span>
-            <a class="icon-btn" th:href="|/library/${d.Id}/file?dl=1|" aria-label="내려받기" title="내려받기">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
+<ul class="lib-list" th:unless="${v.total == 0}">
+    <li class="lib-row" th:each="d : ${v.items}" th:id="|d-${d.Id}|">
+        <span class="lib-ext" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
+        <div class="lib-main">
+            <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="lib-open">
+                <button type="submit" class="lib-title" th:text="${d.Title}" title="이 컴퓨터의 프로그램으로 원본을 엽니다"></button></form>
+            <span class="lib-meta" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · ${d.RegisteredDisplay}${#strings.isEmpty(d.Tags) ? '' : ' · #' + d.Tags}|"></span>
+        </div>
+        <div class="lib-acts no-print">
+            <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="inline-form"><button type="submit" class="btn">열기</button></form>
+            <a class="btn btn-quiet" th:href="|/library/${d.Id}/file?dl=1|">내려받기</a>
+            <details class="ex-menu"><summary class="btn btn-quiet">정보</summary>
+                <form method="post" th:action="|/library/${d.Id}/meta|" data-write="1" class="ex-form">
+                    <label class="field">제목<input name="title" required maxlength="200" th:value="${d.Title}" /></label>
+                    <label class="field">분류<select name="categoryId">
+                        <th:block th:each="s : ${tree}">
+                            <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${d.CategoryId == s.Id}"></option>
+                            <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${d.CategoryId == c.Id}"></option>
+                        </th:block></select></label>
+                    <label class="field">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
+                    <label class="field">메모<textarea name="note" rows="2" maxlength="2000" th:text="${d.Note}"></textarea></label>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </form>
+            </details>
+            <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" class="inline-form" th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일도 함께 지워집니다.|">
+                <button type="submit" class="btn btn-quiet danger-text">삭제</button></form>
         </div>
     </li>
 </ul>

@@ -60,13 +60,11 @@ public class LibraryController {
         return "library-categories";
     }
 
+    /** 예전 '내용 보기' 주소: 목록으로(그 자료 줄로) 보낸다. */
     @GetMapping("/library/{id}")
-    public String view(@PathVariable String id, Model model) {
+    public String view(@PathVariable String id) {
         Map<String, Object> d = Txt.isId(id) ? lib.get(id) : null;
-        model.addAttribute("d", d);
-        model.addAttribute("tree", lib.tree());
-        if (d != null) model.addAttribute("libCat", d.get("CategoryId"));
-        return "library-view";
+        return d == null ? "redirect:/library" : "redirect:/library?q=" + java.net.URLEncoder.encode(Txt.str(d.get("Title")), java.nio.charset.StandardCharsets.UTF_8) + "#d-" + id;
     }
 
     /** 원본 파일. ?dl=1이면 내려받기. */
@@ -112,11 +110,34 @@ public class LibraryController {
     public Object action(@PathVariable String id, @PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
         if (!Txt.isId(id)) return Web.reply(req, Op.fail(404, "자료를 찾을 수 없습니다."), null);
         Op op = switch (what) {
+            case "open" -> openLocally(id);
             case "meta" -> lib.meta(id, p);
             case "reread" -> lib.reread(id);
             case "delete" -> lib.delete(id);
             default -> Op.fail(404, "없는 작업입니다.");
         };
         return Web.reply(req, op, op.ok && "delete".equals(what) ? "/library" : null);
+    }
+
+    /** 원본을 이 컴퓨터의 프로그램(한글·워드·엑셀·PDF 보기 등)으로 연다. 보관본을 고치지 않게 임시 복사본을 읽기 전용으로 연다. */
+    Op openLocally(String id) {
+        Map<String, Object> d = lib.get(id);
+        Path f = d == null ? null : lib.file(id);
+        if (f == null || !Files.isRegularFile(f)) return Op.fail(404, "파일이 제자리에 없습니다.");
+        try {
+            Path dir = Path.of(System.getProperty("java.io.tmpdir"), "portal-open", id);
+            Files.createDirectories(dir);
+            Path copy = dir.resolve(FileStore.safeName(Txt.str(d.get("FileName"))));
+            if (Files.exists(copy)) { copy.toFile().setWritable(true); Files.delete(copy); }
+            Files.copy(f, copy);
+            copy.toFile().setReadOnly();
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", copy.toString()).start();
+            else if (os.contains("mac")) new ProcessBuilder("open", copy.toString()).start();
+            else new ProcessBuilder("xdg-open", copy.toString()).start();
+            return Op.ok("'" + d.get("Title") + "'를 이 컴퓨터의 프로그램으로 열었습니다.");
+        } catch (IOException e) {
+            return Op.fail(503, "열지 못했습니다. '내려받기'로 저장해 여세요.");
+        }
     }
 }

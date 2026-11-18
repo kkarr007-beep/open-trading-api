@@ -888,3 +888,25 @@ tr.bd-add td { background: var(--paper-2); }
 .table-wrap, .people-wrap { max-height: none; }
 .people-wrap { overflow: visible; }
 #hits { scroll-margin-top: 60px; }
+
+/* ── 2.0.2 스크롤 원칙: 맨 위 메뉴줄(과 왼쪽 메뉴)만 고정, 나머지는 화면과 함께 흐르고 안쪽 스크롤 없음 ── */
+.sticky-tools, .reg-toc, .history, .rte-bar { position: static !important; top: auto !important; }
+.reg-toc, .history, .loglist, .rte-body, .read-preview, .meet-text,
+dd > .rich, li > .rich, .rich-box > .rich, .table-wrap, .people-wrap { max-height: none !important; }
+.reg-toc, .history, .loglist, .read-preview, .meet-text, dd > .rich, li > .rich, .rich-box > .rich { overflow: visible !important; }
+.table-wrap { overflow-y: visible; }
+/* 자료 목록: 제목 위주, 누르면 원본을 이 컴퓨터의 프로그램으로 */
+.lib-list { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--card-edge); border-radius: 12px; box-shadow: var(--sh-1); }
+.lib-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.lib-row:last-child { border-bottom: 0; }
+.lib-row:hover { background: color-mix(in srgb, var(--accent-soft) 40%, var(--paper)); }
+.lib-row:target { background: var(--accent-soft); }
+.lib-ext { flex: 0 0 auto; width: 44px; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; padding: 5px 0; border-radius: 6px; background: var(--bg-accent); color: var(--accent-deep); }
+.lib-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lib-open { margin: 0; }
+.lib-title { all: unset; cursor: pointer; font-weight: 650; font-size: 14.5px; color: var(--ink); overflow-wrap: anywhere; }
+.lib-title:hover, .lib-title:focus-visible { color: var(--accent-deep); text-decoration: underline; }
+.lib-meta { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.lib-acts { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
+.lib-acts form { margin: 0; }
+@media (max-width: 700px) { .lib-row { flex-wrap: wrap; } .lib-acts { width: 100%; justify-content: flex-end; } }
