@@ -149,7 +149,7 @@
         + '<button type="button" class="btn btn-quiet" data-d="split" title="내용 칸의 커서 자리에서 나눕니다">분할</button>'
         + (i ? '<button type="button" class="btn btn-quiet" data-d="up" title="위로">↑</button>' : '')
         + '<button type="button" class="btn btn-quiet" data-d="del">삭제</button></span></div>'
-        + '<textarea class="drc mono" rows="' + rows + '">' + esc(a.content) + '</textarea></div>';
+        + '<textarea class="drc mono" aria-label="' + esc(a.number) + ' 내용" rows="' + rows + '">' + esc(a.content) + '</textarea></div>';
     });
     h += '</div></div>';
     prev.innerHTML = h;
