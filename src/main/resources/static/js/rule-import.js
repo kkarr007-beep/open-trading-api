@@ -7,6 +7,71 @@
   var editOf = root.getAttribute("data-edit") || "";
   var prev = document.getElementById("imPrev");
   var DRAFT = null;
+  var DOC_HTML = "";   // 고른 문서를 읽은 원본 서식(HTML)
+
+  // ── 원본 서식을 조마다 잘라 붙이기 ──
+  // 조 나누기는 글로 하고, 화면에는 원본 문서의 서식(굵게·글꼴·정렬·띄어쓰기·줄바꿈·표)을 그대로 쓰기 위해서다.
+  var RE_ART = /^\s*(?:\*\*)?\s*(제\s*\d+\s*조(?:\s*의\s*\d+)?)\s*(?:\([^)]{0,40}\)|（[^）]{0,40}）)?/;
+  var RE_HEAD = /^(제\s*\d+\s*(장|절|편|관)(\s|$)|부\s*칙(\s*[<〈(][^>〉)]*[>〉)])?\s*$)/;
+  var RE_ATT = /^[\[<(（〈【]?\s*(별\s*첨|별\s*표|별\s*지|붙\s*임|서\s*식|부\s*표)/;
+  function core(num) { var m = /(제\s*\d+\s*조(?:\s*의\s*\d+)?)/.exec(num || ""); return m ? m[1].replace(/\s+/g, "") : ""; }
+  function plain(h) { return window.sagyuPaste ? window.sagyuPaste.htmlToText(h) : String(h).replace(/<[^>]*>/g, ""); }
+  function same(t) { return String(t || "").replace(/[\s|*>^<\u23ce·]/g, ""); }
+  function stripPrefix(el, n) {
+    var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), node;
+    while (n > 0 && (node = w.nextNode())) {
+      var len = node.nodeValue.length;
+      if (len <= n) { n -= len; node.nodeValue = ""; } else { node.nodeValue = node.nodeValue.slice(n); n = 0; }
+    }
+    // 머리 다음 맨 앞 빈칸
+    w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while ((node = w.nextNode())) { if (!node.nodeValue) continue; node.nodeValue = node.nodeValue.replace(/^\s+/, ""); if (node.nodeValue) break; }
+  }
+  function attachHtml(arts, html) {
+    if (!html || !arts || !arts.length) return 0;
+    var box = document.createElement("div");
+    box.innerHTML = html;
+    var info = [].slice.call(box.children).map(function (b) { return { el: b, t: plain(b.outerHTML).replace(/^>+\s*/, "").trim() }; });
+    var starts = [], j = 0, i, k;
+    for (i = 0; i < arts.length; i++) {
+      var a = arts[i], c = core(a.number), found = -1;
+      if (i === 0 && /^전문/.test(a.number || "")) { starts.push(0); continue; }   // 첫 조 앞 글(제목 등)
+      for (k = j; k < info.length; k++) {
+        var t = info[k].t.replace(/^\*\*/, "");
+        if (c) { var m = RE_ART.exec(t); if (m && m[1].replace(/\s+/g, "") === c) { found = k; break; } }
+        else if (a.supp && /^부\s*칙/.test(t)) { found = k; break; }
+        else if (a.attach && RE_ATT.test(t)) { found = k; break; }
+      }
+      starts.push(found);
+      if (found >= 0) j = found + 1;
+    }
+    var n = 0;
+    for (i = 0; i < arts.length; i++) {
+      if (starts[i] < 0) continue;
+      var end = info.length;
+      for (var q = i + 1; q < arts.length; q++) if (starts[q] >= 0) { end = starts[q]; break; }
+      var parts = [], ok = true;
+      for (k = starts[i]; k < end; k++) {
+        if (k > starts[i] && RE_HEAD.test(info[k].t)) continue;     // 장·절·부칙 머리는 따로 나온다
+        var el = info[k].el.cloneNode(true);
+        var pre = i === 0 && /^전문/.test(arts[i].number || "");
+        if (pre && k > starts[i] && RE_HEAD.test(info[k].t)) continue;
+        if (k === starts[i] && !pre) {
+          if (!core(arts[i].number)) continue;                         // 부칙·별표 머리 줄은 조 머리로 나온다
+          var m2 = RE_ART.exec(el.textContent);
+          if (!m2) { ok = false; break; }
+          stripPrefix(el, m2[0].length);
+          if (!el.textContent.trim() && !el.querySelector("img,table")) continue;
+        }
+        parts.push(el.outerHTML);
+      }
+      if (!ok || !parts.length) continue;
+      var h = parts.join("");
+      // 글이 나눈 조와 같을 때만 붙인다(다르면 지금처럼 글로 보여 준다)
+      if (same(plain(h)) === same(arts[i].content)) { arts[i].html = h; arts[i]._orig = arts[i].content; n++; }
+    }
+    return n;
+  }
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function toast(m) { if (window.auditToast) window.auditToast(m); }
@@ -28,7 +93,10 @@
     if (!t || !t.trim()) { toast("분석할 글이 없습니다."); return; }
     post("/rules/parse", { text: t, title: $("imT").value, reviseOf: revise }).then(function (r) {
       if (!r.ok) { toast(r.message || "조문을 찾지 못했습니다."); return; }
-      DRAFT = r.articles; draw(r.dup); toast(r.message);
+      DRAFT = r.articles;
+      var kept = attachHtml(DRAFT, DOC_HTML);
+      draw(r.dup);
+      toast(r.message + (DOC_HTML ? " · 원본 서식 " + kept + "/" + DRAFT.length + "개 조 유지" : ""));
       prev.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
@@ -36,7 +104,7 @@
   $("imF").addEventListener("change", function () { if (this.files && this.files[0]) $("imP").click(); });
   $("imP").addEventListener("click", function () {
     var f = $("imF").files && $("imF").files[0];
-    if (!f) { analyzeText($("imX").value); return; }
+    if (!f) { DOC_HTML = ""; analyzeText($("imX").value); return; }
     var fd = new FormData(); fd.append("upload", f);
     $("imP").disabled = true; $("imP").textContent = "읽는 중…";
     fetch("/rules/analyze", { method: "POST", body: fd, headers: { "X-Audit-Fetch": "1" } }).then(function (r) { return r.json(); }).then(function (r) {
@@ -45,6 +113,7 @@
       if (!revise && !$("imT").value.trim()) $("imT").value = r.name || "";
       // 문서 모양(HTML)이 있으면 표 안의 표까지 칸을 살려 사규 글 꼴로 바꾼다
       var t = r.text;
+      DOC_HTML = r.html || "";
       if (r.html && window.sagyuPaste) { try { t = window.sagyuPaste.htmlToText(r.html) || r.text; } catch (e) { t = r.text; } }
       $("imX").value = t;
       analyzeText(t);
@@ -75,6 +144,7 @@
         + '<input class="drn" value="' + esc(a.number) + '" aria-label="조 번호" />'
         + '<input class="drt" value="' + esc(a.title) + '" placeholder="제목" aria-label="제목" />'
         + '<span class="small muted">' + esc(counts(a.content)) + (a.supp ? ' · 부칙' : '') + (a.attach ? ' · 별첨' : '') + '</span>'
+        + (a.html && a.content === a._orig ? '<span class="pill ok src-fmt" title="원본 문서의 서식으로 보여 줍니다">원본 서식</span>' : '')
         + '<span class="dbtn">' + (i ? '<button type="button" class="btn btn-quiet" data-d="merge" title="위 조에 합칩니다">위와 병합</button>' : '')
         + '<button type="button" class="btn btn-quiet" data-d="split" title="내용 칸의 커서 자리에서 나눕니다">분할</button>'
         + (i ? '<button type="button" class="btn btn-quiet" data-d="up" title="위로">↑</button>' : '')
@@ -110,6 +180,7 @@
 
   function save(mode) {
     sync();
+    DRAFT.forEach(function (a) { if (a.html && a.content !== a._orig) delete a.html; });
     var body = { title: $("imT").value.trim(), categoryId: $("imC").value, label: $("imV").value, effectiveDate: $("imD").value, note: $("imR").value,
       reviseOf: revise, mode: mode, articles: DRAFT, editOf: editOf };
     if (!revise && !editOf && !body.title) { toast("사규명을 적으세요."); $("imT").focus(); return; }

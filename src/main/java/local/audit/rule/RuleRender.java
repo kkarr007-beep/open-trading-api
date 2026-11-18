@@ -140,6 +140,7 @@ public final class RuleRender {
                 out.append("</table></div></div>");
                 continue;
             }
+            if ("gap".equals(p.lvl())) { out.append("<div class=\"para gap\"></div>"); i++; continue; }
             if ("img".equals(p.lvl())) {
                 Matcher mm = Pattern.compile("^!\\[([^\\]]*)\\]\\((data:image/(?:png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/=]+)\\)").matcher(p.text());
                 if (mm.find()) {

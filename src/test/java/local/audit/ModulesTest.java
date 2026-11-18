@@ -705,4 +705,18 @@ class ModulesTest {
         assertFalse(rules.article(made.id, (String) after.get(0).get("id"), "remove", Map.of()).ok, "마지막 조는 못 지움");
         assertFalse(rules.replaceArticles(made.id, List.of()).ok);
     }
+
+    @Test
+    void ruleKeepsBlankLinesAndOriginalFormatting() {
+        List<RuleParser.Para> ps = RuleParser.structure("첫 문단\n\n\n둘째 문단\n");
+        assertEquals(List.of("b", "gap", "b"), ps.stream().map(RuleParser.Para::lvl).toList());
+        List<Map<String, Object>> arts = RuleService.cleanArticles(List.of(new java.util.LinkedHashMap<>(Map.of("number", "제1조", "title", "목적",
+            "content", "이 규정은    여비를 정한다.", "html", "<div class=\"para\"><b>이 규정은</b>    여비를 정한다.<script>alert(1)</script></div>"))));
+        String h = (String) arts.get(0).get("html");
+        assertTrue(h.contains("<b>이 규정은</b>") && h.contains("    여비"), h);
+        assertFalse(h.contains("script"), h);
+        Op made = rules.addArticles(Map.of("title", "서식규정"), arts);
+        assertTrue(made.ok, made.message);
+        assertTrue(((String) local.audit.rule.Rules.arts(rules.reg(made.id)).get(0).get("html")).contains("<b>"));
+    }
 }

@@ -868,7 +868,7 @@ tr.bd-add td { background: var(--paper-2); }
 .ctblw, .rich .tw { overflow: visible; max-width: 100%; }
 .ctbl, .abody table, .rich table, .rte-body table { width: 100% !important; max-width: 100%; min-width: 0 !important; table-layout: auto; }
 .ctbl th, .ctbl td, .abody table th, .abody table td, .rich th, .rich td, .rte-body th, .rte-body td {
-  white-space: normal; overflow-wrap: anywhere; word-break: keep-all; min-width: 0; width: auto !important;
+  white-space: normal; overflow-wrap: break-word; word-break: keep-all; width: auto !important;
 }
 .ctbl img, .abody img, .rich img { max-width: 100%; height: auto; }
 .abody .para .ctblw { white-space: normal; }
@@ -876,3 +876,11 @@ tr.bd-add td { background: var(--paper-2); }
 #rule-import.hidden-edit { display: none; }
 .art .acts .danger-text { color: var(--danger); }
 .art .acts form { display: inline; margin: 0; }
+.abody .para.gap { height: .7em; }
+/* 원본 서식으로 그린 조문(문서에서 읽은 HTML): 띄어쓰기·빈 줄·표 테두리 살리기 */
+.abody > div, .abody > p, .abody td > div, .abody th > div { white-space: pre-wrap; }
+.abody div:empty { height: .7em; }
+.abody table { border-collapse: collapse; margin: 6px 0; }
+.abody table td, .abody table th { border: 1px solid var(--line-strong); padding: 5px 8px; vertical-align: top; }
+.abody table th { background: var(--bg-accent); }
+.dr .src-fmt { font-size: 11px; }

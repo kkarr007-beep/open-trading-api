@@ -262,7 +262,11 @@ public final class RuleParser {
             Matcher sp = Pattern.compile("^[ ]*").matcher(l);
             int ind = sp.find() ? Math.min(8, sp.group().length() / 2) : 0;
             String t = l.strip();
-            if (t.isEmpty()) continue;
+            if (t.isEmpty()) {
+                // 빈 줄은 문단 사이 간격으로 남긴다(맨 앞·겹친 빈 줄은 뺌)
+                if (!out.isEmpty() && !"gap".equals(out.get(out.size() - 1).lvl())) out.add(new Para("gap", "", 0, ""));
+                continue;
+            }
             String al = "";
             Matcher am = Pattern.compile("^(>>>|>>)\\s*").matcher(t);
             if (am.find()) { al = ">>>".equals(am.group(1)) ? "r" : "c"; t = t.substring(am.end()); }
@@ -276,6 +280,7 @@ public final class RuleParser {
             else if (pt.matches("^[가-하]\\.\\s.*")) lvl = "m";
             out.add(new Para(lvl, t, ind, al));
         }
+        while (!out.isEmpty() && "gap".equals(out.get(out.size() - 1).lvl())) out.remove(out.size() - 1);
         return out;
     }
 }

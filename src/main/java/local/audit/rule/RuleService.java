@@ -410,6 +410,9 @@ public class RuleService {
             x.put("crossRefs", new java.util.ArrayList<>());
             if (Rules.bool(a, "supp")) x.put("supp", true);
             if (Rules.bool(a, "attach")) x.put("attach", true);
+            // 문서에서 읽은 원본 서식(조마다 잘라 붙인 HTML). 내용을 고친 조는 화면에서 빼고 보낸다.
+            String html = Rules.str(a, "html");
+            if (!html.isBlank() && html.length() <= 3_000_000) { String h = local.audit.HtmlClean.clean(html); if (!h.isBlank()) x.put("html", h); }
             if (Rules.str(x, "number").isEmpty() && Rules.str(x, "content").isBlank()) continue;
             out.add(x);
         }
