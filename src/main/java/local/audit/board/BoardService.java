@@ -328,6 +328,7 @@ public class BoardService {
         for (String u : Txt.str(p.get("units")).split("[,\\n]")) if (!u.isBlank() && !units.contains(u.trim())) units.add(Txt.fit(u.trim(), 60, false));
         String kind = "스탭".equals(p.get("kind")) ? "스탭" : "사업부";
         Org o = d.org(id);
+        for (Org x : d.orgs) if (x != o && x.name.equals(name)) return Op.bad("같은 이름의 조직 '" + name + "'이 이미 있습니다.");
         if (o == null) {
             String nid = "o" + Long.toString(System.currentTimeMillis(), 36);
             d.orgs.add(new Org(nid, name, kind, units));
@@ -359,6 +360,7 @@ public class BoardService {
         } catch (NumberFormatException e) { return Op.bad("목표는 숫자로 적으세요."); }
         if (target <= 0) return Op.bad("목표는 0보다 커야 합니다.");
         Kpi k = d.kpi(Txt.str(p.get("id")));
+        for (Kpi x : d.kpis) if (x != k && x.name.equals(name) && x.org.equals(p.get("org"))) return Op.bad("이 조직에 같은 이름의 지표 '" + name + "'이 이미 있습니다.");
         boolean fresh = k == null;
         if (fresh) { k = new Kpi(); k.id = "k" + Long.toString(System.currentTimeMillis(), 36); d.kpis.add(k); }
         k.name = name;

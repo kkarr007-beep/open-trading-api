@@ -670,7 +670,10 @@ class ModulesTest {
         // 계획 이탈 → 이슈 초안, 두 번째는 건너뜀
         assertTrue(b.autoIssues("m", java.time.LocalDate.of(2026, 11, 17)).ok);
         assertFalse(b.autoIssues("m", java.time.LocalDate.of(2026, 11, 17)).ok);
-        // 조직: 지표가 있으면 못 지움
+        // 조직: 지표가 있으면 못 지움, 같은 이름은 두 번 못 만듦
         assertFalse(b.deleteOrg("c1").ok);
+        assertTrue(b.saveOrg(Map.of("name", "디지털사업부", "units", "A파트")).ok);
+        assertFalse(b.saveOrg(Map.of("name", "디지털사업부")).ok);
+        assertFalse(b.saveKpi(Map.of("org", "c1", "name", "생산성", "target", "90")).ok);
     }
 }
