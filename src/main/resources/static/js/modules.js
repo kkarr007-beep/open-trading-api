@@ -524,3 +524,89 @@ document.addEventListener('click', function (e) {
         (host.closest('.table-wrap') || host).insertAdjacentElement('afterend', more);
     });
 })();
+
+// ───────────── v2 틀: 위쪽 제목·빠른 추가·떠 있는 + ─────────────
+(function () {
+    var title = document.getElementById('v2-title');
+    var cur = document.querySelector('.sidenav .sn-group:not([hidden]) a[aria-current="page"] span:not(.ei):not(.qi), .sidenav .ft-row.on .ft-name span');
+    if (title && cur && cur.textContent.trim()) title.textContent = cur.textContent.trim();
+    // 본문 제목이 위쪽 제목과 같으면 한 번만 보인다
+    var h1 = document.querySelector('main .page-head h1, main > h1, main .ex-head h1');
+    if (title && h1 && h1.textContent.trim() === title.textContent.trim()) h1.classList.add('sr-only');
+    var quick = document.querySelector('[data-quick-add]');
+    // N: 빠른 추가 칸으로 (입력 중이 아닐 때)
+    document.addEventListener('keydown', function (e) {
+        if (!quick || e.ctrlKey || e.metaKey || e.altKey) return;
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+        if (e.key === 'n' || e.key === 'N' || e.key === 'ㅜ') { e.preventDefault(); quick.focus(); }
+    });
+    // 떠 있는 +: 업무에서는 새 업무 창(있으면) 또는 빠른 추가 칸, 자료에서는 올리기 칸
+    var fab = document.querySelector('.fab');
+    if (fab) fab.addEventListener('click', function (e) {
+        var g = fab.getAttribute('data-fab');
+        if (g === 'work' || g === 'home') {
+            var dlg = document.getElementById('work-dialog');
+            e.preventDefault();
+            if (dlg && dlg.showModal) dlg.showModal(); else if (quick) quick.focus();
+        } else if (g === 'library') {
+            var up = document.getElementById('upload');
+            if (up) { e.preventDefault(); up.classList.add('open'); up.scrollIntoView({ block: 'nearest' }); }
+        }
+    });
+})();
+
+// ───────────── v2: 업무 상세를 오른쪽 창으로 ─────────────
+(function () {
+    var group = document.querySelector('.sidenav') ? document.querySelector('.sidenav').getAttribute('data-current') : '';
+    if (group !== 'work' && group !== 'home') return;
+    var drawer = null, url = null;
+    function make() {
+        if (drawer) return drawer;
+        drawer = document.createElement('div');
+        drawer.className = 'v2-drawer';
+        drawer.innerHTML = '<div class="v2-drawer-back" data-drawer-close></div><aside class="v2-drawer-panel" role="dialog" aria-modal="true" aria-label="업무 상세">'
+            + '<div class="v2-drawer-head"><a class="btn btn-sm" data-drawer-full>전체 화면으로</a><button type="button" class="v2-icon" data-drawer-close aria-label="닫기">✕</button></div>'
+            + '<div class="v2-drawer-body"></div></aside>';
+        document.body.appendChild(drawer);
+        drawer.addEventListener('click', function (e) { if (e.target.closest('[data-drawer-close]')) close(); });
+        drawer.addEventListener('submit', function (e) {
+            var f = e.target;
+            if (!f.hasAttribute('data-write')) return;
+            setTimeout(function () { if (url) load(url, true); }, 900);
+        });
+        return drawer;
+    }
+    function load(href, keep) {
+        var d = make(), body = d.querySelector('.v2-drawer-body');
+        var y = keep ? body.scrollTop : 0;
+        if (!keep) body.innerHTML = '<p class="muted" style="padding:20px">여는 중…</p>';
+        fetch(href, { headers: { 'X-Audit-Fetch': 'page' } }).then(function (r) { return r.text(); }).then(function (html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var main = doc.querySelector('main');
+            body.innerHTML = main ? main.innerHTML : '<p>열지 못했습니다.</p>';
+            d.querySelector('[data-drawer-full]').setAttribute('href', href);
+            if (window.richEditorInit) window.richEditorInit(body);
+            body.scrollTop = y;
+        });
+    }
+    function open(href) {
+        url = href;
+        load(href, false);
+        requestAnimationFrame(function () { drawer.classList.add('open'); document.body.classList.add('drawer-open'); });
+    }
+    function close() {
+        if (!drawer) return;
+        drawer.classList.remove('open');
+        document.body.classList.remove('drawer-open');
+        url = null;
+    }
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href^="/work/item/"]');
+        if (!a || e.ctrlKey || e.metaKey || e.shiftKey || a.hasAttribute('data-drawer-full')) return;
+        if (a.closest('.v2-drawer-panel')) { e.preventDefault(); open(a.getAttribute('href')); return; }
+        e.preventDefault();
+        open(a.getAttribute('href'));
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && url && !document.querySelector('dialog[open]')) close(); });
+})();

@@ -89,12 +89,30 @@ public class Web {
             : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board" : path.startsWith("/tools") ? "tools"
             : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";
         model.addAttribute("navGroup", navGroup);
+        model.addAttribute("qScope", Txt.str(req.getParameter("scope")));
         model.addAttribute("orgNames", orgs.orgs());
         model.addAttribute("peopleNames", orgs.people());
         model.addAttribute("navGroupName", GROUPS.getOrDefault(navGroup, new String[] { "", "" })[0]);
         model.addAttribute("navGroupHref", GROUPS.getOrDefault(navGroup, new String[] { "", "/home" })[1]);
         model.addAttribute("workUrgent", work.urgentCount());
         model.addAttribute("workDirs", work.openDirectives());
+        if ("work".equals(navGroup)) {
+            model.addAttribute("workInbox", work.ofKind("inbox").size());
+            model.addAttribute("workPlans", work.ofKind("plan").size());
+            String me = work.config().me;
+            model.addAttribute("workMine", work.all().stream().filter(x -> x.isWork() && local.audit.work.WorkService.isOpen(x) && me.equals(x.ownerId)).count());
+        }
+        String[] fab = switch (navGroup) {
+            case "work", "home" -> new String[] { "/work/list#new", "새 업무" };
+            case "audit" -> new String[] { "/cases/new", "감사 건 등록" };
+            case "rules" -> new String[] { "/rules/new", "사규 등록" };
+            case "tools" -> new String[] { "/tools/card#new", "새 점검 회차" };
+            case "library" -> new String[] { "/library?upload=1", "파일 올리기" };
+            case "board" -> new String[] { "/board/entry", "실적 입력" };
+            default -> new String[] { "/home", "홈으로" };
+        };
+        model.addAttribute("fabHref", fab[0]);
+        model.addAttribute("fabLabel", fab[1]);
         model.addAttribute("path", path);
         model.addAttribute("integrityOk", chain.intact());
         String owner = settings.owner();

@@ -3,62 +3,61 @@
 <head><title>오늘 · 업무 일정</title></head>
 <body>
 <th:block id="content">
-<div class="page-head">
+<div class="v2-alert" th:if="${#lists.size(v.late) + #lists.size(v.due) > 0}">
+    <span th:text="|⏰ 기한이 지난 업무 ${#lists.size(v.late)}건 · 오늘 마감 ${#lists.size(v.due)}건|"></span>
+    <a class="btn btn-sm" href="/work/list?scope=late">모두 보기</a>
+</div>
+<section class="v2-hero">
     <div>
-        <p class="kicker" th:text="|${cfg.partName} · ${v.weekRange}|">파트</p>
-        <h1 th:text="|${v.meName}님의 오늘|">오늘</h1>
-        <p class="hint">
-            <th:block th:if="${v.holiday != null}"><span th:text="${v.holiday}"></span> · </th:block>
+        <h1 th:text="|좋은 하루입니다, ${v.meName}님 👋|">좋은 하루입니다</h1>
+        <p><span th:text="${todayText}"></span> —
             <th:block th:if="${#lists.size(v.late) > 0}"><strong style="color:var(--danger)" th:text="|지연 ${#lists.size(v.late)}건|"></strong>부터 정리하세요.</th:block>
             <th:block th:if="${#lists.isEmpty(v.late) and #lists.size(v.due) > 0}" th:text="|오늘 마감 ${#lists.size(v.due)}건이 있습니다.|"></th:block>
             <th:block th:if="${#lists.isEmpty(v.late) and #lists.isEmpty(v.due)}">급한 일이 없습니다. 이번 주 일을 앞당겨 보세요.</th:block>
-        </p>
+            <th:block th:if="${v.holiday != null}"> · <span th:text="${v.holiday}"></span></th:block></p>
     </div>
-    <p class="row-actions">
-        <a class="btn" href="/work/calendar">달력</a>
-        <button type="button" class="btn" data-dialog="event-dialog">일정 추가</button>
-        <button type="button" class="btn btn-primary" data-dialog="work-dialog">새 업무</button>
-    </p>
-</div>
-<div th:replace="~{work-parts :: quick('mine')}"></div>
-<ul class="metrics">
+    <div class="acts no-print">
+        <button type="button" class="btn btn-primary" data-dialog="work-dialog">＋ 새 업무 <kbd>N</kbd></button>
+        <a class="btn" href="/work/notes#inbox">📥 생각 담기</a>
+        <button type="button" class="btn" data-dialog="event-dialog">📅 일정 추가</button>
+        <a class="btn" href="/work/notes">📝 오늘 노트</a>
+    </div>
+</section>
+<ul class="metrics v2-kpi">
     <li th:class="${#lists.size(v.late) > 0} ? 'metric-bad' : 'metric-ok'">
-        <a href="/work/list?scope=late"><span class="metric-top">지연</span><strong th:text="${#lists.size(v.late)}">0</strong></a>
-    </li>
+        <a href="/work/list?scope=late"><span class="metric-top">⏰ 지연</span><strong th:text="${#lists.size(v.late)}">0</strong><span class="metric-sub">기한이 지난 진행 업무</span></a></li>
     <li th:class="${#lists.size(v.due) > 0} ? 'metric-warn' : 'metric-ok'">
-        <a href="/work/calendar"><span class="metric-top" th:text="|오늘 마감 · 일정 ${#lists.size(v.events)}건|">오늘 마감</span><strong th:text="${#lists.size(v.due)}">0</strong></a>
-    </li>
+        <a href="/work/calendar"><span class="metric-top">📌 오늘 마감</span><strong th:text="${#lists.size(v.due)}">0</strong><span class="metric-sub" th:text="|오늘 일정 ${#lists.size(v.events)}건|"></span></a></li>
     <li class="metric-ok">
-        <a href="/work/board"><span class="metric-top" th:text="|이번 주 진척 · ${v.weekDone}/${v.weekAll}|">이번 주</span><strong th:text="|${v.weekPct}%|">0%</strong></a>
-    </li>
+        <a href="/work/board"><span class="metric-top">🚀 이번 주 진척</span><strong th:text="|${v.weekPct}%|">0%</strong>
+            <span class="v2-bar"><i th:style="|width:${v.weekPct}%|"></i></span><span class="metric-sub" th:text="|기한 ${v.weekAll}건 중 ${v.weekDone}건 완료|"></span></a></li>
     <li th:class="${v.regDone < v.reg} ? 'metric-warn' : 'metric-ok'">
-        <a href="/work/annual"><span class="metric-top" th:text="|${v.month}월 정기 업무 이행|">정기</span><strong th:text="|${v.regDone}/${v.reg}|">0/0</strong></a>
-    </li>
+        <a href="/work/annual"><span class="metric-top" th:text="|🔁 ${v.month}월 정기 업무|">정기</span><strong th:text="|${v.regDone}/${v.reg}|">0/0</strong>
+            <span class="v2-bar"><i th:style="|width:${v.reg == 0 ? 0 : v.regDone * 100 / v.reg}%|"></i></span><span class="metric-sub">이번 달 이행</span></a></li>
     <li th:class="${#lists.size(v.audit) > 0} ? 'metric-warn' : 'metric-ok'">
-        <a href="/todo"><span class="metric-top">감사 조치 회신기한 (7일 안·초과)</span><strong th:text="${#lists.size(v.audit)}">0</strong></a>
-    </li>
+        <a href="/todo"><span class="metric-top">🛡️ 감사 조치 회신기한</span><strong th:text="${#lists.size(v.audit)}">0</strong><span class="metric-sub">7일 안·지남</span></a></li>
 </ul>
 <div class="cols-2">
     <div>
         <section class="card">
-            <div class="card-head"><h2>내가 오늘 할 일 <span class="sub">기한 도래·진행 중·높은 우선순위</span></h2><a class="btn btn-quiet" href="/work/list?scope=mine">전체</a></div>
+            <div class="card-head"><h2>🎯 내가 오늘 할 일 <span class="sub">기한 도래·진행 중·높은 우선순위</span></h2><a class="btn btn-quiet" href="/work/list?scope=mine">전체</a></div>
             <p class="empty" th:if="${#lists.isEmpty(v.mine)}">오늘 할 내 업무가 없습니다.</p>
             <ul class="wlist"><th:block th:each="x : ${v.mine}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>
         <section class="card">
-            <div class="card-head"><h2>지연 · 오늘 마감 <span class="sub">먼저 닫아야 할 것</span></h2></div>
+            <div class="card-head"><h2>⏰ 지연 · 오늘 마감 <span class="sub">먼저 닫아야 할 것</span></h2></div>
             <p class="empty" th:if="${#lists.isEmpty(v.lateDue)}">지연·오늘 마감이 없습니다.</p>
             <ul class="wlist"><th:block th:each="x : ${v.lateDue}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>
         <section class="card">
-            <div class="card-head"><h2>이번 주 남은 기한 <span class="sub" th:text="${v.weekRange}"></span></h2></div>
+            <div class="card-head"><h2>🗓️ 이번 주 남은 기한 <span class="sub" th:text="${v.weekRange}"></span></h2></div>
             <p class="empty" th:if="${#lists.isEmpty(v.week)}">이번 주 남은 기한이 없습니다.</p>
             <ul class="wlist"><th:block th:each="x : ${v.week}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>
     </div>
     <div>
         <section class="card">
-            <div class="card-head"><h2>오늘 일정 <span class="sub" th:text="|${#lists.size(v.events)}건|"></span></h2><button type="button" class="btn btn-quiet" data-dialog="event-dialog">추가</button></div>
+            <div class="card-head"><h2>🕘 오늘 일정 <span class="sub" th:text="|${#lists.size(v.events)}건|"></span></h2><button type="button" class="btn btn-quiet" data-dialog="event-dialog">추가</button></div>
             <p class="empty" th:if="${#lists.isEmpty(v.events)}">오늘 일정이 없습니다.</p>
             <ul class="wlist">
                 <li class="wrow" th:each="e : ${v.events}">
@@ -69,7 +68,7 @@
             </ul>
         </section>
         <section class="card" th:if="${!#lists.isEmpty(v.audit)}">
-            <div class="card-head"><h2>감사 조치 회신기한 <span class="sub">감사 건에서</span></h2><a class="btn btn-quiet" href="/todo">감사 할 일</a></div>
+            <div class="card-head"><h2>🛡️ 감사 조치 회신기한 <span class="sub">감사 건에서</span></h2><a class="btn btn-quiet" href="/todo">감사 할 일</a></div>
             <ul class="wlist">
                 <li class="wrow" th:each="a : ${v.audit}">
                     <div class="t"><a th:href="|/cases/${a.CaseId}#action-${a.ActionId}|" th:text="${a.CaseTitle}"></a><small th:text="|${a.Sequence}. ${a.Title} · ${a.Target} · ${a.ActionState}|"></small></div>
@@ -78,18 +77,18 @@
             </ul>
         </section>
         <section class="card" th:if="${!#lists.isEmpty(v.dirs)}">
-            <div class="card-head"><h2>미처리 지시 <span class="sub" th:text="|${#lists.size(v.dirs)}건|"></span></h2><a class="btn btn-quiet" href="/work/directives">지시 사항</a></div>
+            <div class="card-head"><h2>📌 미처리 지시 <span class="sub" th:text="|${#lists.size(v.dirs)}건|"></span></h2><a class="btn btn-quiet" href="/work/directives">지시 사항</a></div>
             <ul class="wlist"><th:block th:each="x : ${v.dirs}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>
         <section class="card" th:if="${!#lists.isEmpty(v.stall) or !#lists.isEmpty(v.ext)}">
-            <div class="card-head"><h2>정체 · 타 부서 대기 <span class="sub" th:text="|${cfg.stalled}일 넘게 기록 없음|"></span></h2></div>
+            <div class="card-head"><h2>💤 정체 · 타 부서 대기 <span class="sub" th:text="|${cfg.stalled}일 넘게 기록 없음|"></span></h2></div>
             <ul class="wlist">
                 <th:block th:each="x : ${v.stall}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block>
                 <th:block th:each="x : ${v.ext}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block>
             </ul>
         </section>
         <section class="card" th:if="${!#lists.isEmpty(v.inbox) or !#lists.isEmpty(v.ticks)}">
-            <div class="card-head"><h2>정리할 생각 · 다시 볼 계획</h2><a class="btn btn-quiet" href="/work/notes">노트·계획</a></div>
+            <div class="card-head"><h2>🧊 정리할 생각 · 다시 볼 계획</h2><a class="btn btn-quiet" href="/work/notes">노트·계획</a></div>
             <ul class="wlist">
                 <li class="wrow" th:each="x : ${v.inbox}"><div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a><small>생각 담기</small></div></li>
                 <li class="wrow" th:each="x : ${v.ticks}"><div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a><small th:text="|계획 대기 · 다시 볼 날 ${x.tick}|"></small></div></li>

@@ -51,6 +51,7 @@ public class WorkController {
         model.addAttribute("EVENT", Work.EVENT);
         model.addAttribute("NOTE", Work.NOTE);
         model.addAttribute("today", Kst.today().toString());
+        model.addAttribute("todayText", Kst.today().format(java.time.format.DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", java.util.Locale.KOREAN)));
     }
 
     @GetMapping("/work")
