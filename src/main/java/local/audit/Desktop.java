@@ -346,6 +346,17 @@ public final class Desktop {
             } catch (RuntimeException ignored) { }
         }
         String useKind = kind;
+        // 자료 화면이면 지금 보고 있는 폴더로 올린다(예전에는 수집함으로 갔다)
+        if (location.startsWith(base + "/library")) {
+            String folder = "", tags = "";
+            try {
+                Object f = engine.executeScript("(function(){var r=document.getElementById('lib-root');return r?r.getAttribute('data-folder'):'';})()");
+                Object t = engine.executeScript("(function(){var i=document.querySelector('[data-tag-input]');return i?i.value:'';})()");
+                folder = f == null ? "" : f.toString();
+                tags = t == null ? "" : t.toString();
+            } catch (RuntimeException ignored) { }
+            if (!folder.isEmpty()) { receiveLibrary(dropped, folder, tags); return; }
+        }
         toast(dropped.size() + "개 파일을 받는 중…");
         new Thread(() -> {
             int ok = 0;
@@ -369,6 +380,38 @@ public final class Desktop {
                 if (caseId != null) engine.reload(); else engine.load(base + "/inbox");
             });
         }, "drop").start();
+    }
+
+    /** 자료 화면에 끌어 놓은 파일을 그 폴더에 올린다. 폴더째 놓으면 안의 파일을 모두 올린다(하위 폴더 포함, 500개까지). */
+    private static void receiveLibrary(List<File> dropped, String folder, String tags) {
+        ConfigurableApplicationContext c = context;
+        toast(dropped.size() + "개를 자료로 올리는 중…");
+        new Thread(() -> {
+            List<File> all = new ArrayList<>();
+            for (File f : dropped) {
+                if (f.isFile()) all.add(f);
+                else if (f.isDirectory()) {
+                    try (java.util.stream.Stream<java.nio.file.Path> w = Files.walk(f.toPath(), 4)) {
+                        w.filter(Files::isRegularFile).filter(x -> !x.getFileName().toString().startsWith("~$") && !x.getFileName().toString().startsWith("."))
+                            .limit(500).forEach(x -> all.add(x.toFile()));
+                    } catch (Exception ignored) { }
+                }
+            }
+            int ok = 0, dup = 0;
+            String last = "";
+            LibraryService lib = c.getBean(LibraryService.class);
+            for (File f : all) {
+                try (InputStream in = Files.newInputStream(f.toPath())) {
+                    Op op = lib.add(folder, null, tags, null, f.getName(), in);
+                    if (op.ok) ok++; else if (op.status == 409) dup++; else last = op.message;
+                } catch (Exception e) {
+                    last = "파일을 읽지 못했습니다: " + f.getName();
+                }
+            }
+            String message = ok > 0 ? "자료 " + ok + "건을 올렸습니다." + (dup > 0 ? " 이미 있는 파일 " + dup + "개는 건너뛰었습니다." : "")
+                : dup > 0 ? "고른 파일이 모두 이미 있습니다." : last.isEmpty() ? "올릴 파일이 없습니다." : last;
+            Platform.runLater(() -> { pendingToast = message; engine.reload(); });
+        }, "drop-library").start();
     }
 
     private static Properties loadState() {

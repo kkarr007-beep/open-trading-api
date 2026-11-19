@@ -109,12 +109,28 @@
                 <a class="sn-sub" href="/tools/card/exceptions" th:aria-current="${navKey == 'tools/card/exceptions'} ? 'page'"><span>예외 목록</span></a>
                     <a class="sn-setting sn-gap" href="/tools/card/settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>점검 기준</span></a>
         </nav>
-        <nav class="sn-group" data-group="library" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'library'}" aria-label="자료">
-            <p class="sn-title">자료</p>
-                <a href="/library" th:aria-current="${navKey == 'library' and #strings.isEmpty(libCat)} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>전체 자료</span></a>
-
-                                <a href="/library/new" th:aria-current="${navKey == 'library/new'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v8M8 12h8M4.5 4.5h15v15h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>여러 파일 올리기</span></a>
-                <a href="/library/categories" th:aria-current="${navKey == 'library/categories'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>분류 관리</span></a>
+        <nav class="sn-group lib-nav" data-group="library" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'library'}" aria-label="자료 폴더">
+            <p class="sn-title">바로가기</p>
+            <div class="ft-quick">
+                <a th:href="@{/library(view='star')}" th:aria-current="${libView == 'star'} ? 'page'" data-drop-star><span class="qi">★</span><span>즐겨찾기</span><em th:text="${libStarN}"></em></a>
+                <a th:href="@{/library(view='recent')}" th:aria-current="${libView == 'recent'} ? 'page'"><span class="qi">◷</span><span>최근 연 자료</span><em th:text="${libRecentN}"></em></a>
+                <a href="/library" th:aria-current="${#strings.isEmpty(libF) and #strings.isEmpty(libView) and path == '/library'} ? 'page'"><span class="qi">≡</span><span>모든 자료</span></a>
+            </div>
+            <th:block th:if="${libSaved != null and !#lists.isEmpty(libSaved)}">
+            <p class="sn-title sn-gap">저장한 찾기</p>
+            <div class="ft-quick">
+                <div class="ft-saved" th:each="x : ${libSaved}">
+                    <a th:href="|/library?${x.Params}|" th:aria-current="${libQuery == x.Params} ? 'page'"><span class="qi">⌕</span><span th:text="${x.Name}"></span></a>
+                    <form method="post" th:action="|/library/saved/${x.Id}/delete|" data-write="1" th:data-confirm="|저장한 찾기 '${x.Name}'를 지울까요?|">
+                        <button type="submit" class="ft-x" th:aria-label="|${x.Name} 지우기|">×</button></form>
+                </div>
+            </div>
+            </th:block>
+            <p class="sn-title sn-gap ft-head">폴더 <button type="button" class="ft-add" data-folder-new data-parent="">+ 새 폴더</button></p>
+            <div class="ft" id="folder-tree" data-drop-root>
+                <th:block th:each="x : ${libFolders}"><th:block th:replace="~{lib-parts :: node(${x})}"></th:block></th:block>
+            </div>
+            <p class="ft-tip">폴더를 오른쪽 클릭(또는 ⋯)하면 새 하위 폴더·이름 바꾸기·보관·지우기. 자료나 폴더를 끌어 폴더에 놓으면 옮겨집니다.</p>
         </nav>
         <nav class="sn-group" data-group="board" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'board'}" aria-label="경영현황">
             <p class="sn-title">경영현황</p>

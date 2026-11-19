@@ -72,7 +72,16 @@ public class Web {
         if (path.startsWith("/tools")) navKey = path.startsWith("/tools/card/settings") ? "tools/card/settings" : path.startsWith("/tools/card/exceptions") ? "tools/card/exceptions" : "tools/card";
         model.addAttribute("navKey", navKey);
         model.addAttribute("caseCategories", cases.categories());
-        model.addAttribute("libTree", library.tree());
+        if (path.startsWith("/library")) {
+            model.addAttribute("libFolders", library.folders());
+            model.addAttribute("libStarN", library.starCount());
+            model.addAttribute("libRecentN", library.recentCount());
+            model.addAttribute("libSaved", library.saved());
+            String lf = Txt.str(req.getParameter("f"));
+            model.addAttribute("libF", lf.isEmpty() ? Txt.str(req.getParameter("cat")) : lf);
+            model.addAttribute("libView", Txt.str(req.getParameter("view")));
+            model.addAttribute("libQuery", Txt.str(req.getQueryString()));
+        }
         model.addAttribute("libCat", path.equals("/library") ? Txt.str(req.getParameter("cat")) : "");
         String navGroup = path.equals("/home") || path.equals("/") || path.startsWith("/search") ? "home"
             : path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/board/settings") || path.startsWith("/tools/card/settings")

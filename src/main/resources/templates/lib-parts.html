@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 왼쪽 폴더 나무의 한 줄. 하위 폴더는 같은 조각을 다시 부른다. -->
+<th:block th:fragment="node(x)">
+<div class="ft-node" th:attr="data-folder-id=${x.id},data-folder-name=${x.name},data-depth=${x.depth},data-archive=${x.archive},data-parent=${x.parentId}">
+    <div class="ft-row" th:classappend="${libF == x.id} ? 'on'" draggable="true" data-drop-folder>
+        <button type="button" class="ft-tw" th:if="${!#lists.isEmpty(x.children)}" data-ft-toggle th:aria-label="|${x.name} 펼치기·접기|">▾</button>
+        <span class="ft-tw" th:if="${#lists.isEmpty(x.children)}"></span>
+        <a class="ft-name" th:href="@{/library(f=${x.id})}" th:aria-current="${libF == x.id} ? 'page'">
+            <svg class="ft-ic" viewBox="0 0 24 24" aria-hidden="true" th:if="${!x.archive or x.depth > 1}"><path d="M3.5 6.5h6l2 2h9v10h-17z" fill="currentColor" opacity=".22"/><path d="M3.5 6.5h6l2 2h9v10h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <svg class="ft-ic" viewBox="0 0 24 24" aria-hidden="true" th:if="${x.archive and x.depth == 1}"><path d="M4 5h16v4H4zM5.5 9v10h13V9M10 13h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span th:text="${x.name}"></span></a>
+        <em th:text="${x.total}"></em>
+        <button type="button" class="ft-more" data-folder-menu th:aria-label="|${x.name} 폴더 메뉴|">⋯</button>
+    </div>
+    <div class="ft-kids" th:unless="${#lists.isEmpty(x.children)}">
+        <th:block th:each="c : ${x.children}"><th:block th:replace="~{lib-parts :: node(${c})}"></th:block></th:block>
+    </div>
+</div>
+</th:block>
+</body>
+</html>

@@ -511,4 +511,45 @@ class CoreTest {
         assertEquals(2, ((Number) lib.list(b, "", "", "", 1, 20).get("total")).intValue());
         assertFalse(lib.move(List.of(x.id), "없는분류").ok);
     }
+
+    @Test
+    void libraryFoldersWorkLikeExplorer() throws Exception {
+        LibraryService lib = new LibraryService(db, files, reader);
+        Op a = lib.createFolder("진행 중 과제", "");
+        Op b = lib.createFolder("영업점 감사", a.id);
+        Op c = lib.createFolder("2026", b.id);
+        assertTrue(a.ok && b.ok && c.ok);
+        assertFalse(lib.createFolder("너무 깊음", c.id).ok, "세 단계까지만");
+        assertFalse(lib.createFolder("영업점 감사", a.id).ok, "같은 자리 같은 이름 막기");
+        assertEquals(3, lib.folder(c.id).depth);
+        assertEquals(List.of("진행 중 과제", "영업점 감사", "2026"), lib.trail(c.id).stream().map(f -> f.name).toList());
+        assertFalse(lib.moveFolder(a.id, c.id).ok, "자기 안으로 못 옮김");
+        String other = (String) lib.categories().get(0).get("Id");
+        assertFalse(lib.moveFolder(a.id, b.id).ok);
+        Op d = lib.add(c.id, "점검표", "2026, 영업1팀", "", "점검표.txt", new ByteArrayInputStream("점검 항목".getBytes(StandardCharsets.UTF_8)));
+        lib.awaitReads();
+        assertEquals(1, lib.folder(a.id).total, "위 폴더 수는 하위까지 더함");
+        assertEquals(1, ((Number) lib.browse(a.id, "", "점검", "here", "", "", "", 1, 30).get("total")).intValue(), "이 폴더에서 찾으면 하위 폴더까지");
+        assertEquals(0, ((Number) lib.browse(a.id, "", "", "here", "", "", "", 1, 30).get("total")).intValue(), "찾지 않으면 바로 든 자료만");
+        assertEquals(1, ((Number) lib.browse(a.id, "", "", "here", "", "영업1팀", "", 1, 30).get("total")).intValue(), "태그로 거르기");
+        // 즐겨찾기·최근·태그 붙이기·저장한 찾기
+        assertTrue(lib.star(List.of(d.id), true).ok);
+        assertEquals(1, ((Number) lib.browse("", "star", "", "", "", "", "", 1, 30).get("total")).intValue());
+        lib.touch(d.id);
+        assertEquals(1, lib.recentCount());
+        assertTrue(lib.addTags(List.of(d.id), "#지침 2026").ok);
+        assertEquals("2026, 영업1팀, 지침", lib.get(d.id).get("Tags"));
+        assertTrue(lib.saveSearch("영업 점검", "q=점검&scope=all").ok);
+        assertEquals(1, lib.saved().size());
+        // 보관: 전체 찾기에서 빠진다
+        assertTrue(lib.archiveFolder(a.id).ok);
+        assertTrue(lib.folder(c.id).archive);
+        assertEquals(0, ((Number) lib.browse("", "", "점검", "all", "", "", "", 1, 30).get("total")).intValue(), "보관은 전체 찾기에서 빠짐");
+        // 지우기: 안의 자료는 한 단계 위로
+        assertTrue(lib.deleteFolder(c.id).ok);
+        assertEquals(b.id, lib.get(d.id).get("CategoryId"));
+        assertFalse(lib.deleteFolder(lib.trail(b.id).get(0).id).ok, "자료가 든 맨 위 폴더는 못 지움");
+        assertTrue(lib.moveFolder(b.id, other).ok);
+        assertEquals(2, lib.folder(b.id).depth);
+    }
 }

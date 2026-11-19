@@ -241,6 +241,7 @@
         return;
       }
       if (payload.reload) { location.reload(); return; }
+      if (form.hasAttribute('data-reload')) { location.reload(); return; }
       var section = form.closest("section");
       var selector = section && section.id ? "#" + section.id + " button" : "h1";
       refreshMain(selector).finally(function () { finishButton(button, label); });

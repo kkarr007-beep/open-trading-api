@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -229,9 +230,9 @@ public class LibraryService {
             LEFT JOIN LibText t ON t.Id=d.Id WHERE 1=1""");
         List<Object> args = new ArrayList<>();
         if (!Txt.blank(categoryId)) {
-            sql.append(" AND (d.CategoryId=? OR c.ParentId=?)");
-            args.add(categoryId);
-            args.add(categoryId);
+            Set<String> ids = subtree(categoryId);
+            sql.append(" AND d.CategoryId IN (").append(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))).append(")");
+            args.addAll(ids);
         }
         List<String> terms = new ArrayList<>();
         for (String w : Txt.str(q).strip().split("\\s+")) if (!w.isBlank()) terms.add(w);
@@ -331,6 +332,8 @@ public class LibraryService {
         if (d == null) return Op.fail(404, "자료를 찾을 수 없습니다.");
         db.tx(conn -> {
             Db.update(conn, "DELETE FROM LibText WHERE Id=?", id);
+            Db.update(conn, "DELETE FROM LibStars WHERE DocId=?", id);
+            Db.update(conn, "DELETE FROM LibRecent WHERE DocId=?", id);
             Db.update(conn, "DELETE FROM LibDocs WHERE Id=?", id);
             return null;
         });
@@ -343,5 +346,332 @@ public class LibraryService {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) list(null, q, 1, limit).get("items");
         return items;
+    }
+
+    // ================================================================== 폴더 (탐색기 방식)
+
+    /** 폴더는 세 단계까지. 깊으면 오히려 찾기 어렵다. */
+    public static final int MAX_DEPTH = 3;
+    public static final String ARCHIVE = "보관";
+
+    /** 폴더 하나. Docs는 이 폴더에 바로 든 자료, Total은 하위 폴더까지 더한 수. */
+    public static final class Folder {
+        public String id, name, parentId;
+        public int ord, docs, total, depth;
+        public boolean archive;
+        public List<Folder> children = new ArrayList<>();
+        public String getId() { return id; }
+        public String getName() { return name; }
+        public String getParentId() { return parentId; }
+        public int getDocs() { return docs; }
+        public int getTotal() { return total; }
+        public int getDepth() { return depth; }
+        public boolean isArchive() { return archive; }
+        public List<Folder> getChildren() { return children; }
+        public int height() { int h = 1; for (Folder c : children) h = Math.max(h, 1 + c.height()); return h; }
+    }
+
+    /** 폴더 나무 전체(맨 위 폴더 목록). 보관 폴더는 맨 아래. */
+    public List<Folder> folders() {
+        Map<String, Folder> by = new LinkedHashMap<>();
+        for (Map<String, Object> r : db.rows("""
+            SELECT c.Id, c.Name, c.Ord, c.ParentId, (SELECT COUNT(*) FROM LibDocs d WHERE d.CategoryId=c.Id) AS Docs
+            FROM LibCategories c ORDER BY c.Ord, c.Name""")) {
+            Folder f = new Folder();
+            f.id = Txt.str(r.get("Id")); f.name = Txt.str(r.get("Name")); f.parentId = Txt.str(r.get("ParentId"));
+            f.ord = ((Number) r.get("Ord")).intValue(); f.docs = ((Number) r.get("Docs")).intValue();
+            by.put(f.id, f);
+        }
+        List<Folder> top = new ArrayList<>();
+        for (Folder f : by.values()) {
+            Folder p = by.get(f.parentId);
+            if (p == null || p == f) top.add(f); else p.children.add(f);
+        }
+        top.sort(java.util.Comparator.comparing((Folder f) -> ARCHIVE.equals(f.name)).thenComparingInt(f -> f.ord).thenComparing(f -> f.name));
+        for (Folder f : top) fill(f, 1, ARCHIVE.equals(f.name));
+        return top;
+    }
+
+    private static int fill(Folder f, int depth, boolean archive) {
+        f.depth = depth;
+        f.archive = archive;
+        f.children.sort(java.util.Comparator.comparingInt((Folder c) -> c.ord).thenComparing(c -> c.name));
+        int t = f.docs;
+        for (Folder c : f.children) t += fill(c, depth + 1, archive);
+        f.total = t;
+        return t;
+    }
+
+    public Folder folder(String id) {
+        if (Txt.blank(id)) return null;
+        for (Folder f : flat(folders())) if (f.id.equals(id)) return f;
+        return null;
+    }
+
+    public static List<Folder> flat(List<Folder> top) {
+        List<Folder> out = new ArrayList<>();
+        java.util.Deque<Folder> st = new java.util.ArrayDeque<>();
+        for (int i = top.size() - 1; i >= 0; i--) st.push(top.get(i));
+        while (!st.isEmpty()) {
+            Folder f = st.pop();
+            out.add(f);
+            for (int i = f.children.size() - 1; i >= 0; i--) st.push(f.children.get(i));
+        }
+        return out;
+    }
+
+    /** 이 폴더와 그 아래 모든 폴더의 아이디. */
+    public Set<String> subtree(String id) {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        Folder f = folder(id);
+        if (f == null) { out.add(Txt.str(id)); return out; }
+        for (Folder x : flat(List.of(f))) out.add(x.id);
+        return out;
+    }
+
+    /** 맨 위부터 이 폴더까지(위치 표시에 쓴다). */
+    public List<Folder> trail(String id) {
+        List<Folder> all = flat(folders());
+        Map<String, Folder> by = new java.util.HashMap<>();
+        for (Folder f : all) by.put(f.id, f);
+        List<Folder> out = new ArrayList<>();
+        Folder f = by.get(Txt.str(id));
+        int guard = 0;
+        while (f != null && guard++ < 10) { out.add(0, f); f = by.get(f.parentId); }
+        return out;
+    }
+
+    public Op createFolder(String name, String parentId) {
+        String n = Txt.clean(name, 40, false);
+        if (Txt.blank(n)) return Op.bad("폴더 이름을 적으세요.");
+        String parent = Txt.str(parentId);
+        Folder p = parent.isEmpty() ? null : folder(parent);
+        if (!parent.isEmpty() && p == null) return Op.fail(404, "위 폴더를 찾지 못했습니다.");
+        if (p != null && p.depth >= MAX_DEPTH) return Op.bad("폴더는 " + MAX_DEPTH + "단계까지 만들 수 있습니다. 태그로 나눠 보세요.");
+        return db.run(conn -> {
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Name=? AND ParentId=?", n, parent) > 0) throw Op.abort("같은 자리에 같은 이름의 폴더가 있습니다.");
+            int next = Db.intOf(conn, "SELECT IFNULL(MAX(Ord),0)+1 FROM LibCategories WHERE ParentId=?", parent);
+            String id = Txt.newId();
+            Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,?,?)", id, n, next, parent);
+            return Op.ok("폴더 '" + n + "'를 만들었습니다.", id);
+        });
+    }
+
+    public Op renameFolder(String id, String name) {
+        String n = Txt.clean(name, 40, false);
+        if (Txt.blank(n)) return Op.bad("폴더 이름을 적으세요.");
+        Folder f = folder(id);
+        if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
+        return db.run(conn -> {
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Name=? AND ParentId=? AND Id<>?", n, f.parentId, id) > 0) throw Op.abort("같은 자리에 같은 이름의 폴더가 있습니다.");
+            Db.update(conn, "UPDATE LibCategories SET Name=? WHERE Id=?", n, id);
+            return Op.ok("이름을 '" + n + "'로 바꿨습니다.", id);
+        });
+    }
+
+    /** 폴더를 다른 폴더 밑(또는 맨 위)으로 옮긴다. 자기 밑으로는 못 옮기고, 세 단계를 넘지 않게 한다. */
+    public Op moveFolder(String id, String parentId) { return moveFolder(id, parentId, false); }
+
+    private Op moveFolder(String id, String parentId, boolean archiving) {
+        Folder f = folder(id);
+        if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
+        String parent = Txt.str(parentId);
+        if (parent.equals(f.parentId)) return Op.ok("이미 그 자리에 있습니다.", id);
+        if (!parent.isEmpty()) {
+            if (subtree(id).contains(parent)) return Op.bad("폴더를 자기 안으로 옮길 수 없습니다.");
+            Folder p = folder(parent);
+            if (p == null) return Op.fail(404, "옮길 곳을 찾지 못했습니다.");
+            if (p.depth + f.height() > MAX_DEPTH + (archiving || p.archive ? 1 : 0)) return Op.bad("그곳으로 옮기면 폴더가 " + MAX_DEPTH + "단계를 넘습니다.");
+        }
+        return db.run(conn -> {
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Name=? AND ParentId=? AND Id<>?", f.name, parent, id) > 0) throw Op.abort("옮길 곳에 같은 이름의 폴더가 있습니다.");
+            int next = Db.intOf(conn, "SELECT IFNULL(MAX(Ord),0)+1 FROM LibCategories WHERE ParentId=?", parent);
+            Db.update(conn, "UPDATE LibCategories SET ParentId=?, Ord=? WHERE Id=?", parent, next, id);
+            return Op.ok("폴더 '" + f.name + "'를 옮겼습니다.", id);
+        });
+    }
+
+    /** 끝난 폴더를 '보관' 밑으로. 보관 폴더가 없으면 만든다. 보관은 '전체' 찾기에서 빠진다. */
+    public Op archiveFolder(String id) {
+        Folder f = folder(id);
+        if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
+        if (f.archive) return Op.ok("이미 보관에 있습니다.", id);
+        String arch = db.run(conn -> {
+            Map<String, Object> a = Db.row(conn, "SELECT Id FROM LibCategories WHERE Name=? AND ParentId=''", ARCHIVE);
+            if (a != null) return Op.ok("", (String) a.get("Id"));
+            String aid = Txt.newId();
+            Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,999,'')", aid, ARCHIVE);
+            return Op.ok("", aid);
+        }).id;
+        Op op = moveFolder(id, arch, true);
+        return op.ok ? Op.ok("'" + f.name + "'를 보관으로 옮겼습니다. '전체'로 찾을 때는 빠집니다.", id) : op;
+    }
+
+    /** 폴더를 지운다. 안의 자료와 하위 폴더는 한 단계 위 폴더로 올린다(맨 위 폴더는 비어 있어야 지운다). */
+    public Op deleteFolder(String id) {
+        Folder f = folder(id);
+        if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
+        if (f.parentId.isEmpty() && f.total > 0) return Op.bad("맨 위 폴더는 비어 있어야 지울 수 있습니다. 안의 자료를 옮긴 뒤 지우세요.");
+        if (folders().size() <= 1 && f.parentId.isEmpty()) return Op.bad("폴더가 하나는 있어야 합니다.");
+        return db.run(conn -> {
+            int docs = Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE CategoryId=?", f.parentId, id);
+            int kids = Db.update(conn, "UPDATE LibCategories SET ParentId=? WHERE ParentId=?", f.parentId, id);
+            Db.update(conn, "DELETE FROM LibCategories WHERE Id=?", id);
+            return Op.ok("폴더 '" + f.name + "'를 지웠습니다." + (docs + kids > 0 ? " 안에 있던 자료 " + docs + "건과 폴더 " + kids + "개는 한 단계 위로 올렸습니다." : ""), f.parentId);
+        });
+    }
+
+    // ================================================================== 즐겨찾기·최근·저장한 찾기·태그
+
+    public Op star(List<String> ids, boolean on) {
+        if (ids == null || ids.isEmpty()) return Op.bad("자료를 고르세요.");
+        return db.run(conn -> {
+            int n = 0;
+            for (String id : ids) {
+                if (!Txt.isId(id)) continue;
+                if (on) n += Db.update(conn, "INSERT OR IGNORE INTO LibStars(DocId, At) SELECT Id, ? FROM LibDocs WHERE Id=?", Kst.stamp(), id);
+                else n += Db.update(conn, "DELETE FROM LibStars WHERE DocId=?", id);
+            }
+            return Op.ok(on ? "즐겨찾기에 " + n + "건을 넣었습니다." : "즐겨찾기에서 " + n + "건을 뺐습니다.");
+        });
+    }
+
+    /** 열거나 내려받은 자료를 '최근 연 자료'에 남긴다(최근 50건). */
+    public void touch(String id) {
+        if (!Txt.isId(id)) return;
+        db.tx(conn -> {
+            Db.update(conn, "INSERT INTO LibRecent(DocId, At) VALUES(?,?) ON CONFLICT(DocId) DO UPDATE SET At=excluded.At", id, Kst.stamp());
+            Db.update(conn, "DELETE FROM LibRecent WHERE DocId NOT IN (SELECT DocId FROM LibRecent ORDER BY At DESC LIMIT 50)");
+            return null;
+        });
+    }
+
+    public int starCount() { return db.read(conn -> Db.intOf(conn, "SELECT COUNT(*) FROM LibStars")); }
+    public int recentCount() { return db.read(conn -> Db.intOf(conn, "SELECT COUNT(*) FROM LibRecent")); }
+
+    /** 고른 자료에 태그를 더한다(이미 있는 태그는 그대로). */
+    public Op addTags(List<String> ids, String tags) {
+        List<String> add = splitTags(tags);
+        if (add.isEmpty()) return Op.bad("붙일 태그를 적으세요.");
+        if (ids == null || ids.isEmpty()) return Op.bad("자료를 고르세요.");
+        return db.run(conn -> {
+            int n = 0;
+            for (String id : ids) {
+                Map<String, Object> d = Db.row(conn, "SELECT Tags FROM LibDocs WHERE Id=?", id);
+                if (d == null) continue;
+                java.util.LinkedHashSet<String> cur = new java.util.LinkedHashSet<>(splitTags(Txt.str(d.get("Tags"))));
+                cur.addAll(add);
+                n += Db.update(conn, "UPDATE LibDocs SET Tags=? WHERE Id=?", Txt.fit(String.join(", ", cur), 300, false), id);
+            }
+            return Op.ok(n + "건에 태그 " + String.join(", ", add) + "를 붙였습니다.");
+        });
+    }
+
+    public static List<String> splitTags(String tags) {
+        List<String> out = new ArrayList<>();
+        for (String t : Txt.str(tags).split("[,，#\\s]+")) { String x = t.strip(); if (!x.isEmpty() && !out.contains(x) && x.length() <= 30) out.add(x); }
+        return out;
+    }
+
+    /** 자주 쓰는 태그(많이 쓴 순). 올리기 칩과 거르기 칩에 쓴다. */
+    public List<Map.Entry<String, Integer>> topTags(java.util.Collection<Map<String, Object>> docs, int limit) {
+        Map<String, Integer> c = new LinkedHashMap<>();
+        for (Map<String, Object> d : docs) for (String t : splitTags(Txt.str(d.get("Tags")))) c.merge(t, 1, Integer::sum);
+        List<Map.Entry<String, Integer>> l = new ArrayList<>(c.entrySet());
+        l.sort((a, b) -> b.getValue() - a.getValue());
+        return l.size() > limit ? l.subList(0, limit) : l;
+    }
+
+    public List<Map.Entry<String, Integer>> allTags(int limit) {
+        return topTags(db.rows("SELECT Tags FROM LibDocs WHERE Tags<>''"), limit);
+    }
+
+    public List<Map<String, Object>> saved() { return db.rows("SELECT * FROM LibSaved ORDER BY CreatedAt"); }
+
+    public Op saveSearch(String name, String params) {
+        String n = Txt.clean(name, 40, false);
+        if (Txt.blank(n)) return Op.bad("찾기 이름을 적으세요.");
+        String pr = Txt.fit(params, 500, false);
+        if (Txt.blank(pr)) return Op.bad("저장할 찾기 조건이 없습니다.");
+        String id = Txt.newId();
+        db.tx(conn -> Db.update(conn, "INSERT INTO LibSaved(Id, Name, Params, CreatedAt) VALUES(?,?,?,?)", id, n, pr, Kst.stamp()));
+        return Op.ok("찾기 '" + n + "'를 저장했습니다. 왼쪽 '저장한 찾기'에서 다시 엽니다.", id);
+    }
+
+    public Op deleteSaved(String id) {
+        int n = db.tx(conn -> Db.update(conn, "DELETE FROM LibSaved WHERE Id=?", id));
+        return n == 0 ? Op.fail(404, "저장한 찾기를 찾지 못했습니다.") : Op.ok("저장한 찾기를 지웠습니다.");
+    }
+
+    // ================================================================== 탐색
+
+    /**
+     * 탐색기 화면의 목록. view: ""(폴더) · star · recent. scope: here(이 폴더와 하위) · all(전체, 보관 제외).
+     * 찾는 말이 없고 폴더를 보고 있으면 이 폴더에 바로 든 자료만 보인다(하위 폴더는 폴더 줄로).
+     */
+    public Map<String, Object> browse(String folderId, String view, String q, String scope, String kind, String tag, String sort, int page, int size) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT d.Id, d.CategoryId, c.Name AS Category, d.Title, d.FileName, d.SizeBytes, d.Tags, d.Note, d.RegisteredAt, d.ReadState,
+                   t.Body AS Body, CASE WHEN s.DocId IS NULL THEN 0 ELSE 1 END AS Starred, r.At AS OpenedAt
+            FROM LibDocs d JOIN LibCategories c ON c.Id=d.CategoryId LEFT JOIN LibText t ON t.Id=d.Id
+            LEFT JOIN LibStars s ON s.DocId=d.Id LEFT JOIN LibRecent r ON r.DocId=d.Id WHERE 1=1""");
+        List<Object> args = new ArrayList<>();
+        List<String> terms = new ArrayList<>();
+        for (String w : Txt.str(q).strip().split("\\s+")) if (!w.isBlank()) terms.add(w);
+        String v = Txt.str(view);
+        boolean all = "all".equals(scope);
+        if ("star".equals(v)) sql.append(" AND s.DocId IS NOT NULL");
+        else if ("recent".equals(v)) sql.append(" AND r.DocId IS NOT NULL");
+        else if (all) {
+            Set<String> arch = new java.util.HashSet<>();
+            for (Folder f : flat(folders())) if (f.archive) arch.add(f.id);
+            if (!arch.isEmpty()) { sql.append(" AND d.CategoryId NOT IN (").append(String.join(",", java.util.Collections.nCopies(arch.size(), "?"))).append(")"); args.addAll(arch); }
+        } else if (!Txt.blank(folderId)) {
+            boolean deep = !terms.isEmpty() || !Txt.blank(tag) || !Txt.blank(kind);
+            Set<String> ids = deep ? subtree(folderId) : Set.of(folderId);
+            sql.append(" AND d.CategoryId IN (").append(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))).append(")");
+            args.addAll(ids);
+        }
+        for (String w : terms) {
+            sql.append(" AND (d.Title LIKE ? ESCAPE '\\' OR d.FileName LIKE ? ESCAPE '\\' OR d.Tags LIKE ? ESCAPE '\\' OR d.Note LIKE ? ESCAPE '\\' OR t.Body LIKE ? ESCAPE '\\')");
+            for (int i = 0; i < 5; i++) args.add(Txt.like(w));
+        }
+        sql.append("recent".equals(v) && Txt.blank(sort) ? " ORDER BY r.At DESC" : switch (Txt.str(sort)) {
+            case "old" -> " ORDER BY d.RegisteredAt";
+            case "title" -> " ORDER BY d.Title COLLATE NOCASE, d.RegisteredAt DESC";
+            case "size" -> " ORDER BY d.SizeBytes DESC";
+            default -> " ORDER BY d.RegisteredAt DESC";
+        });
+        List<Map<String, Object>> rows = db.rows(sql.toString(), args.toArray());
+        Map<String, Integer> kinds = new LinkedHashMap<>();
+        for (String k : KINDS.keySet()) kinds.put(k, 0);
+        for (Map<String, Object> d : rows) kinds.merge(kindOf(Txt.str(d.get("FileName"))), 1, Integer::sum);
+        List<Map.Entry<String, Integer>> tags = topTags(rows, 14);
+        if (KINDS.containsKey(Txt.str(kind))) rows.removeIf(d -> !kindOf(Txt.str(d.get("FileName"))).equals(kind));
+        if (!Txt.blank(tag)) rows.removeIf(d -> !splitTags(Txt.str(d.get("Tags"))).contains(tag));
+        int pages = Math.max(1, (rows.size() + size - 1) / size);
+        int p = Math.max(1, Math.min(page, pages));
+        List<Map<String, Object>> items = new ArrayList<>(rows.subList(Math.min(rows.size(), (p - 1) * size), Math.min(rows.size(), p * size)));
+        Map<String, String> paths = new java.util.HashMap<>();
+        List<Folder> tops = folders();
+        for (Folder f : flat(tops)) {
+            List<String> names = new ArrayList<>();
+            for (Folder x : trail(f.id)) names.add(x.name);
+            paths.put(f.id, String.join(" › ", names));
+        }
+        for (Map<String, Object> d : items) {
+            decorate(d, terms);
+            d.put("TagList", splitTags(Txt.str(d.get("Tags"))));
+            d.put("FolderPath", paths.getOrDefault(Txt.str(d.get("CategoryId")), Txt.str(d.get("Category"))));
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("items", items);
+        out.put("kinds", kinds);
+        out.put("tags", tags);
+        out.put("total", rows.size());
+        out.put("page", p);
+        out.put("pages", pages);
+        out.put("deep", !terms.isEmpty() || !Txt.blank(tag) || !Txt.blank(kind));
+        return out;
     }
 }
