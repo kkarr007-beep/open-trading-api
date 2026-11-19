@@ -1124,3 +1124,11 @@ body.bare main { padding-top: 18px !important; }
 .pager { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 .ex-menu .ex-form { min-width: 280px; }
 .lib-tt small { font-weight: 400; }
+@media (max-width: 760px) {
+  .lib-table th:nth-child(3), .lib-table td:nth-child(3), .lib-table th:nth-child(4), .lib-table td:nth-child(4) { display: none; }
+  .lib-table { table-layout: fixed; width: 100%; }
+  .lib-table th:first-child, .lib-table td:first-child { width: 34px; }
+  .lib-table th:nth-child(5), .lib-table td:nth-child(5) { width: 84px; }
+  .lib-table th:last-child, .lib-table td:last-child { width: 64px; }
+  .lib-tt { min-width: 0; } .lib-tt > div { min-width: 0; overflow-wrap: anywhere; }
+}
