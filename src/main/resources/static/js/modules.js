@@ -610,3 +610,18 @@ document.addEventListener('click', function (e) {
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && url && !document.querySelector('dialog[open]')) close(); });
 })();
+
+// 선택칸: 고른 글자가 칸보다 길면 칸을 그만큼 넓힌다(잘려 보이지 않게)
+(function () {
+    var cv = document.createElement('canvas').getContext('2d');
+    function fit(sel) {
+        var o = sel.options[sel.selectedIndex];
+        if (!o || !sel.offsetParent) return;
+        var s = getComputedStyle(sel);
+        cv.font = s.fontWeight + ' ' + s.fontSize + ' ' + s.fontFamily;
+        var need = Math.ceil(cv.measureText(o.text).width + parseFloat(s.paddingLeft) + parseFloat(s.paddingRight) + 22);
+        if (need > sel.clientWidth) sel.style.minWidth = Math.min(need, 420) + 'px';
+    }
+    document.querySelectorAll('select').forEach(fit);
+    document.addEventListener('change', function (e) { if (e.target && e.target.tagName === 'SELECT') fit(e.target); });
+})();

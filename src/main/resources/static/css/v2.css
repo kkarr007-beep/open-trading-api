@@ -163,3 +163,27 @@ body.drawer-open { overflow: hidden; }
 .v2-drawer-body .props .two input { flex: 1; }
 .v2-drawer-body .months { display: flex !important; flex-wrap: wrap; gap: 4px; }
 .v2-drawer-body .months label { display: inline-flex !important; align-items: center; gap: 3px; padding: 3px 8px !important; border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; white-space: nowrap; width: auto !important; }
+
+/* ── 글자 맞춤: 한 줄이어야 할 것은 한 줄로 ── */
+.btn, button, .pill, .tag, .badge, .seg2 span, kbd { white-space: nowrap; }
+.card-head { display: flex !important; align-items: center; gap: 8px; min-width: 0; }
+.card-head h2 { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+.card-head > .btn, .card-head > a.btn, .card-head > form { flex: none; }
+.metrics a { min-width: 0; }
+.metrics li { display: flex; } .metrics li > a { flex: 1; }
+.metric-top { display: block; line-height: 1.35; }
+.metric-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+select { text-overflow: ellipsis; }
+
+/* ── 휴대폰 폭: 메뉴는 짧게(큰 메뉴 한 줄 + 지금 메뉴 칩) ── */
+@media (max-width: 900px) {
+  .sidenav { padding: 8px 10px !important; }
+  .brand2 { padding-bottom: 6px; }
+  .mods { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; padding-bottom: 6px; }
+  .mods a { font-size: 10.5px; padding: 4px 0; }
+  .sn-title, .sn-foot, .ft-tip, .ft-head, #folder-tree, .ft-saved form { display: none !important; }
+  .sn-group:not([hidden]) { flex-direction: row !important; flex-wrap: wrap; gap: 4px; }
+  .sn-group > a, .ft-quick a { min-height: 28px !important; padding: 0 9px !important; font-size: 12.5px !important; border: 1px solid var(--line); border-radius: 999px !important; }
+  .sn-group .ei { display: none; }
+  .ft-quick { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+}
