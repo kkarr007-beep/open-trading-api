@@ -9,7 +9,6 @@
         <p class="hint">제목·메모·다음 행동·태그·담당자 이름으로 찾습니다. 줄을 누르면 상세 화면이 열립니다.</p>
     </div>
     <div class="row-actions">
-        <button type="button" class="btn" data-print>인쇄</button>
         <a class="btn" th:href="@{/work/export(text=${q['text']},status=${q['status']},owner=${q['owner']},type=${q['type']},project=${q['project']},scope=${q['scope']},sort=${q['sort']})}">CSV 내려받기</a>
     </div>
 </div>

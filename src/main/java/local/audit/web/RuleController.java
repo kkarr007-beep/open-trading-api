@@ -33,7 +33,9 @@ public class RuleController {
     private final TextReader reader;
     private final Paths2 paths;
 
-    public RuleController(RuleService rules, TextReader reader, Paths2 paths) {
+    private final local.audit.LinkService links;
+    public RuleController(RuleService rules, TextReader reader, Paths2 paths, local.audit.LinkService links) {
+        this.links = links;
         this.rules = rules;
         this.reader = reader;
         this.paths = paths;
@@ -194,6 +196,8 @@ public class RuleController {
         Map<String, Object> m = rules.read(id, v, q, "1".equals(diff));
         model.addAttribute("m", m);
         model.addAttribute("cats", rules.categories());
+        model.addAttribute("linkedCases", links.casesFor("rule", id));
+        model.addAttribute("caseChoices", links.caseChoices());
         return "rule-read";
     }
 

@@ -8,7 +8,6 @@
         <h1 th:text="${#strings.isEmpty(v.q)} ? '상황 질의' : |'${v.q}' 처리 가이드|">상황 질의</h1>
         <p class="hint">상황을 문장으로 적으면 근거·징계 사유·수위·절차·재심 순서로 관련 조항을 모으고, 주의점과 기한을 뽑습니다. 이 컴퓨터 안에서만 분석합니다.</p>
     </div>
-    <button type="button" class="btn" data-print th:unless="${#strings.isEmpty(v.q)}">인쇄</button>
 </div>
 <form method="get" action="/rules/solution" class="toolbar" style="margin-bottom:12px">
     <div class="search-row">

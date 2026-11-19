@@ -142,3 +142,34 @@ document.addEventListener("click", function (event) {
   var f = d.querySelector("form[action$='/edit'] input[name=title]");
   if (f) setTimeout(function () { f.focus(); }, 250);
 });
+
+// 감사 건 '관련 항목': 종류를 바꾸면 추천 목록도 그 종류로 바꾼다.
+(function () {
+    document.querySelectorAll('[data-link-kind]').forEach(function (sel) {
+        var form = sel.closest('form');
+        var input = form && form.querySelector('[data-link-value]');
+        if (!input) return;
+        function sync() { input.setAttribute('list', 'pick-' + sel.value); }
+        sel.addEventListener('change', function () { input.value = ''; sync(); input.focus(); });
+        sync();
+    });
+})();
+
+// 일괄 처리 줄(data-bulk): 목록에서 하나라도 고르면 나타나고, 몇 건 골랐는지 보여 준다.
+(function () {
+    document.querySelectorAll('form[data-bulk]').forEach(function (form) {
+        var id = form.getAttribute('id'); // form.id는 name="id" 칸과 겹친다
+        function boxes() { return Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox][name][form="' + id + '"]')); }
+        function sync() {
+            var n = boxes().filter(function (b) { return b.checked; }).length;
+            form.hidden = n === 0;
+            var c = form.querySelector('[data-bulk-count]');
+            if (c) c.textContent = '고른 ' + n + '건 삭제';
+        }
+        document.addEventListener('change', function (e) {
+            var t = e.target;
+            if (t && t.getAttribute && t.getAttribute('form') === id) setTimeout(sync, 0);
+        });
+        sync();
+    });
+})();

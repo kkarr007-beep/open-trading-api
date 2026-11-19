@@ -12,7 +12,6 @@
         <p class="hint" th:if="${src != null}">원래 항목: <a th:href="|/work/item/${src.id}|" th:text="|${src.kindName} · ${src.title}|"></a></p>
     </div>
     <div class="row-actions">
-        <button type="button" class="btn" data-print>인쇄</button>
         <span class="pill" th:if="${x.hasDue()}" th:classappend="${W.dueTone(x)}" th:text="|기한 ${W.dueText(x)}|"></span>
         <form th:if="${x.kind == 'dir' or x.kind == 'inbox' or x.kind == 'plan'}" method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn">업무로 옮기기</button></form>
         <button type="button" class="btn btn-danger" data-dialog="delete-dialog">지우기</button>
@@ -153,6 +152,7 @@
     </form>
 </section>
 
+<div th:replace="~{link-parts :: linked('work', ${x.id}, ${linkedCases}, ${caseChoices})}"></div>
 <section class="card no-print" th:if="${x.kind != 'event'}">
     <h2>문서에서 가져오기</h2>
     <form method="post" th:action="|/work/item/${x.id}/import|" data-write="1" enctype="multipart/form-data">

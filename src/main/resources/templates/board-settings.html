@@ -25,7 +25,7 @@
                 <form method="post" action="/board/settings/org-delete" data-write="1" class="inline-form" th:data-confirm="|'${o.name}' 조직을 지울까요?|"><input type="hidden" name="id" th:value="${o.id}" /><button type="submit" class="btn btn-quiet">지우기</button></form></td>
         </tr>
         <tr class="bd-add">
-            <td><input form="of-new" name="name" required maxlength="60" placeholder="새 조직 이름" aria-label="새 조직 이름" /></td>
+            <td><input form="of-new" name="name" list="dl-orgs" autocomplete="off" required maxlength="60" placeholder="새 조직 이름" aria-label="새 조직 이름" /></td>
             <td><select form="of-new" name="kind" aria-label="새 조직 종류"><option>사업부</option><option>스탭</option></select></td>
             <td><input form="of-new" name="units" maxlength="600" placeholder="예: 1파트, 2파트" aria-label="새 조직 하위 조직" style="width:100%" /></td>
             <td></td>

@@ -12,7 +12,6 @@
     <div class="row-actions no-print">
         <button type="button" class="btn" th:attr="data-copy=${text}">복사</button>
         <a class="btn" th:href="@{/board/report/export(p=${period},date=${date})}">글 파일 내려받기</a>
-        <button type="button" class="btn" data-print>인쇄</button>
     </div>
 </div>
 <div th:replace="~{board-parts :: periodbar('/board/report')}"></div>

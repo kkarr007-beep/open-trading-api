@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 다른 메뉴 화면 아래에 붙는 '연결된 감사 건' 칸. 여기서도 바로 감사 건에 붙일 수 있다. -->
+<section class="card linked" th:fragment="linked(kind, ref, rows, choices)" th:id="|linked-${kind}|">
+    <div class="card-head"><h2>연결된 감사 건 <span class="sub" th:text="|${#lists.size(rows)}건|"></span></h2></div>
+    <ul class="rel-list" th:unless="${#lists.isEmpty(rows)}">
+        <li th:each="c : ${rows}">
+            <span class="badge" th:data-state="${c.Phase}"><span class="dot" aria-hidden="true"></span><span th:text="${c.Phase}"></span></span>
+            <a th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}"></a>
+            <small class="muted" th:text="|${c.Year} · ${c.Target}|"></small>
+        </li>
+    </ul>
+    <p class="empty" th:if="${#lists.isEmpty(rows)}">연결된 감사 건이 없습니다.</p>
+    <form method="post" action="/links/to-case" data-write="1" class="rel-add" th:unless="${#lists.isEmpty(choices)}">
+        <input type="hidden" name="kind" th:value="${kind}" /><input type="hidden" name="ref" th:value="${ref}" />
+        <label class="field grow"><span class="flabel">감사 건에 연결</span>
+            <select name="caseId" required>
+                <option value="">감사 건 고르기</option>
+                <option th:each="c : ${choices}" th:value="${c.CaseId}" th:text="|${c.Year} · ${c.Title} (${c.Phase})|"></option>
+            </select></label>
+        <button type="submit" class="btn">연결</button>
+    </form>
+</section>
+</body>
+</html>

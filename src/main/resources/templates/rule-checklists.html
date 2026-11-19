@@ -21,7 +21,6 @@
     <div class="card-head">
         <h2 th:text="${c.title()}"></h2>
         <span class="pill" th:classappend="${c.done() == #lists.size(c.items()) and c.done() > 0} ? 'ok'" th:text="|${c.done()}/${#lists.size(c.items())}|"></span>
-        <button type="button" class="btn btn-quiet" data-print>인쇄</button>
         <form method="post" action="/rules/checklists/delete" data-write="1" th:data-confirm="|'${c.title()}' 체크리스트를 지울까요?|">
             <input type="hidden" name="id" th:value="${c.id()}" /><button type="submit" class="btn btn-quiet">지우기</button></form>
     </div>

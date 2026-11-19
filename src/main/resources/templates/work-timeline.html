@@ -13,7 +13,6 @@
         <a class="btn" th:href="@{/work/timeline(start=${v.prev},scale=${v.scale},owner=${owner})}">◀ 앞으로</a>
         <a class="btn" th:href="@{/work/timeline(scale=${v.scale},owner=${owner})}">오늘</a>
         <a class="btn" th:href="@{/work/timeline(start=${v.next},scale=${v.scale},owner=${owner})}">뒤로 ▶</a>
-        <button type="button" class="btn" data-print>인쇄</button>
     </div>
 </div>
 <form method="get" action="/work/timeline" class="toolbar" style="margin-bottom:12px">

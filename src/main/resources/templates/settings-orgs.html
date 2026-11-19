@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>조직·사람 · 설정</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>조직·사람</h1>
+        <p class="hint">모든 메뉴가 함께 쓰는 기준 목록입니다. 감사 건 대상, 조치 대상 부서, 징계기록 부서, 사규 주관부서를 적을 때 이 목록이 추천으로 나옵니다.</p>
+    </div>
+</div>
+<div class="cols-2">
+    <section class="card">
+        <div class="card-head"><h2>조직 <span class="sub" th:text="|${#lists.size(orgNames)}개|"></span></h2>
+            <form method="post" action="/settings/orgs/gather" data-write="1"><button type="submit" class="btn">자료에서 이름 모으기</button></form></div>
+        <p class="hint">한 줄에 하나씩 적습니다. 위에서부터 추천 목록에 나옵니다. 경영현황 조직, 감사 건 대상, 조치 대상 부서, 징계기록 부서, 법인카드 사용부서에 새 이름이 생기면 목록 끝에 저절로 붙습니다. 지운 이름은 다시 붙지 않으며, '자료에서 이름 모으기'를 누르면 지운 이름까지 다시 모읍니다.</p>
+        <form method="post" action="/settings/orgs" data-write="1">
+            <label class="field"><span class="flabel">조직 목록</span>
+                <textarea name="list" rows="16" maxlength="60000" th:text="${orgList}" spellcheck="false"></textarea></label>
+            <p class="row-actions"><button type="submit" class="btn btn-primary">저장</button></p>
+        </form>
+    </section>
+    <div>
+        <section class="card" th:unless="${#lists.isEmpty(similar)}">
+            <div class="card-head"><h2>비슷한 이름 <span class="sub">띄어쓰기·기호만 다른 이름</span></h2></div>
+            <p class="hint">같은 조직이면 왼쪽 목록에서 하나만 남기고 지운 뒤 저장하세요. 이미 저장된 기록의 이름은 바뀌지 않습니다.</p>
+            <ul class="rel-list"><li th:each="g : ${similar}"><span th:text="${#strings.listJoin(g, '  ·  ')}"></span></li></ul>
+        </section>
+        <section class="card">
+            <div class="card-head"><h2>사람 <span class="sub" th:text="|${#lists.size(people)}명|"></span></h2><a class="btn" href="/work/settings#owners">업무 설정에서 고치기</a></div>
+            <p class="hint">사람은 업무 설정의 담당자 목록 하나만 씁니다. 감사 건 담당·확정자 입력칸에도 이 이름이 추천으로 나옵니다.</p>
+            <ul class="rel-list"><li th:each="n : ${people}" th:text="${n}"></li></ul>
+        </section>
+    </div>
+</div>
+</th:block>
+</body>
+</html>

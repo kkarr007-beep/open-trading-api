@@ -8,7 +8,7 @@
         <h1>업무 설정</h1>
         <p class="hint" th:text="|항목 ${count}건 · 데이터는 Portal의 데이터 파일 하나에 함께 저장되고, 관리 화면의 백업에 함께 들어갑니다.|"></p>
     </div>
-    <div class="row-actions no-print"><button type="button" class="btn" data-print>인쇄</button></div>
+    <div class="row-actions no-print"></div>
 </div>
 <section class="card" id="import">
     <h2>예전 프로그램에서 옮겨 오기</h2>
@@ -47,7 +47,7 @@
     </form>
 </section>
 <section class="card">
-    <h2>담당자</h2>
+    <h2 id="owners">담당자</h2>
     <p class="hint">용량은 한 사람이 동시에 맡을 업무 수입니다. 넘으면 담당별 업무 화면에 '용량 초과'가 뜹니다. 쓰지 않는 사람은 '숨김'으로 둡니다.</p>
     <form th:each="o : ${cfg.owners}" method="post" action="/work/settings/owner" data-write="1" class="inline-form inline-row">
         <input type="hidden" name="id" th:value="${o.id}" />

@@ -9,7 +9,6 @@
         <p class="hint" th:text="|업무 자료 ${total}건. 분류별로 쌓아 두고 제목·파일 이름·태그·메모·문서 내용으로 찾습니다. 등재하면 내용을 자동으로 읽어 원본 모양(표·합친 칸·그림·서식)으로 보여 줍니다.|"></p>
     </div>
     <div class="row-actions">
-        <button type="button" class="btn" data-print>인쇄</button>
         <a class="btn btn-primary" th:href="@{/library/new(cat=${cat})}">자료 등재</a>
     </div>
 </div>
@@ -43,6 +42,8 @@
             <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="lib-open">
                 <button type="submit" class="lib-title" th:text="${d.Title}" title="이 컴퓨터의 프로그램으로 원본을 엽니다"></button></form>
             <span class="lib-meta" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · ${d.RegisteredDisplay}${#strings.isEmpty(d.Tags) ? '' : ' · #' + d.Tags}|"></span>
+            <span class="lib-cases" th:if="${linked[d.Id] != null}">감사 건:
+                <a th:each="c : ${linked[d.Id]}" th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}"></a></span>
         </div>
         <div class="lib-acts no-print">
             <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="inline-form"><button type="submit" class="btn">열기</button></form>
@@ -58,6 +59,13 @@
                     <label class="field">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
                     <label class="field">메모<textarea name="note" rows="2" maxlength="2000" th:text="${d.Note}"></textarea></label>
                     <button type="submit" class="btn btn-primary">저장</button>
+                </form>
+                <form method="post" action="/links/to-case" data-write="1" class="ex-form" th:unless="${#lists.isEmpty(caseChoices)}">
+                    <input type="hidden" name="kind" value="doc" /><input type="hidden" name="ref" th:value="${d.Id}" />
+                    <label class="field">감사 건에 연결<select name="caseId" required>
+                        <option value="">감사 건 고르기</option>
+                        <option th:each="c : ${caseChoices}" th:value="${c.CaseId}" th:text="|${c.Year} · ${c.Title}|"></option></select></label>
+                    <button type="submit" class="btn">연결</button>
                 </form>
             </details>
             <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" class="inline-form" th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일도 함께 지워집니다.|">

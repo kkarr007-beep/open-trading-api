@@ -231,7 +231,15 @@
         finishButton(button, label);
         return;
       }
-      if (payload.go) { location.href = payload.go; return; }
+      if (payload.go) {
+        // 같은 화면의 다른 위치(#…)로 가라는 답이면 주소만 바뀌고 새로 그려지지 않는다. 그때는 다시 읽는다.
+        var to = new URL(payload.go, location.href);
+        if (to.pathname === location.pathname && to.search === location.search) {
+          if (to.hash) history.replaceState(null, '', to.hash);
+          location.reload();
+        } else location.href = to.href;
+        return;
+      }
       if (payload.reload) { location.reload(); return; }
       var section = form.closest("section");
       var selector = section && section.id ? "#" + section.id + " button" : "h1";

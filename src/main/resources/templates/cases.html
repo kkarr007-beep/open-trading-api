@@ -57,9 +57,9 @@
     <span th:unless="${filtered}"> 또는 <a href="/inbox">수집함</a>에 문서를 넣으면 초안이 만들어집니다.</span>
 </p>
 <th:block th:unless="${result.Total == 0}">
-<form id="case-delete" method="post" action="/cases/delete" data-write="1" class="card inline-form inline-row no-print"
+<form id="case-delete" method="post" action="/cases/delete" data-write="1" class="card inline-form inline-row no-print bulk-bar" hidden data-bulk
       data-confirm="고른 건을 통째로 지웁니다. 조치요구·이행 기록, 자료 파일, 읽은 내용이 함께 지워지고 되돌릴 수 없습니다. 지울까요?">
-    <strong>고른 건 삭제</strong>
+    <strong data-bulk-count>고른 건 삭제</strong>
     <label class="field wide">사유 (이력에 남습니다)<input name="reason" required maxlength="240" placeholder="예: 중복 등록, 잘못 등록한 건" /></label>
     <button type="submit" class="btn btn-danger">고른 건 삭제</button>
     <span class="hint" style="margin:0">삭제 보류 중인 건은 지우지 않습니다.</span>

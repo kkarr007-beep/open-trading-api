@@ -10,7 +10,6 @@
         <p class="hint" th:text="|목표 ${c.num(k.target, k.uom)}${k.stretch > 0 ? ' · 도전 목표 ' + c.num(k.stretch, k.uom) : ''} · ${k.calc == 'sum' ? '기간 합계를 목표와 비교' : (k.calc == 'lower' ? '낮을수록 좋음(목표 ÷ 실적)' : '기간 평균을 목표와 비교')}|"></p>
     </div>
     <div class="row-actions no-print">
-        <button type="button" class="btn" data-print>인쇄</button>
         <a class="btn" th:href="@{/board(p=${period},date=${date})}">← 종합 현황</a>
         <a class="btn btn-primary" th:href="@{/board/entry(date=${date})}">실적 입력</a>
     </div>
@@ -40,6 +39,7 @@
         <span class="goal" style="bottom:calc(100px + 34px)" title="목표(100%)"></span>
     </div>
 </section>
+<div th:replace="~{link-parts :: linked('kpi', ${k.id}, ${linkedCases}, ${caseChoices})}"></div>
 </th:block>
 </body>
 </html>

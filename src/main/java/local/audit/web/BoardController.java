@@ -34,7 +34,8 @@ public class BoardController {
     /** 붙여 넣은 글을 잠시 맡아 두는 곳(입력 화면으로 넘어가는 동안만). */
     private final Map<String, Object[]> pastes = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public BoardController(BoardService board) { this.board = board; }
+    private final local.audit.LinkService links;
+    public BoardController(BoardService board, local.audit.LinkService links) { this.board = board; this.links = links; }
 
     void common(Model model, BoardCalc c) {
         model.addAttribute("c", c);
@@ -86,6 +87,8 @@ public class BoardController {
         model.addAttribute("r", c.calc(k));
         model.addAttribute("trend", c.trend(k));
         model.addAttribute("orgName", d.orgName(k.org));
+        model.addAttribute("linkedCases", links.casesFor("kpi", id));
+        model.addAttribute("caseChoices", links.caseChoices());
         return "board-kpi";
     }
 

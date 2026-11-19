@@ -29,7 +29,8 @@ import local.audit.Txt;
 public class LibraryController {
     private final LibraryService lib;
 
-    public LibraryController(LibraryService lib) { this.lib = lib; }
+    private final local.audit.LinkService links;
+    public LibraryController(LibraryService lib, local.audit.LinkService links) { this.lib = lib; this.links = links; }
 
     @GetMapping("/library")
     public String list(@RequestParam(required = false) String cat, @RequestParam(required = false) String q,
@@ -43,7 +44,14 @@ public class LibraryController {
         model.addAttribute("total", lib.total());
         model.addAttribute("cat", Txt.str(cat));
         model.addAttribute("q", Txt.str(q));
-        model.addAttribute("v", lib.list(cat, q, page == null ? 1 : page, 40));
+        Map<String, Object> v = lib.list(cat, q, page == null ? 1 : page, 40);
+        model.addAttribute("v", v);
+        Map<String, Integer> counts = links.counts("doc");
+        Map<String, List<Map<String, Object>>> linked = new java.util.HashMap<>();
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items = (List<Map<String, Object>>) v.get("items");
+        for (Map<String, Object> d : items) if (counts.containsKey(Txt.str(d.get("Id")))) linked.put(Txt.str(d.get("Id")), links.casesFor("doc", Txt.str(d.get("Id"))));
+        model.addAttribute("linked", linked);
+        model.addAttribute("caseChoices", links.caseChoices());
         return "library";
     }
 

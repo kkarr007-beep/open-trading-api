@@ -10,7 +10,6 @@
         <p class="hint" th:text="${period == 'd'} ? |${date} 하루 실적 기준| : |${range.start()} ~ ${date} · 기간 진행 ${#numbers.formatDecimal(pace.pct() * 100, 1, 0)}% (영업일 ${pace.done()}/${pace.total()}일)|"></p>
     </div>
     <div class="row-actions no-print">
-        <button type="button" class="btn" data-print>인쇄</button>
         <a class="btn" th:href="@{/board/report(p=${period},date=${date})}">보고 문구</a>
         <a class="btn btn-primary" th:href="@{/board/entry(date=${date})}">실적 입력</a>
     </div>

@@ -8,7 +8,7 @@
         <h1>예외 목록</h1>
         <p class="hint">확인해서 정상으로 본 경우(휴일근무명령, 출장, 정기 계약 가맹점 등)를 등록해 두면 모든 회차에서 해당 건이 빠집니다. 결과 화면의 각 건 '예외'로 등록합니다.</p>
     </div>
-    <div class="row-actions"><button type="button" class="btn" data-print>인쇄</button></div>
+    <div class="row-actions"></div>
 </div>
 <p class="empty" th:if="${#lists.isEmpty(items)}">등록한 예외가 없습니다.</p>
 <div class="table-wrap" th:unless="${#lists.isEmpty(items)}">

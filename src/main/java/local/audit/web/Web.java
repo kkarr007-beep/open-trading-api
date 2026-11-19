@@ -30,11 +30,13 @@ public class Web {
     private final local.audit.work.WorkService work;
     private final local.audit.CaseService cases;
     private final local.audit.LibraryService library;
+    private final local.audit.OrgService orgs;
 
-    public Web(Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
+    public Web(local.audit.OrgService orgs, Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
                local.audit.LibraryService library,
                @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
         this.version = version;
+        this.orgs = orgs;
         this.work = work;
         this.cases = cases;
         this.library = library;
@@ -42,6 +44,12 @@ public class Web {
         this.settings = settings;
         this.inbox = inbox;
     }
+
+    /** 큰 메뉴 이름과 첫 화면. 위치 표시줄에 쓴다. */
+    static final Map<String, String[]> GROUPS = Map.of(
+        "home", new String[] { "홈", "/home" }, "work", new String[] { "업무", "/work" }, "audit", new String[] { "감사기록", "/cases" },
+        "rules", new String[] { "사규", "/rules" }, "tools", new String[] { "점검", "/tools/card" }, "library", new String[] { "자료", "/library" },
+        "board", new String[] { "경영현황", "/board" }, "program", new String[] { "설정", "/settings" });
 
     @ModelAttribute
     public void common(HttpServletRequest req, Model model) {
@@ -66,10 +74,16 @@ public class Web {
         model.addAttribute("caseCategories", cases.categories());
         model.addAttribute("libTree", library.tree());
         model.addAttribute("libCat", path.equals("/library") ? Txt.str(req.getParameter("cat")) : "");
-        String navGroup = path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
+        String navGroup = path.equals("/home") || path.equals("/") || path.startsWith("/search") ? "home"
+            : path.equals("/work/settings") || path.equals("/rules/settings") || path.startsWith("/board/settings") || path.startsWith("/tools/card/settings")
+              || path.startsWith("/admin") || path.startsWith("/settings") || path.equals("/import") ? "program"
             : path.startsWith("/work") ? "work" : path.startsWith("/rules") ? "rules" : path.startsWith("/library") ? "library" : path.startsWith("/board") ? "board" : path.startsWith("/tools") ? "tools"
             : path.startsWith("/todo") || path.startsWith("/inbox") || path.startsWith("/cases") || path.startsWith("/files") || path.startsWith("/discipline") ? "audit" : "";
         model.addAttribute("navGroup", navGroup);
+        model.addAttribute("orgNames", orgs.orgs());
+        model.addAttribute("peopleNames", orgs.people());
+        model.addAttribute("navGroupName", GROUPS.getOrDefault(navGroup, new String[] { "", "" })[0]);
+        model.addAttribute("navGroupHref", GROUPS.getOrDefault(navGroup, new String[] { "", "/home" })[1]);
         model.addAttribute("workUrgent", work.urgentCount());
         model.addAttribute("workDirs", work.openDirectives());
         model.addAttribute("path", path);
@@ -85,10 +99,11 @@ public class Web {
         model.addAttribute("appVersion", version);
         // 목록으로 돌아가는 단추
         String listHref = path.matches("/cases/.+") ? "/cases" : path.matches("/discipline/.+") ? "/discipline"
-            : path.startsWith("/work/item/") ? "/work/list" : path.matches("/rules/(?!search|marks|compare|settings|new|import|export|solution|timeline|index|glossary|scan|checklists|data)[0-9a-zA-Z_]+") ? "/rules" : null;
+            : path.startsWith("/work/item/") ? "/work/list" : path.matches("/tools/card/[0-9a-f]{32}.*") ? "/tools/card"
+            : path.startsWith("/board/kpi/") ? "/board" : path.matches("/rules/(?!search|marks|compare|settings|new|import|export|solution|timeline|index|glossary|scan|checklists|data)[0-9a-zA-Z_]+") ? "/rules" : null;
         model.addAttribute("listHref", listHref);
         model.addAttribute("listLabel", "/discipline".equals(listHref) ? "징계기록 목록" : "/work/list".equals(listHref) ? "업무 목록"
-            : "/rules".equals(listHref) ? "사규 목록" : "건 목록");
+            : "/rules".equals(listHref) ? "사규 목록" : "/tools/card".equals(listHref) ? "점검 회차" : "/board".equals(listHref) ? "종합 현황" : "감사 건 목록");
         model.addAttribute("showCasesLink", listHref == null && !path.equals("/cases") && "todo,cases,files,discipline,inbox".contains(nav));
     }
 

@@ -10,7 +10,7 @@
         <label class="field">연도<input name="year" type="number" min="1990" max="2100" required th:value="${year}" /></label>
         <label class="field">구분<select name="category" required><option th:each="c : ${caseCategories}" th:text="${c}"></option></select></label>
         <label class="field grow">제목<input name="title" required maxlength="120" /></label>
-        <label class="field">대상<input name="target" required maxlength="120" /></label>
+        <label class="field">대상<input name="target" list="dl-orgs" autocomplete="off" required maxlength="120" /></label>
         <label class="field">서가<input name="shelf" maxlength="80" /></label>
         <label class="field">철번호<input name="binder" maxlength="80" /></label>
         <label class="field">문서번호<input id="doc-preview" th:value="|자동 부여(예정: ${previewNo})|" readonly /></label>

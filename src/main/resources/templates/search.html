@@ -7,46 +7,24 @@
     <div>
         <p class="kicker">전체 찾기</p>
         <h1 th:text="${#strings.isEmpty(searchQuery)} ? '찾을 말을 적으세요' : |'${searchQuery}' 찾은 결과|"></h1>
-        <p class="hint">업무·일정, 사규 조문, 자료, 감사 건, 자료의 파일명과 읽어 둔 내용, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
+        <p class="hint">감사 건과 첨부 파일(파일명·읽은 내용), 사규 조문, 업무·일정, 자료, 경영현황 지표·이슈, 법인카드 점검 회차, 징계기록을 한 번에 찾습니다. 어디서든 Ctrl+K로 찾기 칸에 갑니다.</p>
     </div>
 </div>
 <th:block th:unless="${#strings.isEmpty(searchQuery)}">
-<section aria-labelledby="s-work">
-    <h2 id="s-work">업무·일정 <span class="count" th:text="${#lists.size(workHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(workHits)}">맞는 업무·일정이 없습니다.</p>
-    <ul class="result-list">
-        <li th:each="x : ${workHits}"><a th:href="|/work/item/${x.id}|">
-            <strong th:text="${x.title}"></strong>
-            <span th:text="|${x.kindName}${x.kind == 'work' ? ' · ' + x.statusName : ''} · ${W.ownerName(x.ownerId)}${x.hasDue() ? ' · 기한 ' + x.due : ''}${x.date != null ? ' · ' + x.date : ''}|"></span>
-        </a></li>
-    </ul>
-    <p th:if="${#lists.size(workHits) >= 30}"><a th:href="@{/work/list(text=${searchQuery},scope='all')}">업무 목록에서 모두 보기</a></p>
-</section>
-<section aria-labelledby="s-lib">
-    <h2 id="s-lib">자료 <span class="count" th:text="${#lists.size(libHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(libHits)}">맞는 자료가 없습니다.</p>
-    <ul class="result-list">
-        <li th:each="d : ${libHits}"><a th:href="|/library/${d.Id}|">
-            <strong th:text="${d.Title}"></strong>
-            <span th:text="|${d.Category} · ${d.FileName} · ${d.RegisteredDisplay}|"></span>
-            <span th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></span>
-        </a></li>
-    </ul>
-</section>
-<section aria-labelledby="s-rules">
-    <h2 id="s-rules">사규 조문 <span class="count" th:text="${#lists.size(ruleHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(ruleHits)}">맞는 조문이 없습니다.</p>
-    <ul class="result-list">
-        <li th:each="h : ${ruleHits}"><a th:href="@{|/rules/${h.regId()}|(q=${ruleTerms})} + '#a-' + ${h.articleId()}">
-            <strong th:text="|${h.regTitle()} · ${h.label()}|"></strong>
-            <span th:utext="${h.snippet()}"></span>
-        </a></li>
-    </ul>
-    <p th:if="${#lists.size(ruleHits) >= 30}"><a th:href="@{/rules/search(q=${searchQuery})}">사규 찾기에서 모두 보기</a></p>
-</section>
-<section aria-labelledby="s-cases">
-    <h2 id="s-cases">건 <span class="count" th:text="${#lists.size(caseHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(caseHits)}">맞는 건이 없습니다.</p>
+<th:block th:with="total=${#lists.size(caseHits) + #lists.size(fileHits) + #lists.size(ruleHits) + #lists.size(workHits) + #lists.size(libHits) + #lists.size(boardHits) + #lists.size(cardHits) + #lists.size(peopleHits)}">
+<p class="empty" th:if="${total == 0}">맞는 결과가 없습니다. 낱말을 줄이거나 다른 말로 찾아 보세요.</p>
+<nav class="search-jump" aria-label="찾은 곳" th:if="${total > 0}">
+    <a class="pill" th:href="|#s-cases|" th:unless="${#lists.isEmpty(caseHits)}" th:text="|감사 건 ${#lists.size(caseHits)}|"></a>
+    <a class="pill" th:href="|#s-files|" th:unless="${#lists.isEmpty(fileHits)}" th:text="|첨부 파일 ${#lists.size(fileHits)}|"></a>
+    <a class="pill" th:href="|#s-rules|" th:unless="${#lists.isEmpty(ruleHits)}" th:text="|사규 조문 ${#lists.size(ruleHits)}|"></a>
+    <a class="pill" th:href="|#s-work|" th:unless="${#lists.isEmpty(workHits)}" th:text="|업무·일정 ${#lists.size(workHits)}|"></a>
+    <a class="pill" th:href="|#s-lib|" th:unless="${#lists.isEmpty(libHits)}" th:text="|자료 ${#lists.size(libHits)}|"></a>
+    <a class="pill" th:href="|#s-board|" th:unless="${#lists.isEmpty(boardHits)}" th:text="|경영현황 ${#lists.size(boardHits)}|"></a>
+    <a class="pill" th:href="|#s-card|" th:unless="${#lists.isEmpty(cardHits)}" th:text="|법인카드 점검 ${#lists.size(cardHits)}|"></a>
+    <a class="pill" th:href="|#s-people|" th:unless="${#lists.isEmpty(peopleHits)}" th:text="|징계기록 ${#lists.size(peopleHits)}|"></a>
+</nav>
+<section class="search-group" aria-labelledby="s-cases" th:unless="${#lists.isEmpty(caseHits)}">
+    <h2 id="s-cases">감사 건 <span class="count" th:text="${#lists.size(caseHits)}">0</span></h2>
     <ul class="result-list">
         <li th:each="c : ${caseHits}"><a th:href="|/cases/${c.CaseId}|">
             <strong th:text="${c.Title}"></strong>
@@ -54,11 +32,10 @@
             <span th:unless="${#strings.isEmpty(c.SummaryLine)}" th:text="${c.SummaryLine}"></span>
         </a></li>
     </ul>
-    <p th:if="${#lists.size(caseHits) >= 25}"><a th:href="@{/cases(text=${searchQuery})}">건 목록에서 모두 보기</a></p>
+    <p th:if="${#lists.size(caseHits) >= 25}"><a th:href="@{/cases(text=${searchQuery})}">감사 건 목록에서 모두 보기</a></p>
 </section>
-<section aria-labelledby="s-files">
-    <h2 id="s-files">자료 <span class="count" th:text="${#lists.size(fileHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(fileHits)}">맞는 자료가 없습니다.</p>
+<section class="search-group" aria-labelledby="s-files" th:unless="${#lists.isEmpty(fileHits)}">
+    <h2 id="s-files">감사 건 첨부 파일 <span class="count" th:text="${#lists.size(fileHits)}">0</span></h2>
     <ul class="result-list">
         <li th:each="f : ${fileHits}"><a th:href="|/cases/${f.CaseId}#files|">
             <strong th:text="${f.DisplayName}"></strong>
@@ -67,9 +44,50 @@
         </a></li>
     </ul>
 </section>
-<section aria-labelledby="s-people">
+<section class="search-group" aria-labelledby="s-rules" th:unless="${#lists.isEmpty(ruleHits)}">
+    <h2 id="s-rules">사규 조문 <span class="count" th:text="${#lists.size(ruleHits)}">0</span></h2>
+    <ul class="result-list">
+        <li th:each="h : ${ruleHits}"><a th:href="@{|/rules/${h.regId()}|(q=${ruleTerms})} + '#a-' + ${h.articleId()}">
+            <strong th:text="|${h.regTitle()} · ${h.label()}|"></strong>
+            <span th:utext="${h.snippet()}"></span>
+        </a></li>
+    </ul>
+    <p th:if="${#lists.size(ruleHits) >= 30}"><a th:href="@{/rules/search(q=${searchQuery})}">사규 찾기에서 모두 보기</a></p>
+</section>
+<section class="search-group" aria-labelledby="s-work" th:unless="${#lists.isEmpty(workHits)}">
+    <h2 id="s-work">업무·일정 <span class="count" th:text="${#lists.size(workHits)}">0</span></h2>
+    <ul class="result-list">
+        <li th:each="x : ${workHits}"><a th:href="|/work/item/${x.id}|">
+            <strong th:text="${x.title}"></strong>
+            <span th:text="|${x.kindName}${x.kind == 'work' ? ' · ' + x.statusName : ''} · ${W.ownerName(x.ownerId)}${x.hasDue() ? ' · 기한 ' + x.due : ''}${x.date != null ? ' · ' + x.date : ''}|"></span>
+        </a></li>
+    </ul>
+    <p th:if="${#lists.size(workHits) >= 30}"><a th:href="@{/work/list(text=${searchQuery},scope='all')}">업무 목록에서 모두 보기</a></p>
+</section>
+<section class="search-group" aria-labelledby="s-lib" th:unless="${#lists.isEmpty(libHits)}">
+    <h2 id="s-lib">자료 <span class="count" th:text="${#lists.size(libHits)}">0</span></h2>
+    <ul class="result-list">
+        <li th:each="d : ${libHits}"><a th:href="|/library/${d.Id}|">
+            <strong th:text="${d.Title}"></strong>
+            <span th:text="|${d.Category} · ${d.FileName} · ${d.RegisteredDisplay}|"></span>
+            <span th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></span>
+        </a></li>
+    </ul>
+</section>
+<section class="search-group" aria-labelledby="s-board" th:unless="${#lists.isEmpty(boardHits)}">
+    <h2 id="s-board">경영현황 <span class="count" th:text="${#lists.size(boardHits)}">0</span></h2>
+    <ul class="result-list">
+        <li th:each="h : ${boardHits}"><a th:href="${h.href}"><strong th:text="${h.title}"></strong><span th:text="${h.sub}"></span></a></li>
+    </ul>
+</section>
+<section class="search-group" aria-labelledby="s-card" th:unless="${#lists.isEmpty(cardHits)}">
+    <h2 id="s-card">법인카드 점검 <span class="count" th:text="${#lists.size(cardHits)}">0</span></h2>
+    <ul class="result-list">
+        <li th:each="h : ${cardHits}"><a th:href="${h.href}"><strong th:text="${h.title}"></strong><span th:text="${h.sub}"></span></a></li>
+    </ul>
+</section>
+<section class="search-group" aria-labelledby="s-people" th:unless="${#lists.isEmpty(peopleHits)}">
     <h2 id="s-people">징계기록 <span class="count" th:text="${#lists.size(peopleHits)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(peopleHits)}">맞는 징계기록이 없습니다.</p>
     <ul class="result-list">
         <li th:each="d : ${peopleHits}"><a th:href="|/discipline/${d.DisciplineId}|">
             <strong th:text="|순번 ${d.Seq} · ${d.PersonMasked} · ${d.SanctionType}|"></strong>
@@ -77,6 +95,7 @@
         </a></li>
     </ul>
 </section>
+</th:block>
 </th:block>
 </th:block>
 </body>

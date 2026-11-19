@@ -37,10 +37,12 @@ public class CaseController {
     private final local.audit.rule.RuleService rules;
     private final local.audit.RichTexts rich;
     private final local.audit.LibraryService library;
+    private final local.audit.LinkService links;
 
     public CaseController(CaseService cases, DisciplineService discipline, FileStore files,
                           local.audit.work.WorkService work, local.audit.rule.RuleService rules, local.audit.RichTexts rich,
-                          local.audit.LibraryService library) {
+                          local.audit.LibraryService library, local.audit.LinkService links) {
+        this.links = links;
         this.library = library;
         this.rich = rich;
         this.work = work;
@@ -50,8 +52,6 @@ public class CaseController {
         this.files = files;
     }
 
-    @GetMapping("/")
-    public String home() { return "redirect:/work"; }
 
     @GetMapping("/todo")
     public String todo(Model model) {
@@ -108,6 +108,11 @@ public class CaseController {
         Map<String, Object> item = cases.get(id);
         model.addAttribute("item", item);
         if (item != null) model.addAttribute("discipline", discipline.forCase(id));
+        model.addAttribute("links", item == null ? java.util.List.of() : links.ofCase(id));
+        model.addAttribute("linkKinds", local.audit.LinkService.KINDS);
+        java.util.Map<String, Object> picks = new java.util.LinkedHashMap<>();
+        if (item != null) for (String k : local.audit.LinkService.KINDS.keySet()) picks.put(k, links.picks(k));
+        model.addAttribute("linkPicks", picks);
         model.addAttribute("today", Kst.today().toString());
         return "case-detail";
     }
@@ -232,6 +237,8 @@ public class CaseController {
         model.addAttribute("ruleHits", rules.search(term, null, 30));
         model.addAttribute("ruleTerms", String.join("|", local.audit.rule.RuleService.terms(term)));
         model.addAttribute("libHits", library.search(term, 30));
+        model.addAttribute("boardHits", links.boardHits(term));
+        model.addAttribute("cardHits", links.cardHits(term));
         return "search";
     }
 

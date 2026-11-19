@@ -9,7 +9,6 @@
         <p class="hint" th:text="|${run.FileName} · 점검 ${run.CheckedAt == null ? '' : #strings.substring(run.CheckedAt, 0, 16).replace('T', ' ')}${#strings.isEmpty(run.Note) ? '' : ' · ' + run.Note}|"></p>
     </div>
     <div class="row-actions no-print">
-        <button type="button" class="btn" data-print>인쇄</button>
         <a class="btn" th:href="|/tools/card/${run.Id}/export|">결과 내려받기 (CSV)</a>
         <a class="btn" th:href="|/tools/card/${run.Id}/export?all=1|">전체 내려받기</a>
         <form method="post" th:action="|/tools/card/${run.Id}/recheck|" data-write="1" class="inline-form"><button type="submit" class="btn">다시 점검</button></form>
@@ -143,6 +142,7 @@
     <a class="btn" th:if="${v.page > 1}" th:href="@{|/tools/card/${run.Id}|(page=${v.page - 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})} + '#hits'">← 앞쪽</a>
     <a class="btn" th:if="${v.page < v.pages}" th:href="@{|/tools/card/${run.Id}|(page=${v.page + 1},rule=${q['rule']},dept=${q['dept']},name=${q['name']},status=${q['status']},min=${q['min']},q=${q['q']})} + '#hits'">뒤쪽 →</a>
 </p>
+<div th:replace="~{link-parts :: linked('card', ${run.Id}, ${linkedCases}, ${caseChoices})}"></div>
 <p class="row-actions no-print" style="margin-top:20px">
     <form method="post" th:action="|/tools/card/${run.Id}/delete|" data-write="1" th:data-confirm="|'${run.Title}' 회차를 지울까요? 소명·예외 기록은 남습니다.|">
         <button type="submit" class="btn btn-quiet">이 회차 지우기</button></form>

@@ -8,7 +8,7 @@
         <h1>노트·계획</h1>
         <p class="hint">노트는 종류별로 나눠 최신 것부터 보입니다. 종류를 누르면 달별로 묶어 30건씩 넘겨 봅니다. 워드·한글·PDF 문서를 그대로 가져와 노트로 만들 수 있습니다.</p>
     </div>
-    <div class="row-actions no-print"><button type="button" class="btn" data-print>인쇄</button></div>
+    <div class="row-actions no-print"></div>
 </div>
 <nav class="section-tabs" aria-label="노트 종류">
     <a th:href="@{/work/notes(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'">전체</a>

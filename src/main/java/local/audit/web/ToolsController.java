@@ -27,8 +27,10 @@ import local.audit.tools.Sheet;
 public class ToolsController {
     private final CardCheck card;
     private final CaseService cases;
+    private final local.audit.LinkService links;
 
-    public ToolsController(CardCheck card, CaseService cases) {
+    public ToolsController(CardCheck card, CaseService cases, local.audit.LinkService links) {
+        this.links = links;
         this.card = card;
         this.cases = cases;
     }
@@ -91,6 +93,8 @@ public class ToolsController {
         q = new java.util.HashMap<>(q);
         if (!q.containsKey("min")) q.put("min", String.valueOf(CardCheck.FOCUS));
         model.addAttribute("run", run);
+        model.addAttribute("linkedCases", links.casesFor("card", id));
+        model.addAttribute("caseChoices", links.caseChoices());
         model.addAttribute("s", card.summary(id));
         model.addAttribute("v", card.list(id, q, page == null ? 1 : page, 100));
         model.addAttribute("q", q);
@@ -176,6 +180,7 @@ public class ToolsController {
         List<String> cats = cases.categories();
         Op op = cases.register(Kst.today().getYear(), cats.isEmpty() ? "업무진단" : cats.get(0), (String) d.get("title"), (String) d.get("target"),
             "", "", (String) d.get("summary"), (String) d.get("body"), null);
+        if (op.ok) links.add(op.id, "card", id);
         return Web.reply(req, op.ok ? Op.ok("감사기록에 건 초안을 만들었습니다. 구분·대상을 확인하세요.", op.id) : op, op.ok ? "/cases/" + op.id : null);
     }
 }

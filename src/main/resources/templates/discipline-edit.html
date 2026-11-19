@@ -34,7 +34,7 @@
                 <label class="field">연도<input name="year" type="number" min="1990" max="2100" required th:value="${item?.Year ?: year}" /></label>
                 <label class="field">사번<input name="employeeNo" maxlength="40" th:value="${item?.EmployeeNo}" /></label>
                 <label class="field">성명<input name="personName" required maxlength="40" th:value="${item?.PersonName}" /></label>
-                <label class="field">부서<input name="department" maxlength="80" th:value="${item?.Department}" /></label>
+                <label class="field">부서<input name="department" list="dl-orgs" autocomplete="off" maxlength="80" th:value="${item?.Department}" /></label>
                 <label class="field">직위<input name="position" maxlength="40" th:value="${item?.Position}" /></label>
                 <label class="field">위반일자<input name="violationDate" type="date" required th:value="${item?.ViolationDate}" /></label>
                 <label class="field">징계종류

@@ -910,3 +910,81 @@ dd > .rich, li > .rich, .rich-box > .rich, .table-wrap, .people-wrap { max-heigh
 .lib-acts { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
 .lib-acts form { margin: 0; }
 @media (max-width: 700px) { .lib-row { flex-wrap: wrap; } .lib-acts { width: 100%; justify-content: flex-end; } }
+
+/* ── 3.0 메뉴 간 연결 ── */
+.rel-list { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 6px; }
+.rel-list li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); flex-wrap: wrap; }
+.rel-list li > a { font-weight: 600; flex: 1 1 240px; min-width: 0; }
+.rel-list li form { margin: 0 0 0 auto; }
+.rel-add { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.rel-add .field { margin: 0; }
+.rel-add .grow { flex: 1 1 280px; }
+.lib-cases { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.lib-cases a { margin-left: 6px; }
+.btn-sm { padding: 3px 10px; font-size: 12.5px; min-height: 0; }
+
+/* ── 3.0 공통 틀: 숫자 카드는 한 모양. 문제 있을 때만 색을 쓴다 ── */
+.metrics { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+.metrics li.metric-ok strong, .metrics li:not(.metric-bad):not(.metric-warn) strong { color: var(--ink) !important; }
+.metrics li.metric-ok::before, .metrics li:not(.metric-bad):not(.metric-warn)::before { background: var(--line) !important; }
+.metrics li.metric-warn strong { color: var(--warn) !important; }
+.metrics li.metric-bad strong { color: var(--danger) !important; }
+/* 위치 표시줄: 이전 화면 · 홈 › 메뉴 › 목록 */
+.backbar { justify-content: flex-start; }
+.crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: 4px; flex-wrap: wrap; }
+.crumb a { color: var(--muted); }
+.crumb a:hover { color: var(--accent); }
+.crumb .sep { color: var(--faint); }
+.crumb strong { color: var(--ink); font-weight: 600; }
+.backbar .right { margin-left: auto; display: flex; gap: 6px; }
+.sn-gap { margin-top: 18px !important; }
+.sn-setting { color: var(--muted) !important; font-size: 13px; }
+.lib-ext.sm { width: 34px; height: 34px; font-size: 10px; flex: none; }
+/* 찾기 결과: 메뉴별 묶음 바로가기 */
+.search-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 18px; }
+.search-group { margin-bottom: 22px; }
+.search-group h2 { font-size: 16px; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.search-group h2 .count { background: var(--paper-2); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--muted); }
+.search-group .more { font-size: 13px; margin-top: 6px; display: inline-block; }
+/* 일괄 삭제 줄은 고른 건이 있을 때만 */
+.bulk-bar[hidden] { display: none !important; }
+
+/* ── 3.0 차분한 틀: 상자를 겹치지 않는다 ──
+   숫자 요약은 띠 하나, 구역은 얇은 테두리의 판 하나, 그 안의 줄은 구분선만. 그림자·떠오름은 쓰지 않는다. */
+.card, .stack section, .history, .summary li, .narrow, .table-wrap {
+  background: var(--paper) !important; border: 1px solid var(--line) !important; box-shadow: none !important; transform: none !important; }
+.card:hover { box-shadow: none !important; }
+.card, .stack section, .history { border-radius: 10px; padding: 16px 18px; }
+.cols-2, .cols-3, .cols-2 > div { gap: 16px; }
+main > .card, main > section.card, .cols-2 > div > .card { margin-bottom: 16px; }
+
+/* 숫자 요약: 칸마다 상자를 띄우지 않고 띠 하나 안에서 세로선으로 나눈다 */
+.metrics { gap: 0 !important; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 18px !important; }
+.metrics li, .metrics li:hover { background: transparent !important; border: 0 !important; border-left: 1px solid var(--line) !important; border-radius: 0 !important; box-shadow: none !important; transform: none !important; }
+.metrics li:first-child { border-left: 0 !important; }
+.metrics li::before { display: none !important; }
+.metrics a { padding: 12px 16px !important; gap: 2px; }
+.metrics a:hover { background: var(--paper-2) !important; }
+.metrics strong { font-size: 1.45rem !important; }
+.metrics li.metric-warn .metric-top::before, .metrics li.metric-bad .metric-top::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); flex: none; }
+.metrics li.metric-bad .metric-top::before { background: var(--danger); }
+
+/* 판 안의 줄: 상자 대신 구분선 */
+.rel-list { gap: 0; border-top: 1px solid var(--line); }
+.rel-list li { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 9px 2px; }
+.result-list { gap: 0; border-top: 1px solid var(--line); }
+.result-list li a { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 11px 4px; }
+.result-list li a:hover { background: var(--paper-2); }
+.empty { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 10px 2px !important; color: var(--muted); text-align: left; }
+.empty svg, .empty .empty-ico { display: none; }
+/* 판 머리 */
+.card-head { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.card-head h2 { font-size: 15px; }
+@media (max-width: 760px) {
+  .metrics li { border-left: 0 !important; border-top: 1px solid var(--line) !important; }
+}
+.empty::before { display: none !important; }
+.cols-2 > div > .card { margin-bottom: 0 !important; }
+/* 거르기 줄도 같은 판 모양 */
+.toolbar { box-shadow: none !important; background: var(--paper) !important; border: 1px solid var(--line) !important; border-radius: 10px !important; }

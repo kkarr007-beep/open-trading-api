@@ -12,7 +12,6 @@
     <div class="row-actions">
         <a class="btn" th:href="@{/work/annual(y=${y - 1},owner=${owner})}" th:text="|◀ ${y - 1}|"></a>
         <a class="btn" th:href="@{/work/annual(y=${y + 1},owner=${owner})}" th:text="|${y + 1} ▶|"></a>
-        <button type="button" class="btn" data-print>인쇄</button>
     </div>
 </div>
 <form method="get" action="/work/annual" class="toolbar" style="margin-bottom:10px">

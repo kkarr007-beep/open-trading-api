@@ -444,4 +444,51 @@ class CoreTest {
         assertEquals(a.id, b.extra);
         assertEquals(1, lib.total());
     }
+
+    @Test
+    void linksJoinCaseToOtherMenusBothWays() throws Exception {
+        LibraryService lib = new LibraryService(db, files, reader);
+        local.audit.board.BoardService board = new local.audit.board.BoardService(db);
+        local.audit.work.WorkService work = new local.audit.work.WorkService(new local.audit.work.WorkStore(db, settings), db);
+        local.audit.rule.RuleService rules = new local.audit.rule.RuleService(new local.audit.rule.RuleStore(db));
+        local.audit.tools.CardCheck card = new local.audit.tools.CardCheck(db, settings);
+        LinkService links = new LinkService(db, chain, settings, rules, lib, work, card, board);
+        Op c = cases.register(2026, cases.categories().get(0), "연결 시험 건", "영업1팀", "", "", "한 줄", "본문", null);
+        assertTrue(c.ok, c.message);
+        String cat = (String) lib.categories().get(0).get("Id");
+        Op d = lib.add(cat, "출장 지침", "", "", "출장.txt", new java.io.ByteArrayInputStream("출장비".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        lib.awaitReads();
+        // 화면에서는 이름(추천 목록의 글)으로 고른다
+        String label = links.picks("doc").get(0).label();
+        Op a = links.add(c.id, "doc", label);
+        assertTrue(a.ok, a.message);
+        assertEquals("이미 연결된 항목입니다.", links.add(c.id, "doc", d.id).message, "같은 항목은 한 번만");
+        assertFalse(links.add(c.id, "doc", "없는 자료").ok);
+        assertFalse(links.add(c.id, "nope", d.id).ok);
+        assertEquals(1, links.ofCase(c.id).size());
+        assertEquals("/library/" + d.id, links.ofCase(c.id).get(0).href());
+        assertEquals(1, links.casesFor("doc", d.id).size(), "자료 쪽에서 감사 건이 보임");
+        assertEquals(1, links.counts("doc").get(d.id));
+        assertTrue(links.remove(c.id, "doc", d.id).ok);
+        assertTrue(links.ofCase(c.id).isEmpty());
+        assertNotNull(db.row("SELECT 1 AS X FROM History WHERE CaseId=? AND Action='연결'", c.id), "연결이 이력에 남음");
+        assertTrue(chain.verify(), "이력 사슬이 그대로");
+    }
+
+    @Test
+    void orgListGathersFromDataAndRemembersRemovals() throws Exception {
+        local.audit.board.BoardService board = new local.audit.board.BoardService(db);
+        local.audit.work.WorkService work = new local.audit.work.WorkService(new local.audit.work.WorkStore(db, settings), db);
+        OrgService orgs = new OrgService(db, settings, board, work);
+        cases.register(2026, cases.categories().get(0), "가", "영업1팀", "", "", "한 줄", "본문", null);
+        cases.register(2026, cases.categories().get(0), "나", "보상팀", "", "", "한 줄", "본문", null);
+        assertTrue(orgs.orgs().containsAll(List.of("영업1팀", "보상팀")), "자료의 이름이 저절로 들어옴");
+        assertTrue(orgs.save("보상팀\n보상팀\n 영업 1팀 ").ok);
+        assertEquals(List.of("보상팀", "영업 1팀"), orgs.orgs(), "같은 이름은 하나, 지운 '영업1팀'은 다시 안 붙음");
+        assertTrue(orgs.similar().isEmpty());
+        assertTrue(orgs.gather().ok);
+        assertTrue(orgs.orgs().contains("영업1팀"), "모으기는 지운 이름까지 다시 모음");
+        assertEquals(List.of(List.of("영업 1팀", "영업1팀")), orgs.similar(), "띄어쓰기만 다른 이름을 묶어 보여 줌");
+        assertFalse(orgs.people().isEmpty());
+    }
 }

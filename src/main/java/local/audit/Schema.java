@@ -209,6 +209,15 @@ final class Schema {
           State TEXT NOT NULL,
           Note TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS Links (
+          CaseId TEXT NOT NULL,
+          Kind TEXT NOT NULL,
+          Ref TEXT NOT NULL,
+          Label TEXT NOT NULL DEFAULT '',
+          CreatedAt TEXT NOT NULL,
+          PRIMARY KEY (CaseId, Kind, Ref)
+        );
+        CREATE INDEX IF NOT EXISTS IX_Links_Ref ON Links(Kind, Ref);
         CREATE TABLE IF NOT EXISTS CaseRich (CaseId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS InboxRich (InboxId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS WorkItems (

@@ -32,7 +32,9 @@ public class WorkController {
     private final local.audit.extract.TextReader reader;
     private final local.audit.Paths2 paths;
 
-    public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths) {
+    private final local.audit.LinkService links;
+    public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths, local.audit.LinkService links) {
+        this.links = links;
         this.work = work;
         this.reports = reports;
         this.reader = reader;
@@ -192,6 +194,8 @@ public class WorkController {
         if (x != null) {
             model.addAttribute("stages", work.config().type(x.typeId).stages);
             model.addAttribute("kids", work.kids(x.id));
+            model.addAttribute("linkedCases", links.casesFor("work", x.id));
+            model.addAttribute("caseChoices", links.caseChoices());
             model.addAttribute("parents", work.all().stream().filter(z -> z.isWork() && !z.id.equals(x.id) && WorkService.isOpen(z)).toList());
             List<Object[]> logs = new java.util.ArrayList<>();
             for (Map<String, Object> c : x.comments) logs.add(new Object[] { Txt.str(c.get("at")), "의견 · " + Txt.str(c.get("t")) });

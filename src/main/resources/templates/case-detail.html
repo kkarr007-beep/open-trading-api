@@ -26,7 +26,7 @@
     </ul>
     <p class="hint">보존 기산일은 최초 결과 확정일이며 취소나 재확정으로 바뀌지 않습니다. 만료 시각은 그 날짜에 보존연한(달력 연)을 더한 날 00:00 KST입니다. 이 계산은 회사의 법정 보존연한이 아닙니다.</p>
     <nav class="section-tabs" aria-label="건 구역">
-        <a href="#case">건</a><a href="#result">결과</a><a href="#actions">조치</a><a href="#files">자료</a><a href="#danger-title">확정·연한</a><a href="#discipline">징계기록</a>
+        <a href="#case">건</a><a href="#result">결과</a><a href="#actions">조치</a><a href="#files">첨부 파일</a><a href="#related">관련 항목</a><a href="#danger-title">확정·연한</a><a href="#discipline">징계기록</a>
     </nav>
     <div class="detail-layout">
         <div class="stack">
@@ -40,8 +40,8 @@
                             <select name="category"><option th:each="c : ${caseCategories}" th:text="${c}" th:selected="${item.Category == c}"></option></select>
                         </label>
                         <label class="field grow">제목<input name="title" maxlength="120" required th:value="${item.Title}" /></label>
-                        <label class="field">대상<input name="target" maxlength="120" required th:value="${item.Target}" /></label>
-                        <label class="field">담당<input name="owner" maxlength="40" th:value="${item.Owner}" /></label>
+                        <label class="field">대상<input name="target" list="dl-orgs" autocomplete="off" maxlength="120" required th:value="${item.Target}" /></label>
+                        <label class="field">담당<input name="owner" list="dl-people" autocomplete="off" maxlength="40" th:value="${item.Owner}" /></label>
                         <label class="field">서가<input name="shelf" maxlength="80" th:value="${item.Shelf}" /></label>
                         <label class="field">철번호<input name="binder" maxlength="80" th:value="${item.BinderNo}" /></label>
                     </div>
@@ -127,7 +127,7 @@
                         <div class="form-grid">
                             <label class="field">제목<input name="title" required maxlength="120" /></label>
                             <label class="field">유형<select name="type"><option>지적</option><option>개선요구</option><option>권고</option></select></label>
-                            <label class="field">대상 부서<input name="dept" required maxlength="120" th:value="${item.Target}" /></label>
+                            <label class="field">대상 부서<input name="dept" list="dl-orgs" autocomplete="off" required maxlength="120" th:value="${item.Target}" /></label>
                             <label class="field">요구일<input name="requestedOn" type="date" required th:value="${today}" /></label>
                             <label class="field">회신기한<input name="dueOn" type="date" required /></label>
                             <label class="field grow">내용<textarea name="content" maxlength="20000" rows="5" data-rich="contentHtml"></textarea></label>
@@ -138,7 +138,7 @@
                 </th:block>
             </section>
             <section id="files" aria-labelledby="files-title">
-                <h2 id="files-title">자료</h2>
+                <h2 id="files-title">첨부 파일</h2>
                 <p class="hint">원문은 받은 그대로(암호화된 문서는 암호화된 채로) 이 컴퓨터의 files 폴더에 둡니다. '열기'를 누르면 이 컴퓨터의 프로그램으로 열리고, 열림 여부는 문서보안이 판단합니다.</p>
                 <p th:if="${#lists.isEmpty(item.Files)}">등록된 자료 없음</p>
                 <ul class="file-list" th:unless="${#lists.isEmpty(item.Files)}">
@@ -177,7 +177,7 @@
                                     <form method="post" th:action="${base + '/delete'}" data-write="1">
                                         <input type="hidden" name="version" th:value="${item.Version}" />
                                         <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
-                                        <div class="dialog-head"><h2>자료를 지울까요?</h2></div>
+                                        <div class="dialog-head"><h2>첨부 파일을 지울까요?</h2></div>
                                         <p class="hint"><strong th:text="${file.DisplayName}"></strong><br/>
                                             파일과 읽은 내용을 지웁니다. 되돌릴 수 없습니다. 이력에는 표시 이름·삭제일·사유가 남습니다.</p>
                                         <label class="field grow">사유<th:block th:if="${caps.DeleteNeedsReason}"> (확정된 적 있는 건이라 꼭 적습니다)</th:block>
@@ -237,7 +237,33 @@
                         </div>
                     </div>
                     <p class="hint">올리면 내용을 자동으로 읽어 찾기에 씁니다. 암호화된 문서는 포털에 로그인된 상태에서 사무용 프로그램으로 열어 읽습니다.</p>
-                    <button type="submit" class="btn">자료 추가</button>
+                    <button type="submit" class="btn">첨부 파일 추가</button>
+                </form>
+            </section>
+            <section id="related" aria-labelledby="related-title">
+                <h2 id="related-title">관련 항목 <span class="sub" th:text="|${#lists.size(links)}건|"></span></h2>
+                <p class="hint">이 건과 관계있는 사규 조문, 자료, 업무, 법인카드 점검 회차, 경영 지표를 붙여 둡니다. 붙인 항목 화면에도 이 건이 보입니다.</p>
+                <ul class="rel-list" th:unless="${#lists.isEmpty(links)}">
+                    <li th:each="l : ${links}">
+                        <span class="pill" th:text="${l.kindName}"></span>
+                        <a th:href="${l.href}" th:text="${l.label}"></a>
+                        <form method="post" action="/links/remove" data-write="1">
+                            <input type="hidden" name="caseId" th:value="${item.CaseId}" /><input type="hidden" name="kind" th:value="${l.kind}" /><input type="hidden" name="ref" th:value="${l.ref}" />
+                            <button type="submit" class="btn btn-quiet btn-sm" th:aria-label="|${l.label} 연결 풀기|">연결 풀기</button>
+                        </form>
+                    </li>
+                </ul>
+                <p class="empty" th:if="${#lists.isEmpty(links)}">아직 붙인 항목이 없습니다.</p>
+                <form method="post" action="/links" data-write="1" class="rel-add">
+                    <input type="hidden" name="caseId" th:value="${item.CaseId}" />
+                    <label class="field"><span class="flabel">종류</span>
+                        <select name="kind" data-link-kind>
+                            <option th:each="k : ${linkKinds}" th:value="${k.key}" th:text="${k.value}"></option>
+                        </select></label>
+                    <label class="field grow"><span class="flabel">항목 (이름 몇 글자를 치면 목록이 나옵니다)</span>
+                        <input name="value" list="pick-rule" autocomplete="off" required maxlength="300" data-link-value /></label>
+                    <button type="submit" class="btn btn-primary">붙이기</button>
+                    <datalist th:each="e : ${linkPicks}" th:id="|pick-${e.key}|"><option th:each="p : ${e.value}" th:value="${p.label}"></option></datalist>
                 </form>
             </section>
             <section class="danger-zone" aria-labelledby="danger-title">

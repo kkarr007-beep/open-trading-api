@@ -79,7 +79,7 @@
     </section>
     <section class="card" th:if="${cur != null}">
         <div class="card-head"><h2 th:text="${cur.title}"></h2><span class="sub" th:text="|${cur.mdate ?: ''} ${cur.org ?: ''}|"></span>
-            <a class="btn btn-quiet" th:href="|/work/item/${cur.id}|">고치기</a><button type="button" class="btn btn-quiet" data-print>인쇄</button></div>
+            <a class="btn btn-quiet" th:href="|/work/item/${cur.id}|">고치기</a></div>
         <h3 class="h3">결정 사항</h3>
         <p class="empty" th:if="${#lists.isEmpty(decisions)}">결정 사항이 없습니다.</p>
         <ul class="tips"><li th:each="d : ${decisions}" th:text="${d}"></li></ul>
