@@ -4,10 +4,10 @@
 <body>
 <th:block id="content">
 <div class="page-head">
-    <h1>건 목록</h1>
+    <h1>감사 건 목록</h1>
     <div class="row-actions">
         <form method="get" action="/cases/export"><th:block th:replace="~{parts :: keep('|page|')}" /><button type="submit" class="btn">CSV</button></form>
-        <a class="btn btn-primary" href="/cases/new">건 등록</a>
+        <a class="btn btn-primary" href="/cases/new">감사 건 등록</a>
     </div>
 </div>
 <div class="sticky-tools">
@@ -53,7 +53,7 @@
 <p class="count-line" role="status">검색 결과 <span th:text="${result.Total}">0</span> 건</p>
 <p class="empty" th:if="${result.Total == 0}">
     <span th:text="${filtered} ? '조건에 맞는 건이 없습니다.' : '등록된 건이 없습니다.'"></span>
-    <a href="/cases/new" th:unless="${filtered}">건 등록</a>
+    <a href="/cases/new" th:unless="${filtered}">감사 건 등록</a>
     <span th:unless="${filtered}"> 또는 <a href="/inbox">수집함</a>에 문서를 넣으면 초안이 만들어집니다.</span>
 </p>
 <th:block th:unless="${result.Total == 0}">
