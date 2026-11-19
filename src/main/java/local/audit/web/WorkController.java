@@ -127,7 +127,8 @@ public class WorkController {
         String t = Kst.today().toString();
         all.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.blank(x.tick) ? "9" : x.tick).thenComparing(x -> Txt.str(x.created), java.util.Comparator.reverseOrder()));
         model.addAttribute("plans", all);
-        model.addAttribute("tickDue", all.stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(t) <= 0).count());
+        model.addAttribute("duePlans", all.stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(t) <= 0).toList());
+        model.addAttribute("waitPlans", all.stream().filter(x -> Txt.blank(x.tick) || x.tick.compareTo(t) > 0).toList());
         return "work-plans";
     }
 

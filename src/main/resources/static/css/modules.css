@@ -1253,3 +1253,7 @@ tr[data-doc-id][draggable=true]:active { cursor: grabbing; }
   .xt { table-layout: fixed; }
   .xt .nm > span:last-child { overflow-wrap: anywhere; }
 }
+/* 폴더 나무: 고른 폴더 표시는 줄 하나에만(링크 쪽 겹친 표시는 지운다) */
+.lib-nav .ft-name[aria-current="page"], .lib-nav .ft-name:hover { box-shadow: none !important; background: none !important; }
+.lib-nav .ft-row.on { background: var(--accent-soft) !important; box-shadow: inset 3px 0 0 var(--accent); border-radius: 6px; }
+.annual-add .month-picks { margin: 4px 0 12px; }

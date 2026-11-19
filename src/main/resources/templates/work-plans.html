@@ -5,40 +5,45 @@
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h1>
-        <p class="hint">아직 하기로 정하지 않은 일을 모아 둡니다. 업무 목록과 담당별 부하에는 들어가지 않습니다. 할 때가 되면 '업무로 옮기기'를 누르세요.
-            <strong th:if="${tickDue > 0}" style="color:var(--warn)" th:text="|다시 볼 날이 된 계획 ${tickDue}건|"></strong></p>
+        <p class="kicker" th:text="|다시 볼 때가 된 계획 ${#lists.size(duePlans)} / 전체 ${#lists.size(plans)}|"></p>
+        <h1>계획 대기함</h1>
+        <p class="hint">아직 하기로 정하지 않은 일을 모아 둡니다. 업무 목록과 담당별 부하에는 들어가지 않습니다. 할 때가 되면 '업무로'를 누르세요. 다시 볼 날을 정해 두면 그날부터 위쪽에 모입니다.</p>
     </div>
+    <div class="row-actions no-print"></div>
 </div>
 <section class="card">
-    <form method="post" action="/work/new/plan" data-write="1" class="line-add plan-add">
-        <label class="field grow"><span class="flabel">계획</span><input name="title" required maxlength="200" placeholder="예: 하도급 거래 점검 신설" /></label>
-        <label class="field"><span class="flabel">예상 시기</span><input name="when" maxlength="60" placeholder="예: 다음 분기" /></label>
+    <h2>계획 넣기</h2>
+    <form method="post" action="/work/new/plan" data-write="1">
+        <div class="form-grid">
+            <label class="field grow">계획<input name="title" required maxlength="200" placeholder="예: 하도급 거래 점검 신설" /></label>
+            <label class="field">예상 시기<input name="when" maxlength="60" placeholder="예: 다음 분기 · 내년 상반기" /></label>
+        </div>
         <button type="submit" class="btn btn-primary">넣기</button>
     </form>
-    <p class="empty" th:if="${#lists.isEmpty(plans)}">계획 대기 중인 일이 없습니다.</p>
-    <table class="data plan-table" th:unless="${#lists.isEmpty(plans)}">
-        <thead><tr><th scope="col">계획</th><th scope="col">예상 시기</th><th scope="col">다시 볼 날</th><th scope="col">넣은 날</th><th scope="col" class="no-print">처리</th></tr></thead>
-        <tbody>
-        <tr th:each="x : ${plans}" th:classappend="${!#strings.isEmpty(x.tick) and x.tick <= today} ? 'row-warn'">
-            <th scope="row"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
-                <small class="muted" th:unless="${#strings.isEmpty(x.content)}" th:text="${#strings.abbreviate(x.content, 80)}"></small></th>
-            <td>
-                <form method="post" th:action="|/work/item/${x.id}|" data-write="1" class="cell-form">
-                    <input name="when" maxlength="60" th:value="${x.when}" placeholder="시기 미정" th:aria-label="|${x.title} 예상 시기|" data-autosubmit /></form></td>
-            <td>
-                <form method="post" th:action="|/work/item/${x.id}|" data-write="1" class="cell-form">
-                    <input type="date" name="tick" th:value="${x.tick}" th:aria-label="|${x.title} 다시 볼 날|" data-autosubmit /></form></td>
-            <td class="nowrap" th:text="${#strings.substring(x.created + '          ', 0, 10)}"></td>
-            <td class="no-print nowrap">
-                <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="inline-form"><button type="submit" class="btn btn-sm">업무로 옮기기</button></form>
-                <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="inline-form" th:data-confirm="|「${x.title}」 계획을 지울까요?|">
-                    <input type="hidden" name="back" value="/work/plans" /><button type="submit" class="btn btn-quiet btn-sm">지우기</button></form>
-            </td>
-        </tr>
-        </tbody>
-    </table>
 </section>
+<section class="card" th:unless="${#lists.isEmpty(duePlans)}">
+    <h2>다시 볼 때가 된 계획 <span class="count" th:text="${#lists.size(duePlans)}">0</span></h2>
+    <ul class="wlist">
+        <li class="wrow" th:each="x : ${duePlans}" th:insert="~{:: prow(${x})}"></li>
+    </ul>
+</section>
+<section class="card">
+    <h2>대기 중 <span class="count" th:text="${#lists.size(waitPlans)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(waitPlans)}">대기 중인 계획이 없습니다.</p>
+    <ul class="wlist">
+        <li class="wrow" th:each="x : ${waitPlans}" th:insert="~{:: prow(${x})}"></li>
+    </ul>
+</section>
+<th:block th:if="${false}">
+    <th:block th:fragment="prow(x)">
+        <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+            <small th:text="|${#strings.isEmpty(x.when) ? '시기 미정' : '예상 ' + x.when}${#strings.isEmpty(x.tick) ? '' : ' · 다시 볼 날 ' + x.tick} · 넣은 날 ${#strings.substring(x.created + '          ', 0, 10)}|"></small></div>
+        <span class="pill warn" th:if="${!#strings.isEmpty(x.tick) and x.tick <= today}">다시 볼 때</span>
+        <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="no-print"><button type="submit" class="btn btn-quiet">업무로</button></form>
+        <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="no-print" th:data-confirm="|「${x.title}」 계획을 지울까요?|">
+            <input type="hidden" name="back" value="/work/plans" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </th:block>
+</th:block>
 </th:block>
 </body>
 </html>

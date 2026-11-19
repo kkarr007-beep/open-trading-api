@@ -20,12 +20,12 @@
         <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
     </label>
 </form>
-<details class="card annual-add" th:open="${#maps.isEmpty(v.groups)}">
-    <summary class="btn btn-primary">정기 업무 추가</summary>
+<section class="card annual-add no-print">
+    <h2>정기 업무 추가</h2>
     <form method="post" action="/work/annual/new" data-write="1">
-        <div class="line-add">
-            <label class="field grow"><span class="flabel">업무 이름</span><input name="title" required maxlength="200" placeholder="예: 법인카드 사용 점검" /></label>
-            <label class="field"><span class="flabel">담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
+        <div class="form-grid">
+            <label class="field grow">업무 이름<input name="title" required maxlength="200" placeholder="예: 법인카드 사용 점검" /></label>
+            <label class="field">담당<select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
         </div>
         <fieldset class="month-picks"><legend>하는 달 (고르지 않으면 매달)</legend>
             <label th:each="m : ${#numbers.sequence(1, 12)}"><input type="checkbox" th:name="|m${m}|" value="1" /> <span th:text="|${m}월|"></span></label>
@@ -35,9 +35,9 @@
                 <button type="button" class="btn btn-quiet btn-sm" data-months="">모두 지우기</button>
             </span>
         </fieldset>
-        <p class="row-actions"><button type="submit" class="btn btn-primary">추가</button></p>
+        <button type="submit" class="btn btn-primary">추가</button>
     </form>
-</details>
+</section>
 <p class="empty" th:if="${#maps.isEmpty(v.groups)}">정기 업무가 없습니다. 위 '정기 업무 추가'로 넣으세요.</p>
 <div class="table-wrap" tabindex="0" th:unless="${#maps.isEmpty(v.groups)}">
 <table class="ann">
