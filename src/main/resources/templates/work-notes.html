@@ -98,20 +98,8 @@
             </ul>
         </section>
         <section class="card">
-            <div class="card-head"><h2>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h2></div>
-            <form method="post" action="/work/new/plan" data-write="1" class="line-add">
-                <input name="title" required maxlength="200" placeholder="나중에 할 일" class="wide" aria-label="계획" />
-                <input name="when" maxlength="60" placeholder="예상 시기" aria-label="예상 시기" />
-                <button type="submit" class="btn btn-primary">넣기</button>
-            </form>
-            <p class="empty" th:if="${#lists.isEmpty(plans)}">계획 대기 중인 일이 없습니다.</p>
-            <ul class="wlist">
-                <li class="wrow" th:each="x : ${plans}">
-                    <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
-                        <small th:text="${(#strings.isEmpty(x.when) ? '' : '예상 ' + x.when) + (#strings.isEmpty(x.tick) ? '' : ' · 다시 볼 날 ' + x.tick)}"></small></div>
-                    <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1"><button type="submit" class="btn btn-quiet">업무로</button></form>
-                </li>
-            </ul>
+            <div class="card-head"><h2>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h2><a class="btn btn-quiet" href="/work/plans">계획 대기함으로</a></div>
+            <p class="hint">아직 하기로 정하지 않은 일은 '계획 대기함' 메뉴에서 넣고 관리합니다.</p>
         </section>
     </div>
 </div>

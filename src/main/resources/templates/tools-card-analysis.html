@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>상세 분석 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<th:block th:with="st=${v.set}, run=${v.run}">
+<div class="page-head">
+    <div>
+        <p class="kicker"><a th:href="|/tools/card/${run.Id}#hits|" th:text="|${run.Title} › 상세 분석|"></a></p>
+        <h1 th:text="${st.Title}">상세 분석</h1>
+        <p class="hint" th:text="|${#lists.size(v.items)}건 · ${#numbers.formatInteger(v.sum, 1, 'COMMA')}원 · ${v.peopleCount}명 · ${v.period}|"></p>
+    </div>
+    <div class="row-actions no-print">
+        <a class="btn" th:href="|/tools/card-analysis/${st.Id}/xls|">엑셀 장표 내려받기</a>
+        <a class="btn" th:href="|/tools/card-analysis/${st.Id}/prep|" target="_blank" rel="noopener">조사 준비서 ↗</a>
+    </div>
+</div>
+
+<ol class="steps no-print">
+    <li><b>1</b> 아래 '대상 거래'에서 건마다 연결고리를 펼쳐 보고 판정(문제·소명 필요·정상)과 문제 요지를 적습니다.</li>
+    <li><b>2</b> '사람별'·'가맹점별'·'같은 자리 묶음'으로 흐름을 확인합니다. 엑셀 장표에 같은 내용이 시트별로 들어 있습니다.</li>
+    <li><b>3</b> '조사 준비'에서 사람별 확인 질문과 요청 자료를 다듬고, 조사 준비서를 인쇄하거나 감사기록 조사 건으로 넘깁니다.</li>
+</ol>
+
+<ul class="metrics">
+    <li th:each="e : ${v.verdicts}" th:class="${e.key == '문제'} ? 'metric-bad' : (${e.key == '소명 필요'} ? 'metric-warn' : 'metric-ok')">
+        <a href="#items"><span class="metric-top" th:text="${e.key}">판정</span><strong th:text="|${e.value}건|">0</strong></a></li>
+</ul>
+
+<section class="card an-sec" id="items">
+    <div class="card-head"><h2>대상 거래 <span class="sub" th:text="|${#lists.size(v.items)}건 · 이름·일시 순|"></span></h2></div>
+    <div class="table-wrap">
+    <table class="data an-items">
+        <thead><tr><th scope="col">거래</th><th scope="col">점검 사유 · 연결고리</th><th scope="col" style="width:34%">판정 · 문제 요지 · 확인 질문</th></tr></thead>
+        <tbody>
+        <tr th:each="t : ${v.items}" th:id="|t-${t.Id}|" th:classappend="${t.Verdict == '문제'} ? 'v-bad' : (${t.Verdict == '소명 필요'} ? 'v-ask' : (${t.Verdict == '정상'} ? 'v-ok' : ''))">
+            <td>
+                <strong th:text="${t.Name}"></strong> <span class="muted small" th:text="${t.Dept}"></span>
+                <div th:text="|${t.TxDate}(${t.Dow}) ${t.Hm}|"></div>
+                <div><span th:text="${t.Merchant}"></span> <span class="muted small" th:text="${t.Industry}"></span></div>
+                <div><strong th:text="|${#numbers.formatInteger(t.Amount, 1, 'COMMA')}원|"></strong></div>
+                <div class="small muted" th:unless="${#strings.isEmpty(t.Purpose)}" th:text="|사용내역: ${t.Purpose}|"></div>
+                <div class="small muted" th:unless="${#strings.isEmpty(t.Status)}" th:text="|처리: ${t.Status} ${t.ReviewNote}|"></div>
+            </td>
+            <td>
+                <span class="pill" th:classappend="${t.Score >= 40} ? 'bad' : (${t.Score >= 20} ? 'warn' : '')" th:text="|${t.Score}점|"></span>
+                <span class="small" th:text="${t.Reasons}"></span>
+                <div class="chips" th:unless="${#lists.isEmpty(t.Chips)}"><span th:each="c : ${t.Chips}" th:text="${c}"></span></div>
+                <details class="an-link" th:unless="${#lists.isEmpty(t.SameDay)}">
+                    <summary th:text="|같은 날 이 사람의 다른 사용 ${#lists.size(t.SameDay)}건|"></summary>
+                    <table class="mini"><tbody><tr th:each="o : ${t.SameDay}" th:classappend="${o.Picked} ? 'picked'">
+                        <td th:text="${o.Hm}"></td><td th:text="${o.Merchant}"></td><td class="num" th:text="${#numbers.formatInteger(o.Amount, 1, 'COMMA')}"></td><td class="num" th:text="${o.Score > 0} ? |${o.Score}점| : ''"></td></tr></tbody></table>
+                </details>
+                <details class="an-link" th:unless="${#lists.isEmpty(t.Together)}">
+                    <summary th:text="|같은 가맹점, 다른 사람(전후 1일) ${#lists.size(t.Together)}건|"></summary>
+                    <table class="mini"><tbody><tr th:each="o : ${t.Together}" th:classappend="${o.Picked} ? 'picked'">
+                        <td th:text="${o.Name}"></td><td th:text="|${o.TxDate} ${o.Hm}|"></td><td class="num" th:text="${#numbers.formatInteger(o.Amount, 1, 'COMMA')}"></td><td class="num" th:text="${o.Score > 0} ? |${o.Score}점| : ''"></td></tr></tbody></table>
+                </details>
+            </td>
+            <td>
+                <form method="post" th:action="|/tools/card-analysis/${st.Id}/item|" data-write="1" class="an-form">
+                    <input type="hidden" name="tx" th:value="${t.Id}" />
+                    <div class="row an-verdict">
+                        <select name="verdict" data-verdict th:class="|v-${#strings.replace(t.Verdict, ' ', '.')}|" th:aria-label="|${t.Name} ${t.TxDate} 판정|">
+                            <option th:each="x : ${VERDICTS}" th:value="${x}" th:text="${x}" th:selected="${x == t.Verdict}"></option></select>
+                        <button type="submit" class="btn btn-sm">저장</button>
+                    </div>
+                    <textarea name="finding" rows="2" maxlength="1000" placeholder="문제 요지 (예: 휴일 자택 인근 주점, 참석자 불명)" th:text="${t.Finding}" aria-label="문제 요지"></textarea>
+                    <textarea name="question" rows="2" maxlength="1000" th:placeholder="|확인 질문 (비우면: ${t.AutoQuestion})|" th:text="${t.Question}" aria-label="확인 질문"></textarea>
+                    <input name="docs" maxlength="500" th:value="${t.Docs}" th:placeholder="|요청 자료 (비우면: ${t.AutoDocs})|" aria-label="요청 자료" />
+                </form>
+                <form method="post" th:action="|/tools/card-analysis/${st.Id}/remove|" data-write="1" class="no-print" style="margin-top:6px" data-confirm="이 건을 분석에서 뺄까요? 점검 결과는 그대로입니다.">
+                    <input type="hidden" name="tx" th:value="${t.Id}" /><button type="submit" class="btn btn-quiet btn-sm">분석에서 빼기</button></form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+</section>
+
+<div class="grid-3 an-sec">
+    <section class="card">
+        <div class="card-head"><h2>규칙별</h2></div>
+        <table class="mini"><tbody><tr th:each="e : ${v.rules}"><td th:text="${e.key}"></td><td class="num" th:text="|${e.value}건|"></td></tr></tbody></table>
+    </section>
+    <section class="card">
+        <div class="card-head"><h2>요일별</h2></div>
+        <div class="bars-h"><div th:each="d : ${v.dow}" th:classappend="${d.Weekend and d.N > 0} ? 'alert'"><b th:text="${d.N}"></b><i th:style="|height:${d.Pct}%|"></i><span th:text="${d.Label}"></span></div></div>
+    </section>
+    <section class="card">
+        <div class="card-head"><h2>시간대별</h2></div>
+        <div class="bars-h h6"><div th:each="d : ${v.hours}" th:classappend="${d.Night and d.N > 0} ? 'alert'"><b th:text="${d.N}"></b><i th:style="|height:${d.Pct}%|"></i><span th:text="${d.Label}"></span></div></div>
+    </section>
+</div>
+
+<section class="card an-sec" id="people">
+    <div class="card-head"><h2>사람별 <span class="sub">이번 회차 전체 사용 대비 · 이름을 누르면 그 사람의 이번 회차 전체 거래(분석 대상은 굵게)</span></h2></div>
+    <table class="data">
+        <thead><tr><th scope="col">이름</th><th scope="col">부서</th><th scope="col" class="num">분석 대상</th><th scope="col" class="num">금액</th><th scope="col" class="num">회차 전체</th>
+            <th scope="col" class="num">비중</th><th scope="col" class="num">주말</th><th scope="col" class="num">심야</th><th scope="col" class="num">지난 회차 확인 대상</th><th scope="col" class="num">문제·소명</th></tr></thead>
+        <tbody>
+        <th:block th:each="p : ${v.people}">
+        <tr>
+            <th scope="row"><details class="an-link"><summary th:text="${p.Name}"></summary>
+                <table class="mini"><tbody><tr th:each="o : ${p.Timeline}" th:classappend="${o.Picked} ? 'picked'">
+                    <td th:text="|${o.TxDate}(${o.Dow}) ${o.Hm}|"></td><td th:text="${o.Merchant}"></td><td class="num" th:text="${#numbers.formatInteger(o.Amount, 1, 'COMMA')}"></td>
+                    <td class="num" th:text="${o.Score > 0} ? |${o.Score}점| : ''"></td></tr></tbody></table></details></th>
+            <td th:text="${p.Dept}"></td>
+            <td class="num" th:text="|${p.N}건|"></td><td class="num" th:text="${#numbers.formatInteger(p.Amt, 1, 'COMMA')}"></td>
+            <td class="num" th:text="|${p.RunN}건 · ${#numbers.formatInteger(p.RunAmt, 1, 'COMMA')}|"></td>
+            <td class="num" th:text="${p.Share}"></td><td class="num" th:text="${p.Weekend}"></td><td class="num" th:text="${p.Night}"></td>
+            <td class="num"><span class="pill warn" th:if="${p.Past > 0}" th:text="|${p.Past}건|"></span></td>
+            <td class="num" th:text="|${p.Bad} · ${p.Ask}|"></td>
+        </tr>
+        </th:block>
+        </tbody>
+    </table>
+</section>
+
+<section class="card an-sec" id="shops">
+    <div class="card-head"><h2>가맹점별 <span class="sub">분석 대상 가맹점을 이번 회차 전체에서 누가 얼마나 썼나</span></h2></div>
+    <table class="data">
+        <thead><tr><th scope="col">가맹점</th><th scope="col">업종</th><th scope="col" class="num">분석 대상</th><th scope="col" class="num">회차 전체</th><th scope="col">쓴 사람</th><th scope="col" class="num">지난 회차</th></tr></thead>
+        <tbody><tr th:each="m : ${v.shops}">
+            <th scope="row" th:text="${m.Merchant}"></th><td th:text="${m.Industry}"></td>
+            <td class="num" th:text="|${m.N}건 · ${#numbers.formatInteger(m.Amt, 1, 'COMMA')}|"></td>
+            <td class="num" th:text="|${m.RunN}건 · ${#numbers.formatInteger(m.RunAmt, 1, 'COMMA')}|"></td>
+            <td th:text="|${m.PeopleN}명 · ${m.PeopleText}|"></td>
+            <td class="num"><span class="pill warn" th:if="${m.Past > 0}" th:text="|${m.Past}건|"></span></td></tr></tbody>
+    </table>
+</section>
+
+<section class="card an-sec" id="bundles" th:unless="${#lists.isEmpty(v.bundles)}">
+    <div class="card-head"><h2>같은 자리 묶음 <span class="sub" th:text="|같은 날·같은 가맹점 결제를 합친 금액 · 한도 ${#numbers.formatInteger(v.limit, 1, 'COMMA')}원|"></span></h2></div>
+    <table class="data">
+        <thead><tr><th scope="col">날짜</th><th scope="col">가맹점</th><th scope="col" class="num">합계</th><th scope="col">결제 (분석 대상은 굵게)</th></tr></thead>
+        <tbody><tr th:each="b : ${v.bundles}">
+            <td class="nowrap" th:text="${b.Date}"></td><td th:text="${b.Merchant}"></td>
+            <td class="num nowrap"><span class="pill" th:classappend="${b.OverLimit} ? 'bad'" th:text="|${#numbers.formatInteger(b.Total, 1, 'COMMA')}원|"></span>
+                <div class="small muted" th:text="|${b.People}명 · ${#lists.size(b.Rows)}번|"></div></td>
+            <td><table class="mini"><tbody><tr th:each="o : ${b.Rows}" th:classappend="${o.Picked} ? 'picked'">
+                <td th:text="${o.Name}"></td><td th:text="${o.Hm}"></td><td class="num" th:text="${#numbers.formatInteger(o.Amount, 1, 'COMMA')}"></td></tr></tbody></table></td>
+        </tr></tbody>
+    </table>
+</section>
+
+<section class="card an-sec" id="prep">
+    <div class="card-head"><h2>조사 준비 <span class="sub">'문제'·'소명 필요'로 판정한 건을 사람별로</span></h2>
+        <a class="btn" th:href="|/tools/card-analysis/${st.Id}/prep|" target="_blank" rel="noopener">조사 준비서 ↗</a></div>
+    <p class="empty" th:if="${#lists.isEmpty(v.prep)}">아직 '문제'나 '소명 필요'로 판정한 건이 없습니다. 위 '대상 거래'에서 판정하세요.</p>
+    <div class="prep-person" th:each="p : ${v.prep}">
+        <h3 th:text="|${p.Name} (${p.Dept}) · ${#lists.size(p.Items)}건 · ${#numbers.formatInteger(p.Amt, 1, 'COMMA')}원|"></h3>
+        <table class="data">
+            <thead><tr><th scope="col">거래</th><th scope="col">판정</th><th scope="col">문제 요지</th><th scope="col">확인 질문</th></tr></thead>
+            <tbody><tr th:each="o : ${p.Items}">
+                <td class="nowrap"><a th:href="|#t-${o.Id}|" th:text="|${o.TxDate} ${o.Merchant}|"></a><div class="small muted" th:text="|${#numbers.formatInteger(o.Amount, 1, 'COMMA')}원|"></div></td>
+                <td class="nowrap" th:text="${o.Verdict}"></td><td th:text="${o.Finding}"></td><td th:text="${o.Q}"></td></tr></tbody>
+        </table>
+        <p class="small"><strong>요청 자료:</strong> <span th:text="${#strings.isEmpty(p.DocsText)} ? '없음' : ${p.DocsText}"></span></p>
+    </div>
+    <div class="row-actions no-print" th:unless="${#lists.isEmpty(v.prep)}">
+        <form method="post" th:action="|/tools/card-analysis/${st.Id}/case|" data-write="1" data-confirm="'문제'·'소명 필요' 건으로 감사기록에 조사 건 초안을 만들까요?">
+            <button type="submit" class="btn btn-primary">감사기록에 조사 건으로 넘기기</button></form>
+        <span class="muted small">넘긴 건에는 이 점검 회차가 '관련 항목'으로 붙습니다.</span>
+    </div>
+    <div th:unless="${#lists.isEmpty(linkedCases)}" class="small" style="margin-top:8px">이 회차와 연결된 감사 건:
+        <a th:each="c : ${linkedCases}" th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}" style="margin-left:6px"></a></div>
+</section>
+
+<section class="card an-sec no-print">
+    <div class="card-head"><h2>분석 이름·메모</h2></div>
+    <form method="post" th:action="|/tools/card-analysis/${st.Id}/meta|" data-write="1" class="an-form">
+        <label class="field"><span class="flabel">분석 이름</span><input name="title" required maxlength="120" th:value="${st.Title}" /></label>
+        <label class="field"><span class="flabel">분석 메모 (엑셀 요약 시트에 들어갑니다)</span><textarea name="note" rows="3" maxlength="4000" th:text="${st.Note}"></textarea></label>
+        <p class="row-actions"><button type="submit" class="btn btn-primary">저장</button></p>
+    </form>
+    <form method="post" th:action="|/tools/card-analysis/${st.Id}/delete|" data-write="1" data-confirm="이 상세 분석을 지울까요? 판정과 메모가 지워집니다. 점검 결과는 그대로입니다.">
+        <button type="submit" class="btn btn-quiet danger-text">이 분석 지우기</button></form>
+</section>
+</th:block>
+</th:block>
+</body>
+</html>

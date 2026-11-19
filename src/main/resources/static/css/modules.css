@@ -988,3 +988,99 @@ main > .card, main > section.card, .cols-2 > div > .card { margin-bottom: 16px; 
 .cols-2 > div > .card { margin-bottom: 0 !important; }
 /* 거르기 줄도 같은 판 모양 */
 .toolbar { box-shadow: none !important; background: var(--paper) !important; border: 1px solid var(--line) !important; border-radius: 10px !important; }
+
+/* ── 3.1 업무: 계획 대기함·연간 정기·목록 상태 ── */
+.cell-form { margin: 0; }
+.cell-form select, .cell-form input { min-height: 30px; padding: 2px 8px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); max-width: 100%; }
+.cell-form select.st-done { color: var(--ok); }
+.cell-form select.st-hold, .cell-form select.st-ext { color: var(--muted); }
+.cell-form select.st-doing { color: var(--accent); font-weight: 600; }
+.plan-table td { vertical-align: middle; }
+.plan-table th small { display: block; font-weight: 400; }
+.plan-table input[name=when] { width: 140px; }
+tr.row-warn th, tr.row-warn td { background: color-mix(in srgb, var(--warn) 7%, transparent); }
+.annual-add { margin-bottom: 14px; }
+.annual-add > summary { display: inline-flex; list-style: none; cursor: pointer; }
+.annual-add > summary::-webkit-details-marker { display: none; }
+.annual-add[open] > summary { margin-bottom: 12px; }
+.month-picks { border: 0; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.month-picks legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+.month-picks label { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; }
+.quick-months { display: inline-flex; gap: 4px; margin-left: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── 3.1 새 창(따로 펼쳐 보는 화면): 메뉴 없이 내용만 ── */
+body.bare { grid-template-columns: minmax(0, 1fr) !important; display: block !important; }
+body.bare .topnav, body.bare .sidenav, body.bare .backbar, body.bare .foot { display: none !important; }
+body.bare .workspace { grid-column: 1 !important; margin: 0 !important; }
+body.bare main { padding-top: 18px !important; }
+.bare-tools { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* ── 3.1 법인카드 점검 결과: 찾기 줄을 맨 위에 두고 화면 위에 붙인다(이 화면만) ── */
+.hitbar { position: sticky; top: 48px; z-index: 20; background: var(--bg, var(--paper)); padding: 8px 0 10px; margin: 0 0 12px; }
+.hitbar .toolbar { margin: 0 !important; padding: 8px 12px !important; gap: 8px 10px; align-items: flex-end; }
+.hitbar .toolbar .field { margin: 0; }
+.hitbar .toolbar .field select { min-width: 110px; }
+.hitbar .search-row { flex: 1 1 260px; }
+.hitbar .pickbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+.hitbar .pickbar strong { color: var(--accent); }
+.hitbar .pickbar select { min-height: 30px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); padding: 0 6px; }
+.in-popup .hitbar, .bare .hitbar { top: 0; }
+@media (max-width: 900px) { .hitbar { position: static; } }
+.people-top { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.people-top li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.people-top li a { font-weight: 600; }
+.people-top li .muted { flex: 1; }
+.set-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.set-list li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.set-list li a { font-weight: 600; flex: 1 1 260px; }
+
+/* ── 3.1 상세 분석 ── */
+.an-sec { margin-bottom: 18px; }
+.an-sec > h2 { font-size: 16px; margin: 0 0 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.an-sec > .hint { margin: 0 0 10px; }
+.an-items { width: 100%; }
+.an-items td, .an-items th { vertical-align: top; }
+.an-items .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.an-items .chips span { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--paper-2); color: var(--muted); border: 1px solid var(--line); }
+.an-verdict select { min-height: 30px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--paper); color: var(--ink); }
+.an-verdict select.v-문제 { border-color: var(--danger); color: var(--danger); font-weight: 700; }
+.an-verdict select.v-소명.필요 { border-color: var(--warn); color: var(--warn); }
+.an-form { display: grid; gap: 6px; }
+.an-form textarea, .an-form input { width: 100%; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--paper); color: var(--ink); font-family: inherit; }
+.an-form .row { display: flex; gap: 6px; align-items: center; }
+.an-items tr.v-bad > * { background: color-mix(in srgb, var(--danger) 5%, transparent); }
+.an-items tr.v-ask > * { background: color-mix(in srgb, var(--warn) 6%, transparent); }
+.an-items tr.v-ok > * { opacity: .72; }
+.an-link { margin-top: 6px; font-size: 12.5px; }
+.an-link summary { cursor: pointer; color: var(--accent); }
+.an-link table { margin-top: 6px; }
+.mini { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mini th, .mini td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+.mini td.num, .mini th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.mini tr.picked td { font-weight: 700; color: var(--accent-deep); }
+.bars-h { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 110px; }
+.bars-h.h6 { grid-template-columns: repeat(6, 1fr); }
+.bars-h div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; font-size: 12px; color: var(--muted); }
+.bars-h i { display: block; width: 70%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+.bars-h div.alert i { background: var(--warn); }
+.bars-h b { color: var(--ink); font-size: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .grid-3 { grid-template-columns: minmax(0, 1fr); } }
+.prep-person { break-inside: avoid; margin-bottom: 18px; }
+.prep-person h3 { font-size: 15px; margin: 0 0 6px; }
+.prep-doc { font-size: 14px; }
+@media print { .an-form textarea, .an-form input, .an-form select { border: 0; padding: 0; } .an-form button { display: none; } }
+#hits { scroll-margin-top: 210px; }
+@media (max-width: 900px) { #hits { scroll-margin-top: 60px; } }
+.steps { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.steps li { padding: 10px 14px; font-size: 13px; color: var(--muted); border-left: 1px solid var(--line); display: flex; gap: 8px; }
+.steps li:first-child { border-left: 0; }
+.steps b { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 12px; }
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } .steps li { border-left: 0; border-top: 1px solid var(--line); } .steps li:first-child { border-top: 0; } }
+/* 찾기 줄은 한 줄로 낮게 */
+.hitbar .toolbar { flex-wrap: nowrap; align-items: center !important; }
+.hitbar .toolbar .field select { min-width: 0; max-width: 150px; min-height: 36px; }
+.hitbar .search-row { flex: 1 1 auto; min-width: 200px; }
+.hitbar .pickbar { margin-top: 6px; }
+@media (max-width: 1280px) { .hitbar .toolbar { flex-wrap: wrap; } .hitbar .pickbar .muted { display: none; } }

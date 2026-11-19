@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/modules.css" />
     <link rel="icon" type="image/png" href="/icons/app.png" />
 </head>
-<body th:classappend="${integrityOk} ? '' : 'frozen-integrity'">
+<body th:classappend="|${integrityOk ? '' : 'frozen-integrity'} ${bare != null and bare ? 'bare' : ''}|">
     <a class="skip" href="#main">본문으로 건너뛰기</a>
     <header class="topnav no-print" id="app-nav">
         <a class="brand" href="/home"><span class="brand-mark" aria-hidden="true">경영진단</span><span class="brand-name">Portal</span></a>
@@ -72,6 +72,7 @@
                     <a href="/work/annual" th:aria-current="${navKey == 'work/annual'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>연간 정기 현황</span></a>
                     <a href="/work/team" th:aria-current="${navKey == 'work/team'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.5 19c.6-3 2.6-4.5 5-4.5s4.4 1.5 5 4.5M16 11a2.5 2.5 0 1 0 0-5M16.5 14.5c2 .3 3.4 1.8 4 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>담당별 업무</span></a>
                     <a href="/work/directives" th:aria-current="${navKey == 'work/directives'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v9M12 17.5v.5M5 20h14L12 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>지시 사항</span><span class="count" th:if="${workDirs > 0}" th:text="${workDirs}">0</span></a>
+                    <a href="/work/plans" th:aria-current="${navKey == 'work/plans'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v4H5zM6 9v10h12V9M10 13h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>계획 대기함</span></a>
                     <a href="/work/notes" th:aria-current="${navKey == 'work/notes'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h9l3 3v12H6zM9 10h6M9 14h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>노트·계획</span></a>
                     <a href="/work/meetings" th:aria-current="${navKey == 'work/meetings'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v9H9l-4 3.5zM9 10h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>회의·쟁점</span></a>
                     <a href="/work/insight" th:aria-current="${navKey == 'work/insight'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V11M10 19V6M15 19v-5M20 19V9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>분석·보고서</span></a>

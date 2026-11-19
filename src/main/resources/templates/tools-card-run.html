@@ -14,6 +14,37 @@
         <form method="post" th:action="|/tools/card/${run.Id}/recheck|" data-write="1" class="inline-form"><button type="submit" class="btn">다시 점검</button></form>
     </div>
 </div>
+<div class="hitbar no-print" id="hitbar">
+    <form method="get" th:action="|/tools/card/${run.Id}#hits|" class="toolbar">
+        <div class="search-row">
+            <label class="search"><span class="sr">찾기</span>
+                <input name="q" th:value="${q['q']}" placeholder="가맹점·사용내역·이름·사유로 찾기" aria-label="찾기" maxlength="80" /></label>
+            <button class="btn btn-primary" type="submit">찾기</button>
+        </div>
+        <label class="field"><span class="sr-only">규칙</span><select name="rule" data-autosubmit><option value="">규칙 전체</option>
+            <option th:each="r : ${RULES}" th:value="${r.key}" th:text="${r.value}" th:selected="${q['rule'] == r.key}"></option></select></label>
+        <label class="field"><span class="sr-only">부서</span><select name="dept" data-autosubmit><option value="">부서 전체</option>
+            <option th:each="d : ${depts}" th:value="${d}" th:text="${d}" th:selected="${q['dept'] == d}"></option></select></label>
+        <label class="field"><span class="sr-only">이름</span><select name="name" data-autosubmit><option value="">이름 전체</option>
+            <option th:each="n : ${names}" th:value="${n}" th:text="${n}" th:selected="${q['name'] == n}"></option></select></label>
+        <label class="field"><span class="sr-only">처리</span><select name="status" data-autosubmit><option value="">처리 전체</option><option value="open" th:selected="${q['status'] == 'open'}">처리 안 된 건</option>
+            <option th:each="st : ${STATUSES}" th:value="${st}" th:text="${st}" th:selected="${q['status'] == st}"></option></select></label>
+        <label class="field"><span class="sr-only">점수</span><select name="min" data-autosubmit>
+            <option value="20" th:selected="${q['min'] == '20'}">20점 이상 (확인 대상)</option>
+            <option value="40" th:selected="${q['min'] == '40'}">40점 이상 (높음)</option>
+            <option value="1" th:selected="${q['min'] == '1'}">전체 (낮음 포함)</option></select></label>
+        <a class="btn" th:href="|/tools/card/${run.Id}#hits|">조건 지우기</a>
+    </form>
+    <form id="card-pick" method="post" th:action="|/tools/card/${run.Id}/analyze|" data-write="1" class="pickbar">
+        <span>목록에서 건을 고른 뒤</span>
+        <select name="setId" aria-label="분석에 넣을 곳" th:if="${!#lists.isEmpty(sets)}">
+            <option value="">새 상세 분석 만들기</option>
+            <option th:each="x : ${sets}" th:value="${x.Id}" th:text="|${x.Title}에 더하기|"></option>
+        </select>
+        <button type="submit" class="btn btn-primary" data-pick-count>고른 건 상세 분석</button>
+        <span class="muted small">고른 건만 따로 모아 연결고리·엑셀 장표로 깊게 보고, 조사할 문제 건을 정리합니다.</span>
+    </form>
+</div>
 <ul class="metrics">
     <li class="metric-ok"><a th:href="|/tools/card/${run.Id}?min=1#hits|"><span class="metric-top" th:text="|사용내역 · ${#numbers.formatInteger(s.total.Amt, 1, 'COMMA')}원|">사용내역</span>
         <strong th:text="|${#numbers.formatInteger(s.total.N, 1, 'COMMA')}건|">0</strong></a></li>
@@ -22,10 +53,10 @@
     <li class="metric-bad"><a th:href="@{|/tools/card/${run.Id}|(min=40)} + '#hits'"><span class="metric-top">위험 높음 (40점 이상)</span><strong th:text="|${s.hit.High ?: 0}건|">0</strong></a></li>
     <li class="metric-warn"><a th:href="@{|/tools/card/${run.Id}|(status='open')} + '#hits'"><span class="metric-top">확인 대상 중 처리 안 된 건</span><strong th:text="|${s.hit.Open ?: 0}건|">0</strong></a></li>
 </ul>
-<p class="hint" th:if="${s.hit.Low != null and s.hit.Low > 0}" th:text="|약한 신호 하나만 있는 낮은 점수(20점 미만) ${s.hit.Low}건은 기본 목록에서 뺐습니다. 아래 '점수: 전체'로 볼 수 있습니다.|"></p>
-<div class="card-split">
+<p class="hint" th:if="${s.hit.Low != null and s.hit.Low > 0}" th:text="|약한 신호 하나만 있는 낮은 점수(20점 미만) ${s.hit.Low}건은 기본 목록에서 뺐습니다. 위 '점수: 전체'로 볼 수 있습니다.|"></p>
+<div class="cols-2">
     <section class="card">
-        <h2>규칙별 <span class="sub">누르면 그 규칙에 걸린 건만</span></h2>
+        <div class="card-head"><h2>규칙별 <span class="sub">누르면 그 규칙에 걸린 건만</span></h2></div>
         <p class="empty" th:if="${#lists.isEmpty(s.byRule)}">걸린 건이 없습니다.</p>
         <div class="rule-chips" th:unless="${#lists.isEmpty(s.byRule)}">
             <a th:each="r : ${s.byRule}" th:href="@{|/tools/card/${run.Id}|(rule=${r.Rule},min=1)} + '#hits'" th:classappend="${q['rule'] == r.Rule} ? 'on'">
@@ -33,74 +64,38 @@
         </div>
     </section>
     <section class="card">
-        <h2>사람별 <span class="sub">점수 합 순 · 부서 평균 대비 2배 이상은 굵게</span></h2>
-        <div class="table-wrap people-wrap">
-        <table class="data small">
-            <thead><tr><th scope="col">이름</th><th scope="col">부서</th><th scope="col" class="num">사용</th><th scope="col" class="num">금액</th>
-                <th scope="col" class="num">확인 대상</th><th scope="col" class="num">점수 합</th><th scope="col" class="num">부서 평균 대비</th><th scope="col" class="num">지난 회차 반복</th></tr></thead>
-            <tbody><tr th:each="p : ${s.people}">
-                <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})} + '#hits'" th:text="${p.Name}"></a></th>
-                <td th:text="${p.Dept}"></td><td class="num" th:text="${p.N}"></td>
-                <td class="num" th:text="${#numbers.formatInteger(p.Amt, 1, 'COMMA')}"></td>
-                <td class="num" th:text="${p.HitN}"></td>
-                <td class="num"><span class="pill" th:classappend="${p.Score >= 40} ? 'bad' : (${p.Score >= 20} ? 'warn' : '')" th:text="${p.Score}"></span></td>
-                <td class="num" th:classappend="${p.Over} ? 'strong'" th:text="${p.Ratio}"></td>
-                <td class="num"><span class="pill warn" th:if="${p.Repeat > 0}" th:text="|${p.Repeat}회|"></span></td></tr></tbody>
-        </table>
-        </div>
+        <div class="card-head"><h2>사람별 <span class="sub" th:text="|점수 합 상위 ${#lists.size(topPeople)}명 · 전체 ${#lists.size(s.people)}명|"></span></h2>
+            <a class="btn" th:href="|/tools/card/${run.Id}/people|" target="_blank" rel="noopener">사람별 전체 보기 ↗</a></div>
+        <ul class="people-top">
+            <li th:each="p : ${topPeople}">
+                <a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})} + '#hits'" th:text="${p.Name}"></a>
+                <span class="muted" th:text="|${p.Dept} · ${p.N}건 · ${#numbers.formatInteger(p.Amt, 1, 'COMMA')}원 · 확인 대상 ${p.HitN}건${p.Repeat > 0 ? ' · 지난 회차 ' + p.Repeat + '회' : ''}|"></span>
+                <span class="pill" th:classappend="${p.Score >= 40} ? 'bad' : (${p.Score >= 20} ? 'warn' : '')" th:text="|${p.Score}점|"></span>
+            </li>
+        </ul>
     </section>
 </div>
-<section class="card" th:if="${s.benford.total > 0}" th:with="bf=${s.benford}">
-    <h2>금액 첫자리 분포 <span class="sub">벤포드 법칙 · 1만 원 이상 <th:block th:text="${bf.total}"></th:block>건</span></h2>
-    <p class="hint">자연스럽게 생긴 금액은 첫자리가 1인 경우가 약 30%, 9인 경우가 약 5%로 일정한 분포를 따릅니다. 금액을 지어내거나 한도에 맞춰 조정하면 특정 숫자가 튑니다.
-        일치 정도(평균 절대편차) <strong th:text="${bf.mad}"></strong> — <span class="pill" th:classappend="${bf.tone}" th:text="${bf.verdict}"></span></p>
-    <div class="bf-chart" role="img" aria-label="첫자리 숫자별 실제 비율과 기대 비율">
-        <div class="bf-col" th:each="r : ${bf.rows}" th:classappend="${r.over} ? 'over'">
-            <div class="bf-bars"><i class="bf-act" th:style="|height:${r.actual * 2.2}px|"></i><i class="bf-exp" th:style="|height:${r.expected * 2.2}px|"></i></div>
-            <b th:text="${r.digit}"></b><small th:text="|${r.actual}%|"></small>
-        </div>
-    </div>
-    <p class="small muted" style="margin:8px 0 0"><span class="bf-key act"></span> 실제 <span class="bf-key exp"></span> 기대(벤포드)
-        <th:block th:if="${bf.worstDigit > 0}"> · 기대보다 많은 첫자리 <strong th:text="${bf.worstDigit}"></strong> — 많이 쓴 사람: <th:block th:text="${#strings.listJoin(bf.worstWho, ', ')}"></th:block></th:block></p>
+<section class="card" th:unless="${#lists.isEmpty(sets)}">
+    <div class="card-head"><h2>상세 분석 <span class="sub" th:text="|${#lists.size(sets)}개|"></span></h2></div>
+    <ul class="set-list">
+        <li th:each="x : ${sets}">
+            <a th:href="|/tools/card-analysis/${x.Id}|" th:text="${x.Title}"></a>
+            <span class="muted" th:text="|${x.N}건 · 문제 ${x.Bad} · 소명 필요 ${x.Ask} · 검토 중 ${x.Open}|"></span>
+        </li>
+    </ul>
 </section>
-<div class="sticky-tools no-print" id="hits">
-    <form method="get" th:action="|/tools/card/${run.Id}#hits|" class="toolbar">
-        <div class="search-row">
-            <label class="search"><span class="sr">찾기</span>
-                <input name="q" th:value="${q['q']}" placeholder="가맹점·사용내역·이름·사유" maxlength="80" /></label>
-            <button class="btn btn-primary" type="submit">찾기</button>
-        </div>
-        <label class="field">규칙<select name="rule" data-autosubmit><option value="">전체</option>
-            <option th:each="r : ${RULES}" th:value="${r.key}" th:text="${r.value}" th:selected="${q['rule'] == r.key}"></option></select></label>
-        <label class="field">부서<select name="dept" data-autosubmit><option value="">전체</option>
-            <option th:each="d : ${depts}" th:value="${d}" th:text="${d}" th:selected="${q['dept'] == d}"></option></select></label>
-        <label class="field">이름<select name="name" data-autosubmit><option value="">전체</option>
-            <option th:each="n : ${names}" th:value="${n}" th:text="${n}" th:selected="${q['name'] == n}"></option></select></label>
-        <label class="field">처리<select name="status" data-autosubmit><option value="">전체</option><option value="open" th:selected="${q['status'] == 'open'}">처리 안 된 건</option>
-            <option th:each="st : ${STATUSES}" th:value="${st}" th:text="${st}" th:selected="${q['status'] == st}"></option></select></label>
-        <label class="field">점수<select name="min" data-autosubmit>
-            <option value="20" th:selected="${q['min'] == '20'}">20점 이상 (확인 대상)</option>
-            <option value="40" th:selected="${q['min'] == '40'}">40점 이상 (높음)</option>
-            <option value="1" th:selected="${q['min'] == '1'}">전체 (낮음 포함)</option></select></label>
-        <a class="btn" th:href="|/tools/card/${run.Id}#hits|">조건 지우기</a>
-    </form>
-</div>
-<div class="row-actions no-print" style="justify-content:space-between;margin:6px 0 8px">
-    <p class="count-line" style="margin:0" th:text="|${v.total}건 · ${#numbers.formatInteger(v.amount, 1, 'COMMA')}원 · ${v.page}/${v.pages}쪽|"></p>
-    <form id="card-case" method="post" th:action="|/tools/card/${run.Id}/case|" data-write="1" data-confirm="고른 건으로 감사기록 건 초안을 만들까요?">
-        <button type="submit" class="btn">고른 건 감사기록으로</button></form>
-</div>
+<p class="count-line" id="hits" th:text="|${v.total}건 · ${#numbers.formatInteger(v.amount, 1, 'COMMA')}원 · ${v.page}/${v.pages}쪽|"></p>
 <p class="empty" th:if="${v.total == 0}">조건에 맞는 건이 없습니다.</p>
 <div class="table-wrap" th:unless="${v.total == 0}">
     <table class="data card-hits">
         <thead><tr>
-            <th scope="col" class="no-print"><input type="checkbox" data-check-all="tx" aria-label="모두 고르기" form="card-case" /></th>
+            <th scope="col" class="no-print"><input type="checkbox" data-check-all="tx" aria-label="모두 고르기" form="card-pick" /></th>
             <th scope="col" class="num">점수</th><th scope="col">점검 사유</th><th scope="col">사람</th><th scope="col">일시</th><th scope="col">가맹점</th>
             <th scope="col" class="num">금액</th><th scope="col">사용내역</th><th scope="col">처리</th><th scope="col" class="no-print"></th>
         </tr></thead>
         <tbody>
         <tr th:each="t : ${v.items}">
-            <td class="no-print"><input type="checkbox" name="tx" th:value="${t.Id}" form="card-case" aria-label="고르기" /></td>
+            <td class="no-print"><input type="checkbox" name="tx" th:value="${t.Id}" form="card-pick" aria-label="고르기" /></td>
             <td class="num"><span class="pill" th:classappend="${t.Score >= 40} ? 'bad' : (${t.Score >= 20} ? 'warn' : '')" th:text="${t.Score}"></span>
                 <div class="small muted" th:text="${t.Level}"></div></td>
             <td class="reasons" th:text="${t.Reasons}"></td>

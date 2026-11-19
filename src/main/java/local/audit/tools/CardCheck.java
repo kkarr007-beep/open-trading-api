@@ -765,7 +765,6 @@ public class CardCheck {
         people.sort(Comparator.comparingLong((Map<String, Object> p) -> ((Number) p.get("Score")).longValue()).reversed()
             .thenComparing(p -> -((Number) p.get("Amt")).longValue()));
         v.put("people", people);
-        v.put("benford", benford(runId));
         return v;
     }
 

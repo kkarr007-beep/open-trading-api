@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>계획 대기함 · 업무</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>계획 대기함 <span class="sub" th:text="|${#lists.size(plans)}건|"></span></h1>
+        <p class="hint">아직 하기로 정하지 않은 일을 모아 둡니다. 업무 목록과 담당별 부하에는 들어가지 않습니다. 할 때가 되면 '업무로 옮기기'를 누르세요.
+            <strong th:if="${tickDue > 0}" style="color:var(--warn)" th:text="|다시 볼 날이 된 계획 ${tickDue}건|"></strong></p>
+    </div>
+</div>
+<section class="card">
+    <form method="post" action="/work/new/plan" data-write="1" class="line-add plan-add">
+        <label class="field grow"><span class="flabel">계획</span><input name="title" required maxlength="200" placeholder="예: 하도급 거래 점검 신설" /></label>
+        <label class="field"><span class="flabel">예상 시기</span><input name="when" maxlength="60" placeholder="예: 다음 분기" /></label>
+        <button type="submit" class="btn btn-primary">넣기</button>
+    </form>
+    <p class="empty" th:if="${#lists.isEmpty(plans)}">계획 대기 중인 일이 없습니다.</p>
+    <table class="data plan-table" th:unless="${#lists.isEmpty(plans)}">
+        <thead><tr><th scope="col">계획</th><th scope="col">예상 시기</th><th scope="col">다시 볼 날</th><th scope="col">넣은 날</th><th scope="col" class="no-print">처리</th></tr></thead>
+        <tbody>
+        <tr th:each="x : ${plans}" th:classappend="${!#strings.isEmpty(x.tick) and x.tick <= today} ? 'row-warn'">
+            <th scope="row"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                <small class="muted" th:unless="${#strings.isEmpty(x.content)}" th:text="${#strings.abbreviate(x.content, 80)}"></small></th>
+            <td>
+                <form method="post" th:action="|/work/item/${x.id}|" data-write="1" class="cell-form">
+                    <input name="when" maxlength="60" th:value="${x.when}" placeholder="시기 미정" th:aria-label="|${x.title} 예상 시기|" data-autosubmit /></form></td>
+            <td>
+                <form method="post" th:action="|/work/item/${x.id}|" data-write="1" class="cell-form">
+                    <input type="date" name="tick" th:value="${x.tick}" th:aria-label="|${x.title} 다시 볼 날|" data-autosubmit /></form></td>
+            <td class="nowrap" th:text="${#strings.substring(x.created + '          ', 0, 10)}"></td>
+            <td class="no-print nowrap">
+                <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="inline-form"><button type="submit" class="btn btn-sm">업무로 옮기기</button></form>
+                <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="inline-form" th:data-confirm="|「${x.title}」 계획을 지울까요?|">
+                    <input type="hidden" name="back" value="/work/plans" /><button type="submit" class="btn btn-quiet btn-sm">지우기</button></form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</th:block>
+</body>
+</html>

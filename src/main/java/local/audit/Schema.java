@@ -218,6 +218,23 @@ final class Schema {
           PRIMARY KEY (CaseId, Kind, Ref)
         );
         CREATE INDEX IF NOT EXISTS IX_Links_Ref ON Links(Kind, Ref);
+        CREATE TABLE IF NOT EXISTS CardSets (
+          Id TEXT PRIMARY KEY,
+          RunId TEXT NOT NULL,
+          Title TEXT NOT NULL,
+          Note TEXT NOT NULL DEFAULT '',
+          CreatedAt TEXT NOT NULL,
+          UpdatedAt TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS CardSetItems (
+          SetId TEXT NOT NULL,
+          TxId INTEGER NOT NULL,
+          Verdict TEXT NOT NULL DEFAULT '검토 중',
+          Finding TEXT NOT NULL DEFAULT '',
+          Question TEXT NOT NULL DEFAULT '',
+          Docs TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (SetId, TxId)
+        );
         CREATE TABLE IF NOT EXISTS CaseRich (CaseId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS InboxRich (InboxId TEXT PRIMARY KEY, Html TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS WorkItems (

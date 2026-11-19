@@ -28,8 +28,10 @@ public class ToolsController {
     private final CardCheck card;
     private final CaseService cases;
     private final local.audit.LinkService links;
+    private final local.audit.tools.CardAnalysis analysis;
 
-    public ToolsController(CardCheck card, CaseService cases, local.audit.LinkService links) {
+    public ToolsController(CardCheck card, CaseService cases, local.audit.LinkService links, local.audit.tools.CardAnalysis analysis) {
+        this.analysis = analysis;
         this.links = links;
         this.card = card;
         this.cases = cases;
@@ -95,7 +97,11 @@ public class ToolsController {
         model.addAttribute("run", run);
         model.addAttribute("linkedCases", links.casesFor("card", id));
         model.addAttribute("caseChoices", links.caseChoices());
-        model.addAttribute("s", card.summary(id));
+        Map<String, Object> sum = card.summary(id);
+        model.addAttribute("s", sum);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> people = (List<Map<String, Object>>) sum.get("people");
+        model.addAttribute("topPeople", people.subList(0, Math.min(5, people.size())));
+        model.addAttribute("sets", analysis.sets(id));
         model.addAttribute("v", card.list(id, q, page == null ? 1 : page, 100));
         model.addAttribute("q", q);
         model.addAttribute("names", card.names(id));
@@ -120,8 +126,87 @@ public class ToolsController {
         return Web.reply(req, Op.ok("지금 기준으로 다시 점검했습니다."), "/tools/card/" + id);
     }
 
+    /** 사람별 전체: 새 창으로 띄워 보는 표. */
+    @GetMapping("/tools/card/{id}/people")
+    public String people(@PathVariable String id, Model model) {
+        Map<String, Object> run = card.run(id);
+        if (run == null) return "redirect:/tools/card";
+        model.addAttribute("run", run);
+        model.addAttribute("s", card.summary(id));
+        model.addAttribute("bare", true);
+        return "tools-card-people";
+    }
+
+    /** 고른 건으로 상세 분석을 만든다(또는 이미 만든 분석에 더한다). */
+    @PostMapping("/tools/card/{id}/analyze")
+    public Object analyze(@PathVariable String id, @RequestParam(name = "tx", required = false) List<String> tx,
+                          @RequestParam(required = false) String setId, HttpServletRequest req) {
+        List<Long> ids = new ArrayList<>();
+        if (tx != null) for (String s : tx) { try { ids.add(Long.parseLong(s)); } catch (NumberFormatException ignored) { } }
+        if (ids.isEmpty()) return Web.reply(req, Op.bad("분석할 건을 목록에서 고르세요."), null);
+        Op op = Txt.isId(setId) ? analysis.addItems(setId, ids) : analysis.create(id, ids, null);
+        return Web.reply(req, op, op.ok ? "/tools/card-analysis/" + op.id : null);
+    }
+
+    @GetMapping("/tools/card-analysis/{sid}")
+    public String analysisView(@PathVariable String sid, Model model) {
+        Map<String, Object> v = analysis.view(sid);
+        if (v == null) return "redirect:/tools/card";
+        model.addAttribute("v", v);
+        model.addAttribute("VERDICTS", local.audit.tools.CardAnalysis.VERDICTS);
+        model.addAttribute("linkedCases", links.casesFor("card", Txt.str(((Map<?, ?>) v.get("set")).get("RunId"))));
+        return "tools-card-analysis";
+    }
+
+    /** 조사 준비서: 인쇄용 한 장. */
+    @GetMapping("/tools/card-analysis/{sid}/prep")
+    public String analysisPrep(@PathVariable String sid, Model model) {
+        Map<String, Object> v = analysis.view(sid);
+        if (v == null) return "redirect:/tools/card";
+        model.addAttribute("v", v);
+        model.addAttribute("bare", true);
+        return "tools-card-prep";
+    }
+
+    @GetMapping("/tools/card-analysis/{sid}/xls")
+    public ResponseEntity<byte[]> analysisXls(@PathVariable String sid) throws IOException {
+        Map<String, Object> s = analysis.set(sid);
+        byte[] b = s == null ? null : analysis.xls(sid);
+        if (b == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok().header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, Web.disposition(false, Txt.str(s.get("Title")) + ".xls"))
+            .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.ms-excel")).body(b);
+    }
+
+    @PostMapping("/tools/card-analysis/{sid}/{what}")
+    public Object analysisWrite(@PathVariable String sid, @PathVariable String what, @RequestParam Map<String, String> p, HttpServletRequest req) {
+        Map<String, Object> s = analysis.set(sid);
+        if (s == null) return Web.reply(req, Op.fail(404, "분석을 찾지 못했습니다."), null);
+        String runId = Txt.str(s.get("RunId"));
+        Long tx = null;
+        try { tx = Long.parseLong(Txt.str(p.get("tx"))); } catch (NumberFormatException ignored) { }
+        switch (what) {
+            case "item": return Web.reply(req, tx == null ? Op.bad("건을 찾지 못했습니다.") : analysis.saveItem(sid, tx, p), null);
+            case "remove": return Web.reply(req, tx == null ? Op.bad("건을 찾지 못했습니다.") : analysis.removeItem(sid, tx), null);
+            case "meta": return Web.reply(req, analysis.meta(sid, p.get("title"), p.get("note")), null);
+            case "delete": { Op op = analysis.delete(sid); return Web.reply(req, op, op.ok ? "/tools/card/" + runId : null); }
+            case "case": {
+                List<Long> ids = analysis.flagged(sid);
+                if (ids.isEmpty()) return Web.reply(req, Op.bad("'문제' 또는 '소명 필요'로 판정한 건이 없습니다. 판정부터 하세요."), null);
+                Map<String, Object> d = card.caseDraft(runId, ids);
+                if (d == null) return Web.reply(req, Op.bad("넘길 건을 찾지 못했습니다."), null);
+                List<String> cats = cases.categories();
+                Op op = cases.register(Kst.today().getYear(), cats.isEmpty() ? "업무진단" : cats.get(0), (String) d.get("title"), (String) d.get("target"),
+                    "", "", (String) d.get("summary"), (String) d.get("body"), null);
+                if (op.ok) links.add(op.id, "card", runId);
+                return Web.reply(req, op.ok ? Op.ok("조사 건 초안을 감사기록에 만들었습니다.", op.id) : op, op.ok ? "/cases/" + op.id : null);
+            }
+            default: return Web.reply(req, Op.fail(404, "없는 작업입니다."), null);
+        }
+    }
+
     @PostMapping("/tools/card/{id}/delete")
     public Object delete(@PathVariable String id, HttpServletRequest req) {
+        analysis.deleteForRun(id);
         Op op = card.deleteRun(id);
         return Web.reply(req, op, op.ok ? "/tools/card" : null);
     }

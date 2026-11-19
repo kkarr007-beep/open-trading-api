@@ -173,3 +173,45 @@ document.addEventListener("click", function (event) {
         sync();
     });
 })();
+
+// 연간 정기 업무 추가: 분기말·반기말 단추로 달을 한 번에 고른다.
+document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-months]');
+    if (!b) return;
+    var form = b.closest('form');
+    var on = (b.getAttribute('data-months') || '').split(',').filter(Boolean);
+    for (var m = 1; m <= 12; m++) {
+        var c = form.querySelector('input[name="m' + m + '"]');
+        if (c) c.checked = on.indexOf(String(m)) >= 0;
+    }
+});
+
+// 상세 분석 단추: 몇 건 골랐는지 보여 준다.
+(function () {
+    document.querySelectorAll('[data-pick-count]').forEach(function (btn) {
+        var form = btn.closest('form'), id = form && form.getAttribute('id');
+        if (!id) return;
+        var base = btn.textContent;
+        function sync() {
+            var n = document.querySelectorAll('input[type=checkbox][name][form="' + id + '"]:checked').length;
+            btn.textContent = n ? '고른 ' + n + '건 상세 분석' : base;
+            btn.classList.toggle('btn-primary', n > 0);
+        }
+        document.addEventListener('change', function (e) { if (e.target && e.target.getAttribute && e.target.getAttribute('form') === id) setTimeout(sync, 0); });
+        sync();
+    });
+})();
+
+// 상세 분석: 판정을 고르면 바로 저장하고 줄 색을 바꾼다.
+document.addEventListener('change', function (e) {
+    var sel = e.target.closest && e.target.closest('select[data-verdict]');
+    if (!sel) return;
+    sel.className = 'v-' + sel.value.replace(/\s+/g, '.');
+});
+
+// 새 창의 링크(data-to-opener): 본 창이 있으면 본 창을 그 화면으로 바꾸고 이 창은 그대로 둔다.
+document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-to-opener]');
+    if (!a || !window.opener || window.opener.closed) return;
+    try { window.opener.location.href = a.href; window.opener.focus(); e.preventDefault(); } catch (err) { /* 다른 창이면 그냥 새 창으로 */ }
+});

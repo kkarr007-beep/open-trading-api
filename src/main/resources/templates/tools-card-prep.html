@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>조사 준비서 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<th:block th:with="st=${v.set}, run=${v.run}">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|${run.Title} · ${st.Title}|"></p>
+        <h1>법인카드 사용 조사 준비서</h1>
+        <p class="hint" th:text="|조사 대상 ${#lists.size(v.prep)}명 · 작성 ${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}|"></p>
+    </div>
+    <div class="bare-tools no-print"><button type="button" class="btn btn-primary" data-print>인쇄</button></div>
+</div>
+<p class="empty" th:if="${#lists.isEmpty(v.prep)}">'문제'나 '소명 필요'로 판정한 건이 없습니다. 상세 분석 화면에서 판정한 뒤 다시 여세요.</p>
+<div class="prep-doc">
+<section class="prep-person card" th:each="p, ps : ${v.prep}">
+    <h3 th:text="|${ps.count}. ${p.Name} (${p.Dept}) — ${#lists.size(p.Items)}건, ${#numbers.formatInteger(p.Amt, 1, 'COMMA')}원|"></h3>
+    <table class="data">
+        <thead><tr><th scope="col" class="num">번호</th><th scope="col">일시</th><th scope="col">가맹점</th><th scope="col" class="num">금액</th><th scope="col">판정</th><th scope="col">문제 요지</th></tr></thead>
+        <tbody><tr th:each="o, os : ${p.Items}">
+            <td class="num" th:text="${os.count}"></td><td class="nowrap" th:text="|${o.TxDate}(${o.Dow}) ${o.Hm}|"></td><td th:text="${o.Merchant}"></td>
+            <td class="num nowrap" th:text="${#numbers.formatInteger(o.Amount, 1, 'COMMA')}"></td><td class="nowrap" th:text="${o.Verdict}"></td><td th:text="${o.Finding}"></td></tr></tbody>
+    </table>
+    <p style="margin:10px 0 4px"><strong>확인 질문</strong></p>
+    <ol style="margin:0 0 8px 18px"><li th:each="o, os : ${p.Items}" th:text="|[${os.count}] ${o.Q}|"></li></ol>
+    <p style="margin:0"><strong>요청 자료</strong> <span th:text="${#strings.isEmpty(p.DocsText)} ? '없음' : ${p.DocsText}"></span></p>
+    <p class="small muted" style="margin:8px 0 0">면담 일시: ____________ &nbsp; 면담자: ____________ &nbsp; 확인: ____________</p>
+</section>
+</div>
+</th:block>
+</th:block>
+</body>
+</html>

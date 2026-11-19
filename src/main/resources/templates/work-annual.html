@@ -7,7 +7,7 @@
     <div>
         <p class="kicker" th:text="|이행률 ${v.rate}%|">이행률</p>
         <h1 th:text="|${y}년 정기 업무 현황|">정기 업무</h1>
-        <p class="hint">칸을 누르면 그달 이행 여부가 바뀝니다. ✓ 이행 · ! 지난 달 미이행 · 테두리 이번 달 · 회색 예정. 주기는 업무 상세 화면에서 '정기(월)'·'횟수 목표'·'상시'로 정합니다.</p>
+        <p class="hint">칸을 누르면 그달 이행 여부가 바뀝니다. ✓ 이행 · ! 지난 달 미이행 · 테두리 이번 달 · 회색 예정. 정기 업무는 아래 '정기 업무 추가'로 바로 넣고, 줄 끝 '지우기'로 뺍니다. 주기를 바꾸려면 업무 이름을 눌러 상세 화면에서 고칩니다.</p>
     </div>
     <div class="row-actions">
         <a class="btn" th:href="@{/work/annual(y=${y - 1},owner=${owner})}" th:text="|◀ ${y - 1}|"></a>
@@ -20,13 +20,31 @@
         <select name="owner" data-autosubmit><option value="">전체</option><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${owner == o.id}"></option></select>
     </label>
 </form>
-<p class="empty" th:if="${#maps.isEmpty(v.groups)}">정기 업무가 없습니다. 업무 상세 화면에서 주기를 '정기(월)'로 바꾸세요.</p>
+<details class="card annual-add" th:open="${#maps.isEmpty(v.groups)}">
+    <summary class="btn btn-primary">정기 업무 추가</summary>
+    <form method="post" action="/work/annual/new" data-write="1">
+        <div class="line-add">
+            <label class="field grow"><span class="flabel">업무 이름</span><input name="title" required maxlength="200" placeholder="예: 법인카드 사용 점검" /></label>
+            <label class="field"><span class="flabel">담당</span><select name="ownerId"><option th:each="o : ${cfg.owners}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
+        </div>
+        <fieldset class="month-picks"><legend>하는 달 (고르지 않으면 매달)</legend>
+            <label th:each="m : ${#numbers.sequence(1, 12)}"><input type="checkbox" th:name="|m${m}|" value="1" /> <span th:text="|${m}월|"></span></label>
+            <span class="quick-months">
+                <button type="button" class="btn btn-quiet btn-sm" data-months="3,6,9,12">분기말</button>
+                <button type="button" class="btn btn-quiet btn-sm" data-months="6,12">반기말</button>
+                <button type="button" class="btn btn-quiet btn-sm" data-months="">모두 지우기</button>
+            </span>
+        </fieldset>
+        <p class="row-actions"><button type="submit" class="btn btn-primary">추가</button></p>
+    </form>
+</details>
+<p class="empty" th:if="${#maps.isEmpty(v.groups)}">정기 업무가 없습니다. 위 '정기 업무 추가'로 넣으세요.</p>
 <div class="table-wrap" tabindex="0" th:unless="${#maps.isEmpty(v.groups)}">
 <table class="ann">
-    <thead><tr><th>업무</th><th>담당</th><th class="m" th:each="m : ${#numbers.sequence(1, 12)}" th:text="|${m}월|"></th><th class="m">이행</th></tr></thead>
+    <thead><tr><th>업무</th><th>담당</th><th class="m" th:each="m : ${#numbers.sequence(1, 12)}" th:text="|${m}월|"></th><th class="m">이행</th><th class="no-print"><span class="sr-only">지우기</span></th></tr></thead>
     <tbody>
     <th:block th:each="g : ${v.groups}">
-        <tr class="grp"><td colspan="15" th:text="|${g.key} · ${#lists.size(g.value)}|"></td></tr>
+        <tr class="grp"><td colspan="16" th:text="|${g.key} · ${#lists.size(g.value)}|"></td></tr>
         <tr th:each="r : ${g.value}">
             <td><a th:href="|/work/item/${r.item().id}|" th:text="${r.item().title}"></a></td>
             <td class="nowrap" th:text="${W.ownerName(r.item().ownerId)}"></td>
@@ -39,6 +57,10 @@
                 <span th:if="${s == 'always'}" class="cellv cv-always" aria-hidden="true"></span>
             </td>
             <td class="m nowrap" th:text="${r.done()}"></td>
+            <td class="no-print">
+                <form method="post" th:action="|/work/item/${r.item().id}/delete|" data-write="1" th:data-confirm="|「${r.item().title}」 업무를 지울까요? 이행 표시도 함께 지워집니다.|">
+                    <input type="hidden" name="back" th:value="|/work/annual?y=${y}|" />
+                    <button type="submit" class="btn btn-quiet btn-sm" th:aria-label="|${r.item().title} 지우기|">지우기</button></form></td>
         </tr>
     </th:block>
     </tbody>

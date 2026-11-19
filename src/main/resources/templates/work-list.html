@@ -69,7 +69,11 @@
             <td><span class="pri" th:classappend="${x.pri}" th:text="${x.priIcon}" th:title="${x.priName}"></span></td>
             <th scope="row"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
                 <span class="small muted" th:if="${!#lists.isEmpty(x.tags)}" th:text="| #${#strings.listJoin(x.tags, ' #')}|"></span></th>
-            <td class="nowrap" th:text="${x.statusName}"></td>
+            <td class="nowrap">
+                <form method="post" th:action="|/work/item/${x.id}/status|" data-write="1" class="cell-form">
+                    <select name="status" data-autosubmit th:aria-label="|${x.title} 상태|" th:classappend="|st-${x.status}|">
+                        <option th:each="st : ${STATUS}" th:value="${st.key}" th:text="${st.value}" th:selected="${st.key == x.status}"></option>
+                    </select></form></td>
             <td class="nowrap" th:text="${W.stageName(x)}"></td>
             <td class="nowrap" th:text="${W.ownerName(x.ownerId)}"></td>
             <td class="nowrap" th:text="${W.typeName(x.typeId)}"></td>

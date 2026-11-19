@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>사람별 전체 · 법인카드 점검</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="${run.Title}">회차</p>
+        <h1 th:text="|사람별 전체 ${#lists.size(s.people)}명|">사람별</h1>
+        <p class="hint">점수 합 순입니다. 부서 평균 대비 2배 이상 쓴 사람은 굵게 표시합니다. 이름을 누르면 본 창의 점검 목록이 그 사람으로 걸러집니다.</p>
+    </div>
+    <div class="bare-tools no-print"><button type="button" class="btn" data-print>인쇄</button></div>
+</div>
+<div class="table-wrap">
+<table class="data">
+    <thead><tr><th scope="col">이름</th><th scope="col">부서</th><th scope="col" class="num">사용</th><th scope="col" class="num">금액</th>
+        <th scope="col" class="num">확인 대상</th><th scope="col" class="num">위험 높음</th><th scope="col" class="num">점수 합</th><th scope="col" class="num">부서 평균 대비</th><th scope="col" class="num">지난 회차 반복</th></tr></thead>
+    <tbody><tr th:each="p : ${s.people}">
+        <th scope="row"><a th:href="@{|/tools/card/${run.Id}|(name=${p.Name})} + '#hits'" data-to-opener th:text="${p.Name}"></a></th>
+        <td th:text="${p.Dept}"></td><td class="num" th:text="${p.N}"></td>
+        <td class="num" th:text="${#numbers.formatInteger(p.Amt, 1, 'COMMA')}"></td>
+        <td class="num" th:text="${p.HitN}"></td>
+        <td class="num" th:text="${p.High}"></td>
+        <td class="num"><span class="pill" th:classappend="${p.Score >= 40} ? 'bad' : (${p.Score >= 20} ? 'warn' : '')" th:text="${p.Score}"></span></td>
+        <td class="num" th:classappend="${p.Over} ? 'strong'" th:text="${p.Ratio}"></td>
+        <td class="num"><span class="pill warn" th:if="${p.Repeat > 0}" th:text="|${p.Repeat}회|"></span></td></tr></tbody>
+</table>
+</div>
+</th:block>
+</body>
+</html>

@@ -60,6 +60,7 @@ public final class Desktop {
     private static volatile ConfigurableApplicationContext context;
     private static WebView view;
     private static WebEngine engine;
+    private static final java.util.List<Bridge> POPUP_BRIDGES = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static Bridge bridge;
     private static Path stateFile;
     private static String base;
@@ -96,6 +97,52 @@ public final class Desktop {
     private static void fallback(String[] args) {
         App.desktopActive = false;
         new Thread(() -> SpringApplication.run(App.class, args), "main-fallback").start();
+    }
+
+    /** 새 창. 큰 표처럼 따로 펼쳐 보는 화면을 띄운다. 창을 닫아도 본 창은 그대로다. */
+    private static WebEngine popup(Stage owner) {
+        Stage p = new Stage();
+        p.getIcons().addAll(owner.getIcons());
+        WebView v = new WebView();
+        v.setContextMenuEnabled(false);
+        WebEngine e = v.getEngine();
+        // 화면 스크립트가 쥔 자바 객체는 약하게 잡히므로, 창이 열려 있는 동안 여기서 붙잡아 둔다.
+        Bridge pb = new Bridge(e);
+        POPUP_BRIDGES.add(pb);
+        p.setOnHidden(ev -> POPUP_BRIDGES.remove(pb));
+        p.titleProperty().bind(e.titleProperty());
+        e.setConfirmHandler(message -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.OK, ButtonType.CANCEL);
+            alert.initOwner(p);
+            alert.setHeaderText(null);
+            return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+        });
+        e.setOnAlert(ev -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, ev.getData(), ButtonType.OK);
+            alert.initOwner(p);
+            alert.setHeaderText(null);
+            alert.showAndWait();
+        });
+        e.getLoadWorker().stateProperty().addListener((obs, old, state) -> {
+            if (state == Worker.State.SUCCEEDED) {
+                try {
+                    Object window = e.executeScript("window");
+                    Class.forName("netscape.javascript.JSObject").getMethod("setMember", String.class, Object.class).invoke(window, "auditApp", pb);
+                    e.executeScript("document.documentElement.classList.add('in-app','in-popup'); window.dispatchEvent(new Event('audit-app-ready'));");
+                } catch (ReflectiveOperationException | RuntimeException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        e.locationProperty().addListener((obs, old, now) -> {
+            if (now != null && !now.isEmpty() && !now.startsWith(base) && !now.startsWith("about:")) Platform.runLater(() -> e.load(old));
+        });
+        e.setCreatePopupHandler(features -> popup(owner));
+        v.setZoom(view.getZoom());
+        Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+        p.setScene(new Scene(v, Math.min(1320, screen.getWidth() - 40), Math.min(880, screen.getHeight() - 40)));
+        p.show();
+        return e;
     }
 
     private static void build(String[] args, Path home) {
@@ -141,6 +188,8 @@ public final class Desktop {
                 }
             }
         });
+        // 새 창으로 여는 링크(target=_blank): 같은 프로그램 화면을 따로 띄운 창에서 연다.
+        engine.setCreatePopupHandler(features -> popup(s));
         // 이 프로그램 화면이 아닌 주소로는 가지 않는다.
         engine.locationProperty().addListener((obs, old, now) -> {
             if (now != null && !now.isEmpty() && !now.startsWith(base) && !now.startsWith("about:")) {
@@ -363,6 +412,9 @@ public final class Desktop {
 
     /** 화면 스크립트가 부르는 창 기능. */
     public static final class Bridge {
+        private final WebEngine target;
+        public Bridge() { this(null); }
+        Bridge(WebEngine target) { this.target = target; }
         /** 내려받기: 저장할 곳을 묻고 저장한다. */
         public void download(String url) {
             String full = url.startsWith("http") ? url : base + url;
@@ -408,7 +460,7 @@ public final class Desktop {
             PrinterJob job = PrinterJob.createPrinterJob();
             if (job == null) { toast("연결된 프린터가 없습니다."); return; }
             if (job.showPrintDialog(stage)) {
-                engine.print(job);
+                (target == null ? engine : target).print(job);
                 job.endJob();
             }
         }

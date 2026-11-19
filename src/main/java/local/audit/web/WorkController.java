@@ -119,6 +119,36 @@ public class WorkController {
         return "work-annual";
     }
 
+    /** 계획 대기함: 아직 하기로 정하지 않은 일. 업무 목록·부하 계산에는 들어가지 않는다. */
+    @GetMapping("/work/plans")
+    public String plans(Model model) {
+        common(model);
+        List<WorkItem> all = new java.util.ArrayList<>(work.ofKind("plan"));
+        String t = Kst.today().toString();
+        all.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.blank(x.tick) ? "9" : x.tick).thenComparing(x -> Txt.str(x.created), java.util.Comparator.reverseOrder()));
+        model.addAttribute("plans", all);
+        model.addAttribute("tickDue", all.stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(t) <= 0).count());
+        return "work-plans";
+    }
+
+    /** 연간 정기 현황에서 바로 정기 업무를 만든다. 고른 달마다 이행 칸이 생긴다. */
+    @PostMapping("/work/annual/new")
+    public Object annualNew(@RequestParam Map<String, String> p, HttpServletRequest req) {
+        Op op = work.change("정기 업무 추가", () -> {
+            Op c = work.create("work", p);
+            if (!c.ok) return c;
+            Map<String, String> u = new java.util.HashMap<>();
+            u.put("cycle", "months");
+            u.put("monthsSent", "1");
+            boolean any = false;
+            for (int m = 1; m <= 12; m++) if ("1".equals(p.get("m" + m))) { u.put("m" + m, "1"); any = true; }
+            if (!any) for (int m = 1; m <= 12; m++) u.put("m" + m, "1");
+            Op up = work.update(c.id, u);
+            return up.ok ? Op.ok("정기 업무 「" + Txt.str(p.get("title")).strip() + "」를 더했습니다.", c.id) : up;
+        });
+        return Web.reply(req, op, null);
+    }
+
     @GetMapping("/work/team")
     public String team(Model model) {
         common(model);
