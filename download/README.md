@@ -1,24 +1,24 @@
 # 내려받기
 
-## 3.2.1판으로 바꾸기 (패치)
+## 3.3.0판으로 바꾸기 (패치)
 
-이미 설치해서 쓰고 있으면(감사기록 1.3.0판 이상, 감사 포털 1.4.0~1.6.0판) `AuditRecord-Patch-3.2.1.exe` 하나만 받아 실행합니다.
+이미 설치해서 쓰고 있으면(감사기록 1.3.0판 이상, 감사 포털 1.4.0~1.6.0판) `AuditRecord-Patch-3.3.0.exe` 하나만 받아 실행합니다.
 파일 이름을 누른 뒤 오른쪽 위 **Download raw file** 단추로 받습니다. 프로그램 창은 먼저 닫습니다.
 
-- exe가 막히면 `AuditRecord-Patch-3.2.1.zip`을 받아 풀고 `apply-patch.cmd`를 실행합니다.
+- exe가 막히면 `AuditRecord-Patch-3.3.0.zip`을 받아 풀고 `apply-patch.cmd`를 실행합니다.
 - 패치는 프로그램 파일(audit-record.jar) 하나만 바꿉니다. 기록과 자료(사용자 폴더\감사기록)는 그대로 둡니다.
 - exe 패치는 바탕화면·시작 메뉴의 이름도 **경영진단 Portal**로 바꿉니다. zip의 apply-patch.cmd는 프로그램 파일만 바꾸므로 바로가기 이름은 예전 그대로 남습니다.
 
 ```text
-AuditRecord-Patch-3.2.1.exe  3f11fca0d32e221f32c94104058cc2b84df55f21ffe69ffd43154213709f8336
-AuditRecord-Patch-3.2.1.zip  5c4a9410b7186200533e1c899212fa7f1fd1924efcfe1bb3e6de938e1a0a3750
+AuditRecord-Patch-3.3.0.exe  9b0f0de9e56ad7b7f8a027335b6004195091220c84a28008a411dc5d03129223
+AuditRecord-Patch-3.3.0.zip  a2dc3e17451ee9ebcef8bf0186eeb1d2310dc6835abc63046cacf8e238b39a09
 ```
 
 ## 처음 설치
 
 1. `AuditRecord-Setup.exe`(1.6.0판, 약 98MB)를 받아 설치합니다.
    서명이 없어 Windows에서 경고가 뜨면 「추가 정보」 → 「실행」을 누릅니다.
-2. 이어서 위의 `AuditRecord-Patch-3.2.1.exe`를 실행하면 3.2.1판이 됩니다.
+2. 이어서 위의 `AuditRecord-Patch-3.3.0.exe`를 실행하면 3.3.0판이 됩니다.
 
 ```text
 AuditRecord-Setup.exe  b31112f89aea70c12416a3fb0c0273e6a0ee32c0deabab650666a3fc0e91d448
