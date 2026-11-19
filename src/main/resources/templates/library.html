@@ -6,77 +6,150 @@
 <div class="page-head">
     <div>
         <h1 th:text="${#strings.isEmpty(catPath)} ? '자료' : ${catPath}">자료</h1>
-        <p class="hint" th:text="|업무 자료 ${total}건. 분류별로 쌓아 두고 제목·파일 이름·태그·메모·문서 내용으로 찾습니다. 등재하면 내용을 자동으로 읽어 원본 모양(표·합친 칸·그림·서식)으로 보여 줍니다.|"></p>
-    </div>
-    <div class="row-actions">
-        <a class="btn btn-primary" th:href="@{/library/new(cat=${cat})}">자료 등재</a>
+        <p class="hint" th:text="|업무 자료 ${total}건. 제목을 누르면 이 컴퓨터의 프로그램(한글·워드·엑셀·PDF 보기)으로 원본이 열립니다. 제목·파일 이름·태그·메모·문서 내용으로 찾습니다.|"></p>
     </div>
 </div>
-<nav class="section-tabs" aria-label="자료 분류">
-    <a th:href="@{/library(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'" th:text="|전체 ${total}|"></a>
-    <a th:each="c : ${tree}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${sec == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
-</nav>
-<nav class="section-tabs sub-tabs" aria-label="하위 분류" th:if="${secNode != null and !#lists.isEmpty(secNode.children)}">
-    <a th:href="@{/library(cat=${secNode.Id},q=${q})}" th:aria-current="${cat == secNode.Id} ? 'page'" th:text="|${secNode.Name} 전체|"></a>
-    <a th:each="c : ${secNode.children}" th:href="@{/library(cat=${c.Id},q=${q})}" th:aria-current="${cat == c.Id} ? 'page'" th:text="|${c.Name} ${c.Docs}|"></a>
-    <a class="add-tab" th:href="|/library/categories#c-${secNode.Id}|">+ 하위 분류</a>
-</nav>
-<form method="get" action="/library" class="toolbar" style="margin-bottom:12px">
-    <input type="hidden" name="cat" th:value="${cat}" />
-    <div class="search-row">
-        <label class="search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <span class="sr">자료 찾기</span>
-            <input name="q" th:value="${q}" placeholder="제목·파일 이름·태그·메모·문서 내용으로 찾기 (여러 낱말은 모두 맞는 것)" maxlength="120" data-search-focus />
-        </label>
-        <button class="btn btn-primary" type="submit">찾기</button>
-        <a class="btn" th:unless="${#strings.isEmpty(q)}" th:href="@{/library(cat=${cat})}">찾기 지우기</a>
-    </div>
-</form>
-<p class="count-line" th:text="|${v.total}건 · ${v.page}/${v.pages}쪽|"></p>
-<p class="empty" th:if="${v.total == 0}">자료가 없습니다. '자료 등재'로 문서를 넣으세요.</p>
-<ul class="lib-list" th:unless="${v.total == 0}">
-    <li class="lib-row" th:each="d : ${v.items}" th:id="|d-${d.Id}|">
-        <span class="lib-ext" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
-        <div class="lib-main">
-            <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="lib-open">
-                <button type="submit" class="lib-title" th:text="${d.Title}" title="이 컴퓨터의 프로그램으로 원본을 엽니다"></button></form>
-            <span class="lib-meta" th:text="|${d.Category} · ${d.FileName} · ${d.SizeText} · ${d.RegisteredDisplay}${#strings.isEmpty(d.Tags) ? '' : ' · #' + d.Tags}|"></span>
-            <span class="lib-cases" th:if="${linked[d.Id] != null}">감사 건:
-                <a th:each="c : ${linked[d.Id]}" th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}"></a></span>
-        </div>
-        <div class="lib-acts no-print">
-            <form method="post" th:action="|/library/${d.Id}/open|" data-write="1" class="inline-form"><button type="submit" class="btn">열기</button></form>
-            <a class="btn btn-quiet" th:href="|/library/${d.Id}/file?dl=1|">내려받기</a>
-            <details class="ex-menu"><summary class="btn btn-quiet">정보</summary>
-                <form method="post" th:action="|/library/${d.Id}/meta|" data-write="1" class="ex-form">
-                    <label class="field">제목<input name="title" required maxlength="200" th:value="${d.Title}" /></label>
-                    <label class="field">분류<select name="categoryId">
+<div class="lib-split">
+    <aside class="lib-cats" aria-label="자료 분류">
+        <a class="lib-cat" th:href="@{/library(q=${q},kind=${kind},sort=${sort})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'">
+            <span>전체</span><em th:text="${total}"></em></a>
+        <th:block th:each="s : ${tree}">
+            <a class="lib-cat" th:href="@{/library(cat=${s.Id},q=${q},kind=${kind},sort=${sort})}" th:aria-current="${cat == s.Id} ? 'page'">
+                <span th:text="${s.Name}"></span><em th:text="${s.Docs}"></em></a>
+            <a class="lib-cat sub" th:each="c : ${s.children}" th:href="@{/library(cat=${c.Id},q=${q},kind=${kind},sort=${sort})}" th:aria-current="${cat == c.Id} ? 'page'">
+                <span th:text="${c.Name}"></span><em th:text="${c.Docs}"></em></a>
+        </th:block>
+        <form method="post" action="/library/categories/save" data-write="1" class="lib-cat-add">
+            <input name="name" required maxlength="40" placeholder="새 분류 이름" aria-label="새 분류 이름" />
+            <select name="parentId" aria-label="넣을 자리"><option value="">맨 위 분류로</option>
+                <option th:each="s : ${tree}" th:value="${s.Id}" th:text="|${s.Name} 밑에|" th:selected="${sec == s.Id}"></option></select>
+            <button type="submit" class="btn btn-sm">분류 더하기</button>
+        </form>
+        <a class="lib-cat-manage" href="/library/categories">분류 이름 바꾸기·지우기 ›</a>
+    </aside>
+
+    <div class="lib-main-pane">
+        <details class="lib-upload card" th:open="${total == 0}">
+            <summary class="btn btn-primary">자료 올리기</summary>
+            <form method="post" action="/library/upload" data-write="1" enctype="multipart/form-data">
+                <input type="hidden" name="back" th:value="@{/library(cat=${cat})}" />
+                <div class="drop">
+                    <p class="drop-copy"><strong>파일을 고르거나 끌어 놓으세요</strong> (여러 개 가능 · 같은 파일은 건너뜁니다)</p>
+                    <input type="file" name="upload" multiple required aria-label="올릴 파일" />
+                    <span class="drop-name" data-file-name hidden></span>
+                </div>
+                <div class="line-add" style="margin-top:10px">
+                    <label class="field"><span class="flabel">분류</span><select name="categoryId" required>
                         <th:block th:each="s : ${tree}">
-                            <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${d.CategoryId == s.Id}"></option>
-                            <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${d.CategoryId == c.Id}"></option>
+                            <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${cat == s.Id}"></option>
+                            <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${cat == c.Id}"></option>
                         </th:block></select></label>
-                    <label class="field">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
-                    <label class="field">메모<textarea name="note" rows="2" maxlength="2000" th:text="${d.Note}"></textarea></label>
-                    <button type="submit" class="btn btn-primary">저장</button>
-                </form>
-                <form method="post" action="/links/to-case" data-write="1" class="ex-form" th:unless="${#lists.isEmpty(caseChoices)}">
-                    <input type="hidden" name="kind" value="doc" /><input type="hidden" name="ref" th:value="${d.Id}" />
-                    <label class="field">감사 건에 연결<select name="caseId" required>
-                        <option value="">감사 건 고르기</option>
-                        <option th:each="c : ${caseChoices}" th:value="${c.CaseId}" th:text="|${c.Year} · ${c.Title}|"></option></select></label>
-                    <button type="submit" class="btn">연결</button>
-                </form>
-            </details>
-            <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" class="inline-form" th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일도 함께 지워집니다.|">
-                <button type="submit" class="btn btn-quiet danger-text">삭제</button></form>
-        </div>
-    </li>
-</ul>
-<p class="row-actions" th:if="${v.pages > 1}">
-    <a class="btn" th:if="${v.page > 1}" th:href="@{/library(cat=${cat},q=${q},page=${v.page - 1})}">← 더 최근</a>
-    <a class="btn" th:if="${v.page < v.pages}" th:href="@{/library(cat=${cat},q=${q},page=${v.page + 1})}">이전 자료 →</a>
-</p>
+                    <label class="field grow"><span class="flabel">태그 (쉼표로 나눔)</span><input name="tags" maxlength="300" placeholder="예: 개인정보, 2026, 점검" /></label>
+                    <button type="submit" class="btn btn-primary">올리기</button>
+                </div>
+            </form>
+        </details>
+
+        <form method="get" action="/library" class="lib-find">
+            <input type="hidden" name="cat" th:value="${cat}" />
+            <input type="hidden" name="kind" th:value="${kind}" />
+            <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input name="q" th:value="${q}" placeholder="제목·파일 이름·태그·메모·문서 내용으로 찾기" maxlength="120" aria-label="자료 찾기" data-search-focus />
+            </label>
+            <select name="sort" data-autosubmit aria-label="정렬">
+                <option value="" th:selected="${sort == ''}">최근 올린 순</option>
+                <option value="old" th:selected="${sort == 'old'}">오래된 순</option>
+                <option value="title" th:selected="${sort == 'title'}">제목 순</option>
+                <option value="size" th:selected="${sort == 'size'}">큰 파일 순</option>
+            </select>
+            <button class="btn btn-primary" type="submit">찾기</button>
+            <a class="btn" th:unless="${#strings.isEmpty(q) and #strings.isEmpty(kind)}" th:href="@{/library(cat=${cat})}">조건 지우기</a>
+        </form>
+        <nav class="lib-kinds" aria-label="파일 형식">
+            <a th:href="@{/library(cat=${cat},q=${q},sort=${sort})}" th:aria-current="${#strings.isEmpty(kind)} ? 'page'">모든 형식</a>
+            <th:block th:each="k : ${KINDS}"><a th:if="${v.kinds[k.key] > 0}" th:href="@{/library(cat=${cat},q=${q},sort=${sort},kind=${k.key})}"
+               th:aria-current="${kind == k.key} ? 'page'" th:text="|${k.value} ${v.kinds[k.key]}|"></a></th:block>
+        </nav>
+
+        <form id="lib-bulk" method="post" action="/library/bulk" data-write="1" class="bulk-bar lib-bulk" hidden data-bulk>
+            <input type="hidden" name="op" value="move" />
+            <strong data-bulk-count data-bulk-label="고른 {n}건">고른 0건</strong>
+            <select name="categoryId" aria-label="옮길 분류">
+                <th:block th:each="s : ${tree}">
+                    <option th:value="${s.Id}" th:text="${s.Name}"></option>
+                    <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|"></option>
+                </th:block></select>
+            <button type="submit" class="btn">이 분류로 옮기기</button>
+            <button type="button" class="btn btn-quiet danger-text" data-bulk-delete="고른 자료를 지울까요? 원본 파일도 함께 지워집니다.">지우기</button>
+        </form>
+
+        <p class="count-line" th:text="|${v.total}건${v.pages > 1 ? ' · ' + v.page + '/' + v.pages + '쪽' : ''}|"></p>
+        <p class="empty" th:if="${v.total == 0}" th:text="${#strings.isEmpty(q)} ? '이 분류에 자료가 없습니다. 위 \'자료 올리기\'로 넣으세요.' : '맞는 자료가 없습니다. 낱말을 줄이거나 분류를 \'전체\'로 바꿔 보세요.'"></p>
+        <table class="data lib-table" th:unless="${v.total == 0}">
+            <thead><tr>
+                <th scope="col" class="no-print"><input type="checkbox" form="lib-bulk" data-check-all="id" aria-label="이 쪽 모두 고르기" /></th>
+                <th scope="col">제목</th><th scope="col">분류</th><th scope="col" class="num">크기</th><th scope="col">올린 날</th><th scope="col" class="no-print"><span class="sr-only">관리</span></th>
+            </tr></thead>
+            <tbody>
+            <tr th:each="d : ${v.items}" th:id="|d-${d.Id}|">
+                <td class="no-print"><input type="checkbox" name="id" form="lib-bulk" th:value="${d.Id}" th:aria-label="|${d.Title} 고르기|" /></td>
+                <th scope="row">
+                    <div class="lib-tt">
+                        <span class="lib-ext" th:classappend="|k-${d.Kind}|" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
+                        <div>
+                            <a th:href="|/library/${d.Id}/file|" th:data-open-local="|/library/${d.Id}/open|" th:text="${d.Title}" title="눌러서 원본 열기"></a>
+                            <small class="muted" th:text="|${d.FileName}${#strings.isEmpty(d.Tags) ? '' : ' · #' + #strings.replace(d.Tags, ',', ' #')}|"></small>
+                            <small class="snip" th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></small>
+                            <small class="lib-cases" th:if="${linked[d.Id] != null}">감사 건:
+                                <a th:each="c : ${linked[d.Id]}" th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}"></a></small>
+                        </div>
+                    </div>
+                </th>
+                <td class="nowrap"><a class="muted" th:href="@{/library(cat=${d.CategoryId})}" th:text="${d.Category}"></a></td>
+                <td class="num nowrap" th:text="${d.SizeText}"></td>
+                <td class="nowrap" th:text="${#strings.substring(d.RegisteredDisplay + '          ', 0, 10)}"></td>
+                <td class="no-print nowrap">
+                    <details class="ex-menu"><summary class="btn btn-quiet btn-sm">관리</summary>
+                        <div class="ex-form">
+                            <a class="btn btn-sm" th:href="|/library/${d.Id}/file?dl=1|">내려받기</a>
+                            <form method="post" th:action="|/library/${d.Id}/meta|" data-write="1" class="an-form">
+                                <label class="field">제목<input name="title" required maxlength="200" th:value="${d.Title}" /></label>
+                                <label class="field">분류<select name="categoryId">
+                                    <th:block th:each="s : ${tree}">
+                                        <option th:value="${s.Id}" th:text="${s.Name}" th:selected="${d.CategoryId == s.Id}"></option>
+                                        <option th:each="c : ${s.children}" th:value="${c.Id}" th:text="|　└ ${c.Name}|" th:selected="${d.CategoryId == c.Id}"></option>
+                                    </th:block></select></label>
+                                <label class="field">태그<input name="tags" maxlength="300" th:value="${d.Tags}" /></label>
+                                <label class="field">메모<textarea name="note" rows="2" maxlength="2000" th:text="${d.Note}"></textarea></label>
+                                <button type="submit" class="btn btn-primary btn-sm">저장</button>
+                            </form>
+                            <form method="post" action="/links/to-case" data-write="1" class="an-form" th:unless="${#lists.isEmpty(caseChoices)}">
+                                <input type="hidden" name="kind" value="doc" /><input type="hidden" name="ref" th:value="${d.Id}" />
+                                <label class="field">감사 건에 연결<select name="caseId" required>
+                                    <option value="">감사 건 고르기</option>
+                                    <option th:each="c : ${caseChoices}" th:value="${c.CaseId}" th:text="|${c.Year} · ${c.Title}|"></option></select></label>
+                                <button type="submit" class="btn btn-sm">연결</button>
+                            </form>
+                            <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일도 함께 지워집니다.|">
+                                <button type="submit" class="btn btn-quiet btn-sm danger-text">지우기</button></form>
+                        </div>
+                    </details>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <nav class="pager no-print" th:if="${v.pages > 1}" aria-label="쪽">
+            <a class="btn btn-sm" th:if="${v.page > 1}" th:href="@{/library(cat=${cat},q=${q},kind=${kind},sort=${sort},page=${v.page - 1})}">‹ 앞</a>
+            <th:block th:each="n : ${#numbers.sequence(1, v.pages)}">
+                <a class="btn btn-sm" th:if="${n == 1 or n == v.pages or (n >= v.page - 2 and n <= v.page + 2)}" th:classappend="${n == v.page} ? 'btn-primary'"
+                   th:href="@{/library(cat=${cat},q=${q},kind=${kind},sort=${sort},page=${n})}" th:text="${n}" th:aria-current="${n == v.page} ? 'page'"></a>
+                <span th:if="${(n == 2 and v.page > 4) or (n == v.pages - 1 and v.page < v.pages - 3)}" class="muted">…</span>
+            </th:block>
+            <a class="btn btn-sm" th:if="${v.page < v.pages}" th:href="@{/library(cat=${cat},q=${q},kind=${kind},sort=${sort},page=${v.page + 1})}">뒤 ›</a>
+        </nav>
+    </div>
+</div>
 </th:block>
 </body>
 </html>

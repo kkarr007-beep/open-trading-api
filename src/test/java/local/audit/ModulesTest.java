@@ -719,4 +719,71 @@ class ModulesTest {
         assertTrue(made.ok, made.message);
         assertTrue(((String) local.audit.rule.Rules.arts(rules.reg(made.id)).get(0).get("html")).contains("<b>"));
     }
+
+    @Test
+    void cardAnalysisLinksPickedUsesAndPreparesInquiry() throws Exception {
+        local.audit.tools.CardCheck card = new local.audit.tools.CardCheck(db, settings);
+        local.audit.tools.CardAnalysis an = new local.audit.tools.CardAnalysis(db, card);
+        Op up = card.upload("11월 점검", "card.tsv", List.of(new local.audit.tools.Sheet.Table("승인내역", local.audit.tools.Sheet.text(CARD_TSV))));
+        @SuppressWarnings("unchecked") Map<String, Integer> map = (Map<String, Integer>) card.pending(up.id).get("map");
+        Map<String, String> form = new java.util.HashMap<>();
+        map.forEach((k, v) -> form.put("col_" + k, String.valueOf(v)));
+        assertTrue(card.confirm(up.id, form).ok);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items = (List<Map<String, Object>>) card.list(up.id, Map.of("min", "1"), 1, 100).get("items");
+        long a1 = 0, a3 = 0;
+        for (Map<String, Object> m : items) {
+            if ("A1".equals(m.get("ApprovalNo"))) a1 = ((Number) m.get("Id")).longValue();
+            if ("A3".equals(m.get("ApprovalNo"))) a3 = ((Number) m.get("Id")).longValue();
+        }
+        assertFalse(an.create(up.id, List.of(), null).ok, "고른 건이 없으면 만들지 않음");
+        Op set = an.create(up.id, List.of(a1), null);
+        assertTrue(set.ok, set.message);
+        assertTrue(an.addItems(set.id, List.of(a3, a1)).message.contains("1건"), "이미 든 건은 다시 넣지 않음");
+        Map<String, Object> v = an.view(set.id);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> its = (List<Map<String, Object>>) v.get("items");
+        assertEquals(2, its.size());
+        Map<String, Object> first = its.stream().filter(m -> "A1".equals(m.get("ApprovalNo"))).findFirst().orElseThrow();
+        @SuppressWarnings("unchecked") List<Map<String, Object>> sameDay = (List<Map<String, Object>>) first.get("SameDay");
+        assertFalse(sameDay.isEmpty(), "쪼개기 결제는 같은 날 다른 사용으로 이어짐");
+        @SuppressWarnings("unchecked") List<Map<String, Object>> bundles = (List<Map<String, Object>>) v.get("bundles");
+        assertFalse(bundles.isEmpty(), "같은 자리 묶음");
+        assertTrue(((String) first.get("AutoQuestion")).contains("나눠"), "규칙에서 확인 질문을 채움");
+        // 판정 → 조사 준비
+        assertFalse(an.saveItem(set.id, a3, Map.of("verdict", "엉뚱함")).ok);
+        assertTrue(an.saveItem(set.id, a3, Map.of("verdict", "문제", "finding", "휴일 자택 인근 유흥")).ok);
+        assertTrue(an.saveItem(set.id, a1, Map.of("verdict", "소명 필요", "docs", "영수증 원본")).ok);
+        @SuppressWarnings("unchecked") List<Map<String, Object>> prep = (List<Map<String, Object>>) an.view(set.id).get("prep");
+        assertEquals(1, prep.size(), "같은 사람은 한 묶음");
+        assertEquals(2, ((List<?>) prep.get(0).get("Items")).size());
+        assertTrue(((String) prep.get(0).get("DocsText")).contains("영수증 원본"));
+        assertEquals(2, an.flagged(set.id).size());
+        // 엑셀 장표: xls(OLE2) 서명과 시트
+        byte[] x = an.xls(set.id);
+        assertTrue(x.length > 2000 && (x[0] & 0xff) == 0xD0 && (x[1] & 0xff) == 0xCF);
+        try (org.apache.poi.hssf.usermodel.HSSFWorkbook wb = new org.apache.poi.hssf.usermodel.HSSFWorkbook(new java.io.ByteArrayInputStream(x))) {
+            assertNotNull(wb.getSheet("대상 거래"));
+            assertNotNull(wb.getSheet("조사 준비"));
+            assertEquals(2, wb.getSheet("대상 거래").getLastRowNum());
+        }
+        assertEquals(1, an.sets(up.id).size());
+        assertFalse(an.removeItem(set.id, a1).ok == an.removeItem(set.id, a3).ok, "마지막 한 건은 빼지 못함");
+        an.deleteForRun(up.id);
+        assertTrue(an.sets(up.id).isEmpty());
+    }
+
+    @Test
+    void annualWorkCanBeAddedWithChosenMonths() {
+        Op c = work.create("work", Map.of("title", "분기 점검"));
+        assertTrue(c.ok);
+        Map<String, String> u = new HashMap<>();
+        u.put("cycle", "months"); u.put("monthsSent", "1"); u.put("m3", "1"); u.put("m6", "1");
+        assertTrue(work.update(c.id, u).ok);
+        assertEquals(List.of(3, 6), work.get(c.id).months);
+        assertTrue(work.status(c.id, "doing").ok);
+        assertEquals("doing", work.get(c.id).status);
+        assertFalse(work.status(c.id, "엉뚱함").ok);
+        Op plan = work.create("plan", Map.of("title", "하도급 점검 신설", "when", "다음 분기"));
+        assertEquals("다음 분기", work.get(plan.id).when);
+        assertTrue(work.toWork(plan.id).ok);
+    }
 }

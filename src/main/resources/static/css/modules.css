@@ -1084,3 +1084,43 @@ body.bare main { padding-top: 18px !important; }
 .hitbar .search-row { flex: 1 1 auto; min-width: 200px; }
 .hitbar .pickbar { margin-top: 6px; }
 @media (max-width: 1280px) { .hitbar .toolbar { flex-wrap: wrap; } .hitbar .pickbar .muted { display: none; } }
+
+/* ── 3.1 자료: 왼쪽 분류 · 오른쪽 찾기와 표 ── */
+.lib-split { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .lib-split { grid-template-columns: minmax(0, 1fr); } }
+.lib-cats { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 1px; }
+.lib-cat { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.lib-cat.sub { padding-left: 24px; font-weight: 500; color: var(--muted); }
+.lib-cat em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lib-cat:hover { background: var(--paper-2); text-decoration: none; }
+.lib-cat[aria-current="page"] { background: var(--accent-soft); color: var(--accent-deep); }
+.lib-cat-add { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.lib-cat-add input, .lib-cat-add select { min-height: 32px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; background: var(--paper); color: var(--ink); }
+.lib-cat-manage { font-size: 12.5px; color: var(--muted); padding: 8px 4px 2px; }
+.lib-main-pane { min-width: 0; }
+.lib-upload { margin-bottom: 12px; padding: 0 !important; border: 0 !important; background: transparent !important; }
+.lib-upload > summary { list-style: none; display: inline-flex; cursor: pointer; }
+.lib-upload > summary::-webkit-details-marker { display: none; }
+.lib-upload[open] { padding: 14px 16px !important; border: 1px solid var(--line) !important; background: var(--paper) !important; }
+.lib-upload[open] > summary { margin-bottom: 10px; }
+.lib-find { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.lib-find .search { flex: 1 1 320px; }
+.lib-find select { min-height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; background: var(--paper); color: var(--ink); font-size: 13.5px; }
+.lib-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.lib-kinds a { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--paper); text-decoration: none; }
+.lib-kinds a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.lib-bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; padding: 8px 12px !important; position: sticky; top: 52px; z-index: 15; }
+.lib-bulk select { min-height: 32px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; background: var(--paper); color: var(--ink); }
+.lib-table th[scope=row] { font-weight: 400; }
+.lib-tt { display: flex; gap: 10px; align-items: flex-start; }
+.lib-tt .lib-ext { width: 38px; height: 38px; font-size: 10px; flex: none; }
+.lib-tt a[data-open-local] { font-weight: 650; color: var(--ink); }
+.lib-tt a[data-open-local]:hover { color: var(--accent); }
+.lib-tt small { display: block; font-size: 12px; }
+.lib-tt .snip { color: var(--muted); margin-top: 2px; }
+.lib-ext.k-hwp { background: #e0f2fe; color: #0369a1; } .lib-ext.k-word { background: #dbeafe; color: #1d4ed8; }
+.lib-ext.k-excel { background: #dcfce7; color: #15803d; } .lib-ext.k-ppt { background: #ffedd5; color: #c2410c; }
+.lib-ext.k-pdf { background: #fee2e2; color: #b91c1c; } .lib-ext.k-image { background: #f3e8ff; color: #7e22ce; }
+.pager { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.ex-menu .ex-form { min-width: 280px; }
+.lib-tt small { font-weight: 400; }

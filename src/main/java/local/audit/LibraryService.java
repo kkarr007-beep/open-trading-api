@@ -198,7 +198,30 @@ public class LibraryService {
         return Op.ok("내용을 다시 읽습니다.");
     }
 
-    public Map<String, Object> list(String categoryId, String q, int page, int size) {
+    /** 파일 형식 묶음: 거르기 칩에 쓴다. */
+    public static final Map<String, String> KINDS = new LinkedHashMap<>();
+    static {
+        KINDS.put("hwp", "한글"); KINDS.put("word", "워드"); KINDS.put("excel", "엑셀"); KINDS.put("ppt", "파워포인트");
+        KINDS.put("pdf", "PDF"); KINDS.put("image", "그림"); KINDS.put("etc", "기타");
+    }
+
+    public static String kindOf(String fileName) {
+        String e = Txt.ext(Txt.str(fileName)).replace(".", "").toLowerCase();
+        return switch (e) {
+            case "hwp", "hwpx" -> "hwp";
+            case "doc", "docx", "rtf" -> "word";
+            case "xls", "xlsx", "csv", "xlsm" -> "excel";
+            case "ppt", "pptx" -> "ppt";
+            case "pdf" -> "pdf";
+            case "png", "jpg", "jpeg", "gif", "bmp", "webp", "tif", "tiff" -> "image";
+            default -> "etc";
+        };
+    }
+
+    public Map<String, Object> list(String categoryId, String q, int page, int size) { return list(categoryId, q, null, null, page, size); }
+
+    /** 찾기·거르기·정렬·쪽 나누기. kind: 파일 형식 묶음, sort: new(최근)·old·title·size. */
+    public Map<String, Object> list(String categoryId, String q, String kind, String sort, int page, int size) {
         StringBuilder sql = new StringBuilder("""
             SELECT d.Id, d.CategoryId, CASE WHEN p.Name IS NULL THEN c.Name ELSE p.Name || ' › ' || c.Name END AS Category,
                    d.Title, d.FileName, d.SizeBytes, d.Tags, d.Note, d.RegisteredAt, d.ReadState, t.Body AS Body
@@ -216,14 +239,24 @@ public class LibraryService {
             sql.append(" AND (d.Title LIKE ? ESCAPE '\\' OR d.FileName LIKE ? ESCAPE '\\' OR d.Tags LIKE ? ESCAPE '\\' OR d.Note LIKE ? ESCAPE '\\' OR t.Body LIKE ? ESCAPE '\\')");
             for (int i = 0; i < 5; i++) args.add(Txt.like(w));
         }
-        sql.append(" ORDER BY d.RegisteredAt DESC");
+        sql.append(switch (Txt.str(sort)) {
+            case "old" -> " ORDER BY d.RegisteredAt";
+            case "title" -> " ORDER BY d.Title COLLATE NOCASE, d.RegisteredAt DESC";
+            case "size" -> " ORDER BY d.SizeBytes DESC";
+            default -> " ORDER BY d.RegisteredAt DESC";
+        });
         List<Map<String, Object>> all = db.rows(sql.toString(), args.toArray());
+        Map<String, Integer> kinds = new LinkedHashMap<>();
+        for (String k : KINDS.keySet()) kinds.put(k, 0);
+        for (Map<String, Object> d : all) kinds.merge(kindOf(Txt.str(d.get("FileName"))), 1, Integer::sum);
+        if (KINDS.containsKey(Txt.str(kind))) all.removeIf(d -> !kindOf(Txt.str(d.get("FileName"))).equals(kind));
         int pages = Math.max(1, (all.size() + size - 1) / size);
         int p = Math.max(1, Math.min(page, pages));
         List<Map<String, Object>> items = new ArrayList<>(all.subList(Math.min(all.size(), (p - 1) * size), Math.min(all.size(), p * size)));
         for (Map<String, Object> d : items) decorate(d, terms);
         Map<String, Object> v = new LinkedHashMap<>();
         v.put("items", items);
+        v.put("kinds", kinds);
         v.put("total", all.size());
         v.put("page", p);
         v.put("pages", pages);
@@ -248,6 +281,7 @@ public class LibraryService {
         d.put("SizeText", size(((Number) d.getOrDefault("SizeBytes", 0)).longValue()));
         d.put("RegisteredDisplay", Kst.display(Txt.str(d.get("RegisteredAt"))));
         d.put("Ext", Txt.ext(Txt.str(d.get("FileName"))).replace(".", "").toUpperCase());
+        d.put("Kind", kindOf(Txt.str(d.get("FileName"))));
     }
 
     static String size(long b) {
@@ -263,6 +297,7 @@ public class LibraryService {
         d.put("SizeText", size(((Number) d.getOrDefault("SizeBytes", 0)).longValue()));
         d.put("RegisteredDisplay", Kst.display(Txt.str(d.get("RegisteredAt"))));
         d.put("Ext", Txt.ext(Txt.str(d.get("FileName"))).replace(".", "").toUpperCase());
+        d.put("Kind", kindOf(Txt.str(d.get("FileName"))));
         return d;
     }
 
@@ -278,6 +313,17 @@ public class LibraryService {
         int n = db.tx(conn -> Db.update(conn, "UPDATE LibDocs SET Title=?, CategoryId=?, Tags=?, Note=? WHERE Id=?",
             title, p.get("categoryId"), Txt.fit(p.get("tags"), 300, false), Txt.fit(p.get("note"), 2000, true), id));
         return n == 0 ? Op.fail(404, "자료를 찾을 수 없습니다.") : Op.ok("저장했습니다.");
+    }
+
+    /** 고른 자료를 다른 분류로 옮긴다. */
+    public Op move(List<String> ids, String categoryId) {
+        if (ids == null || ids.isEmpty()) return Op.bad("옮길 자료를 고르세요.");
+        return db.run(conn -> {
+            if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Id=?", Txt.str(categoryId)) == 0) throw Op.abort("옮길 분류를 고르세요.");
+            int n = 0;
+            for (String id : ids) if (Txt.isId(id)) n += Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE Id=?", categoryId, id);
+            return Op.ok("자료 " + n + "건을 옮겼습니다.");
+        });
     }
 
     public Op delete(String id) {

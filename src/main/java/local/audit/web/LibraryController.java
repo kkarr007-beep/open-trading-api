@@ -34,17 +34,20 @@ public class LibraryController {
 
     @GetMapping("/library")
     public String list(@RequestParam(required = false) String cat, @RequestParam(required = false) String q,
+                       @RequestParam(required = false) String kind, @RequestParam(required = false) String sort,
                        @RequestParam(required = false) Integer page, Model model) {
         List<Map<String, Object>> tree = lib.tree();
         String sec = lib.sectionOf(cat);
         model.addAttribute("tree", tree);
         model.addAttribute("sec", sec);
-        model.addAttribute("secNode", tree.stream().filter(t -> sec.equals(t.get("Id"))).findFirst().orElse(null));
         model.addAttribute("catPath", lib.path(cat));
         model.addAttribute("total", lib.total());
         model.addAttribute("cat", Txt.str(cat));
         model.addAttribute("q", Txt.str(q));
-        Map<String, Object> v = lib.list(cat, q, page == null ? 1 : page, 40);
+        model.addAttribute("kind", Txt.str(kind));
+        model.addAttribute("sort", Txt.str(sort));
+        model.addAttribute("KINDS", LibraryService.KINDS);
+        Map<String, Object> v = lib.list(cat, q, kind, sort, page == null ? 1 : page, 20);
         model.addAttribute("v", v);
         Map<String, Integer> counts = links.counts("doc");
         Map<String, List<Map<String, Object>>> linked = new java.util.HashMap<>();
@@ -53,6 +56,20 @@ public class LibraryController {
         model.addAttribute("linked", linked);
         model.addAttribute("caseChoices", links.caseChoices());
         return "library";
+    }
+
+    /** 고른 자료 한꺼번에: 옮기기·지우기. */
+    @PostMapping("/library/bulk")
+    public Object bulk(@RequestParam(name = "id", required = false) List<String> ids, @RequestParam(name = "op", required = false) String action,
+                       @RequestParam(required = false) String categoryId, HttpServletRequest req) {
+        if (ids == null || ids.isEmpty()) return Web.reply(req, Op.bad("자료를 고르세요."), null);
+        if ("move".equals(action)) return Web.reply(req, lib.move(ids, categoryId), null);
+        if ("delete".equals(action)) {
+            int n = 0;
+            for (String id : ids) if (Txt.isId(id) && lib.delete(id).ok) n++;
+            return Web.reply(req, Op.ok("자료 " + n + "건을 지웠습니다."), null);
+        }
+        return Web.reply(req, Op.bad("할 일을 고르세요."), null);
     }
 
     @GetMapping("/library/new")
@@ -106,7 +123,8 @@ public class LibraryController {
         if (ok == 0 && dupCount > 0) return Web.reply(req, Op.fail(409, dupCount == 1 ? dupMsg : "고른 파일 " + dupCount + "개가 모두 이미 등재되어 있습니다."), dupCount == 1 ? "/library/" + dupId : null);
         String msg = ok == 1 ? last : "자료 " + ok + "건을 등재했습니다. 내용은 뒤에서 읽습니다.";
         if (dupCount > 0) msg += " 이미 있는 파일 " + dupCount + "개는 건너뛰었습니다.";
-        return Web.reply(req, Op.ok(msg), ok == 1 ? "/library/" + lastId : "/library?cat=" + Txt.str(p.get("categoryId")));
+        String back = Txt.str(p.get("back"));
+        return Web.reply(req, Op.ok(msg), back.startsWith("/library") ? back : ok == 1 ? "/library/" + lastId : "/library?cat=" + Txt.str(p.get("categoryId")));
     }
 
     @PostMapping("/library/categories/{what}")
@@ -124,7 +142,7 @@ public class LibraryController {
             case "delete" -> lib.delete(id);
             default -> Op.fail(404, "없는 작업입니다.");
         };
-        return Web.reply(req, op, op.ok && "delete".equals(what) ? "/library" : null);
+        return Web.reply(req, op, null);
     }
 
     /** 원본을 이 컴퓨터의 프로그램(한글·워드·엑셀·PDF 보기 등)으로 연다. 보관본을 고치지 않게 임시 복사본을 읽기 전용으로 연다. */

@@ -112,13 +112,9 @@
         <nav class="sn-group" data-group="library" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'library'}" aria-label="자료">
             <p class="sn-title">자료</p>
                 <a href="/library" th:aria-current="${navKey == 'library' and #strings.isEmpty(libCat)} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>전체 자료</span></a>
-                <th:block th:each="s : ${libTree}">
-                <a class="sn-sec" th:href="@{/library(cat=${s.Id})}" th:aria-current="${libCat == s.Id} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span th:text="${s.Name}"></span><em class="sn-n" th:text="${s.Docs}"></em></a>
-                <a class="sn-sub" th:each="c : ${s.children}" th:href="@{/library(cat=${c.Id})}" th:aria-current="${libCat == c.Id} ? 'page'"><span th:text="${c.Name}"></span><em class="sn-n" th:text="${c.Docs}"></em></a>
-                </th:block>
-                <p class="sn-title sn-gap">자료 관리</p>
-                <a href="/library/new" th:aria-current="${navKey == 'library/new'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v8M8 12h8M4.5 4.5h15v15h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>자료 등재</span></a>
-                <a href="/library/categories" th:aria-current="${navKey == 'library/categories'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>분류 추가·관리</span></a>
+
+                                <a href="/library/new" th:aria-current="${navKey == 'library/new'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v8M8 12h8M4.5 4.5h15v15h-15z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>여러 파일 올리기</span></a>
+                <a href="/library/categories" th:aria-current="${navKey == 'library/categories'} ? 'page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>분류 관리</span></a>
         </nav>
         <nav class="sn-group" data-group="board" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'board'}" aria-label="경영현황">
             <p class="sn-title">경영현황</p>

@@ -491,4 +491,24 @@ class CoreTest {
         assertEquals(List.of(List.of("영업 1팀", "영업1팀")), orgs.similar(), "띄어쓰기만 다른 이름을 묶어 보여 줌");
         assertFalse(orgs.people().isEmpty());
     }
+
+    @Test
+    void libraryFiltersByKindSortsAndMovesInBulk() throws Exception {
+        LibraryService lib = new LibraryService(db, files, reader);
+        String a = (String) lib.categories().get(0).get("Id"), b = (String) lib.categories().get(1).get("Id");
+        Op x = lib.add(a, "가 문서", "", "", "가.txt", new ByteArrayInputStream("하나".getBytes(StandardCharsets.UTF_8)));
+        Op y = lib.add(a, "나 표", "", "", "나.csv", new ByteArrayInputStream("a,b\n1,2".getBytes(StandardCharsets.UTF_8)));
+        lib.awaitReads();
+        assertEquals("excel", LibraryService.kindOf("나.CSV"));
+        assertEquals("hwp", LibraryService.kindOf("보고.hwpx"));
+        Map<String, Object> all = lib.list(a, "", "", "title", 1, 20);
+        @SuppressWarnings("unchecked") Map<String, Integer> kinds = (Map<String, Integer>) all.get("kinds");
+        assertEquals(1, kinds.get("excel"));
+        assertEquals(1, ((Number) lib.list(a, "", "excel", "", 1, 20).get("total")).intValue());
+        @SuppressWarnings("unchecked") List<Map<String, Object>> items = (List<Map<String, Object>>) all.get("items");
+        assertEquals("가 문서", items.get(0).get("Title"), "제목 순");
+        assertTrue(lib.move(List.of(x.id, y.id), b).ok);
+        assertEquals(2, ((Number) lib.list(b, "", "", "", 1, 20).get("total")).intValue());
+        assertFalse(lib.move(List.of(x.id), "없는분류").ok);
+    }
 }

@@ -164,7 +164,7 @@ document.addEventListener("click", function (event) {
             var n = boxes().filter(function (b) { return b.checked; }).length;
             form.hidden = n === 0;
             var c = form.querySelector('[data-bulk-count]');
-            if (c) c.textContent = '고른 ' + n + '건 삭제';
+            if (c) c.textContent = (c.getAttribute('data-bulk-label') || '고른 {n}건 삭제').replace('{n}', n);
         }
         document.addEventListener('change', function (e) {
             var t = e.target;
@@ -214,4 +214,37 @@ document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[data-to-opener]');
     if (!a || !window.opener || window.opener.closed) return;
     try { window.opener.location.href = a.href; window.opener.focus(); e.preventDefault(); } catch (err) { /* 다른 창이면 그냥 새 창으로 */ }
+});
+
+
+// 자료 한꺼번에 지우기: 확인 뒤 같은 양식을 '지우기'로 보낸다.
+document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-bulk-delete]');
+    if (!b) return;
+    var form = b.form;
+    if (!form || !window.confirm(b.getAttribute('data-bulk-delete'))) return;
+    form.querySelector('input[name=op]').value = 'delete';
+    if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
+    setTimeout(function () { form.querySelector('input[name=op]').value = 'move'; }, 0);
+});
+
+// 자료 제목: 누르면 이 컴퓨터의 프로그램으로 원본을 연다. 열 수 없으면 내려받는다.
+document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-open-local]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', a.getAttribute('data-open-local'));
+    xhr.setRequestHeader('X-Audit-Fetch', '1');
+    xhr.onload = function () {
+        var msg = '';
+        try { msg = JSON.parse(xhr.responseText).message || ''; } catch (err) { /* 무시 */ }
+        if (xhr.status >= 200 && xhr.status < 300) { if (window.auditToast) window.auditToast(msg || '원본을 열었습니다.'); }
+        else {
+            if (window.auditToast) window.auditToast('이 컴퓨터에서 바로 열지 못해 내려받습니다.');
+            var href = a.getAttribute('href') + '?dl=1';
+            if (window.auditApp && window.auditApp.download) window.auditApp.download(href); else location.href = href;
+        }
+    };
+    xhr.send();
 });
