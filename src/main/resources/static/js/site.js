@@ -744,9 +744,9 @@ document.addEventListener("click", function (e) {
 // 사규 본문 속 표: 본문(A4) 너비를 넘으면 지금 열 너비 비율대로 본문 너비에 맞춘다. 긴 글은 칸 안에서 줄을 바꾼다.
 (function () {
   function fit() {
-    Array.prototype.forEach.call(document.querySelectorAll(".rule-page .abody table"), function (t) {
-      if (t.closest("table") !== t && t.parentElement.closest("table")) return;   // 표 안의 표는 바깥 표를 따른다
-      var box = t.closest(".abody");
+    Array.prototype.forEach.call(document.querySelectorAll(".rule-page .abody table, #main .rich table, #main .anote table, #main .meet-text table"), function (t) {
+      if (t.parentElement.closest("table") || t.closest(".rte, [contenteditable]")) return;   // 표 안의 표는 바깥 표를 따르고, 편집 중인 표는 건드리지 않는다
+      var box = t.closest(".abody, .rich, .anote, .meet-text");
       if (!box || t.getBoundingClientRect().width <= box.clientWidth + 1) return;
       // 칸이 가장 많고 합친 칸이 없는 줄로 열 너비를 잰다
       var best = null;
@@ -772,7 +772,7 @@ document.addEventListener("click", function (e) {
       t.classList.add("fit-a4");
     });
   }
-  if (!document.querySelector(".rule-page .abody table")) return;
+  if (!document.querySelector(".rule-page .abody table, #main .rich table, #main .anote table, #main .meet-text table")) return;
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fit); else fit();
   window.addEventListener("load", fit);
   var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(fit, 150); });

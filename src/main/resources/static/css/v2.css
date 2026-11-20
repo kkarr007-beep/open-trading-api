@@ -320,6 +320,10 @@ dialog.dlg-dragging { transition: none !important; opacity: .96; }
 /* 사규 본문 속 표는 본문(A4) 너비를 넘지 않는다 */
 .rule-page .abody { overflow-wrap: anywhere; }
 .rule-page .abody table { max-width: 100% !important; }
-.rule-page .abody table.fit-a4 { table-layout: fixed !important; width: 100% !important; }
-.rule-page .abody table.fit-a4 td, .rule-page .abody table.fit-a4 th { overflow-wrap: anywhere; word-break: normal; white-space: normal; min-width: 0 !important; }
-.rule-page .abody table.fit-a4 col { min-width: 0 !important; }
+table.fit-a4 { table-layout: fixed !important; width: 100% !important; }
+table.fit-a4 td, table.fit-a4 th { overflow-wrap: anywhere; word-break: normal; white-space: normal; min-width: 0 !important; }
+table.fit-a4 col { min-width: 0 !important; }
+.rich .tw:has(> table.fit-a4) { overflow-x: visible; }
+/* 읽어 온 문서: 탭은 4칸 폭, 문단 들여쓰기·간격은 원본 값(문서에서 읽은 style)을 그대로 쓴다 */
+.rich, .abody, .rte-body, .anote, .meet-text { tab-size: 4; }
+.rich .para, .abody .para, .rte-body .para { white-space: pre-wrap; }

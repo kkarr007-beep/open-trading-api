@@ -120,6 +120,20 @@ public final class Rich {
 
     private enum Mode { DOCX, PPTX, HWPX }
 
+    /** 들여쓰기(왼쪽 여백·첫 줄)와 문단 위아래 간격을 pt 단위 스타일로. 지나친 값은 자른다. */
+    static String indent(double leftPt, double firstPt, double beforePt, double afterPt) {
+        StringBuilder st = new StringBuilder();
+        leftPt = Math.max(0, Math.min(200, leftPt));
+        firstPt = Math.max(-100, Math.min(100, firstPt));
+        if (leftPt >= 1) st.append("padding-left:").append(Math.round(leftPt * 10) / 10.0).append("pt;");
+        if (Math.abs(firstPt) >= 1) st.append("text-indent:").append(Math.round(firstPt * 10) / 10.0).append("pt;");
+        if (beforePt >= 2) st.append("margin-top:").append(Math.round(Math.min(36, beforePt) * 10) / 10.0).append("pt;");
+        if (afterPt >= 2) st.append("margin-bottom:").append(Math.round(Math.min(36, afterPt) * 10) / 10.0).append("pt;");
+        return st.toString();
+    }
+
+    static String firstNonNull(String a, String b) { return a != null ? a : b; }
+
     private static final class Walker {
         final ZipFile zip;
         /** 문서 전체. 표 칸 안에 있을 때는 out이 그 칸의 글을 가리킨다. */
@@ -175,6 +189,7 @@ public final class Rich {
                 XMLStreamReader xr = factory().createXMLStreamReader(in);
                 String charId = null, paraId = null;
                 StringBuilder style = null;
+                double[] hm = null;
                 while (xr.hasNext()) {
                     int ev = xr.next();
                     if (ev == XMLStreamConstants.START_ELEMENT) {
@@ -190,11 +205,19 @@ public final class Rich {
                                 double v = num(attr(xr, "hangul"), 0);
                                 if (v != 0 && Math.abs(v) <= 50) style.append("letter-spacing:").append(v / 100.0).append("em;");
                             }
-                        } else if (n.equals("paraPr")) paraId = attr(xr, "id");
+                        } else if (n.equals("paraPr")) { paraId = attr(xr, "id"); hm = new double[4]; }
                         else if (n.equals("align") && paraId != null) paraAligns.put(paraId, align(attr(xr, "horizontal")));
+                        // 문단 여백(HWPUNIT, 1pt = 100): intent 첫 줄, left 왼쪽, prev 위, next 아래
+                        else if (paraId != null && hm != null && (n.equals("intent") || n.equals("left") || n.equals("prev") || n.equals("next"))) {
+                            double v = num(attr(xr, "value"), 0) / 100.0;
+                            switch (n) { case "intent" -> hm[1] = v; case "left" -> hm[0] = v; case "prev" -> hm[2] = v; default -> hm[3] = v; }
+                        }
                     } else if (ev == XMLStreamConstants.END_ELEMENT) {
                         if (xr.getLocalName().equals("charPr") && charId != null) { charStyles.put(charId, style.toString()); charId = null; }
-                        else if (xr.getLocalName().equals("paraPr")) paraId = null;
+                        else if (xr.getLocalName().equals("paraPr")) {
+                            if (paraId != null && hm != null) paraAligns.merge(paraId, indent(hm[0], hm[1], hm[2], hm[3]), String::concat);
+                            paraId = null; hm = null;
+                        }
                     }
                 }
                 xr.close();
@@ -280,6 +303,14 @@ public final class Rich {
                             if (mode == Mode.PPTX) paraStyle += align(attr(xr, "algn"));
                         }
                         case "jc" -> { if (inParaProps && mode == Mode.DOCX) paraStyle += align(attr(xr, "val")); }
+                        case "ind" -> {
+                            // 워드 들여쓰기(1/20pt): left·start 왼쪽, firstLine 첫 줄, hanging 내어쓰기
+                            if (inParaProps && mode == Mode.DOCX) {
+                                double left = num(firstNonNull(attr(xr, "left"), attr(xr, "start")), 0) / 20.0;
+                                double first = num(attr(xr, "firstLine"), 0) / 20.0 - num(attr(xr, "hanging"), 0) / 20.0;
+                                paraStyle += indent(left, first, 0, 0);
+                            }
+                        }
                         case "pStyle" -> {
                             String v = attr(xr, "val");
                             if (v != null && v.toLowerCase().matches("(heading|title|제목).*")) paraStyle += "font-weight:700;font-size:13pt;";
@@ -302,6 +333,8 @@ public final class Rich {
                         case "u" -> { if (inRunProps && mode == Mode.DOCX && on(xr)) runStyle += "text-decoration:underline;"; }
                         case "sz" -> { if (inRunProps && mode == Mode.DOCX) runStyle += size(num(attr(xr, "val"), 0) / 2.0); }
                         case "spacing" -> {
+                            if (inParaProps && !inRunProps && mode == Mode.DOCX)
+                                paraStyle += indent(0, 0, num(attr(xr, "before"), 0) / 20.0, num(attr(xr, "after"), 0) / 20.0);
                             if (inRunProps && mode == Mode.DOCX) {
                                 double sp = num(attr(xr, "val"), 0) / 20.0;
                                 if (sp != 0 && Math.abs(sp) <= 10) runStyle += "letter-spacing:" + sp + "pt;";
@@ -311,7 +344,7 @@ public final class Rich {
                             inText = true;
                             if (!runStyle.isEmpty()) { para.append("<span style=\"").append(runStyle).append("\">"); spanOpen = true; }
                         }
-                        case "tab" -> para.append(" ");
+                        case "tab" -> { if (!inParaProps) para.append('\t'); }   // 문단 속성 안의 탭 위치 정의는 건너뛴다
                         case "br", "lineBreak" -> para.append("<br>");
                         case "tbl" -> {
                             flush(para, paraStyle, false);
@@ -495,13 +528,14 @@ public final class Rich {
     }
 
     public static final String CSS = """
-        body.rich{margin:0;padding:18px 20px;background:#fff;color:#1d1d1f;font:14px/1.65 "Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;overflow-wrap:anywhere}
-        .rich .para{margin:0 0 2px;white-space:pre-wrap;overflow-wrap:anywhere}
+        html{background:#f4f4f7}
+        body.rich{margin:0 auto;max-width:794px;box-sizing:border-box;tab-size:4;padding:18px 20px;background:#fff;color:#1d1d1f;font:14px/1.65 "Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;overflow-wrap:anywhere}
+        .rich .para{margin:0 0 2px;white-space:pre-wrap;tab-size:4;overflow-wrap:anywhere}
         .rich .gap{height:.7em}
         .rich .tw{overflow-x:auto;margin:8px 0;max-width:100%}
         .rich table{border-collapse:collapse;max-width:100%;font-size:13px}
-        .rich th,.rich td{border:1px solid #c9c9d1;padding:5px 8px;vertical-align:top;text-align:left;overflow-wrap:break-word;word-break:keep-all;min-width:3.2em}
-        .rich td .para,.rich th .para{overflow-wrap:break-word;word-break:keep-all}
+        .rich th,.rich td{border:1px solid #c9c9d1;padding:5px 8px;vertical-align:top;text-align:left;overflow-wrap:anywhere;word-break:keep-all;min-width:3.2em}
+        .rich td .para,.rich th .para{overflow-wrap:anywhere;word-break:keep-all}
         .rich th{background:#f1f1f5;font-weight:650}
         .rich td .para{margin:0}
         .rich img{max-width:100%;height:auto;display:block;margin:8px 0}

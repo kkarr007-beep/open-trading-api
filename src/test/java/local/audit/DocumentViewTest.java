@@ -146,4 +146,34 @@ class DocumentViewTest {
         assertTrue(html.contains("<td colspan=\"2\"><div class=\"para\">합친 머리</div></td>"), html);
         assertTrue(html.contains("<td rowspan=\"2\"><div class=\"para\">세로</div></td>"), html);
     }
+
+    @Test
+    void docxKeepsIndentSpacingAndTabs() throws Exception {
+        String W = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"";
+        String body = "<w:p><w:pPr><w:tabs><w:tab w:val=\"left\" w:pos=\"2000\"/></w:tabs><w:spacing w:before=\"240\" w:after=\"120\"/>"
+            + "<w:ind w:left=\"720\" w:hanging=\"360\"/></w:pPr><w:r><w:t>①</w:t></w:r><w:r><w:tab/><w:t>내어 쓴 항</w:t></w:r></w:p>";
+        Path f = dir.resolve("ind.docx");
+        zip(f, Map.of("word/document.xml", "<w:document " + W + "><w:body>" + body + "</w:body></w:document>"));
+        String html = Rich.fromFile(f, ".docx");
+        assertTrue(html.contains("padding-left:36.0pt;") && html.contains("text-indent:-18.0pt;"), "들여쓰기·내어쓰기: " + html);
+        assertTrue(html.contains("margin-top:12.0pt;") && html.contains("margin-bottom:6.0pt;"), "문단 위아래 간격: " + html);
+        assertTrue(html.contains("①\t내어 쓴 항"), "탭은 탭 글자로, 탭 위치 정의는 글로 넣지 않음: " + html);
+        String kept = HtmlClean.clean(html);
+        assertTrue(kept.contains("padding-left:36.0pt") && kept.contains("text-indent:-18.0pt") && kept.contains("margin-top:12.0pt") && kept.contains("\t"), "저장해도 남음: " + kept);
+    }
+
+    @Test
+    void hwpxKeepsParagraphMargins() throws Exception {
+        String hh = "xmlns:hh=\"http://www.hancom.co.kr/hwpml/2011/head\" xmlns:hc=\"http://www.hancom.co.kr/hwpml/2011/core\"";
+        String head = "<hh:head " + hh + "><hh:refList><hh:paraProperties><hh:paraPr id=\"3\"><hh:align horizontal=\"JUSTIFY\"/><hh:margin>"
+            + "<hc:intent value=\"-1500\" unit=\"HWPUNIT\"/><hc:left value=\"3000\" unit=\"HWPUNIT\"/><hc:right value=\"0\"/>"
+            + "<hc:prev value=\"600\"/><hc:next value=\"0\"/></hh:margin></hh:paraPr></hh:paraProperties></hh:refList></hh:head>";
+        String hp = "xmlns:hp=\"http://www.hancom.co.kr/hwpml/2011/paragraph\"";
+        String sec = "<hs:sec xmlns:hs=\"http://www.hancom.co.kr/hwpml/2011/section\" " + hp + "><hp:p paraPrIDRef=\"3\"><hp:run><hp:t>가.</hp:t><hp:tab/><hp:t>목 내용</hp:t></hp:run></hp:p></hs:sec>";
+        Path f = dir.resolve("m.hwpx");
+        zip(f, Map.of("Contents/header.xml", head, "Contents/section0.xml", sec));
+        String html = Rich.fromFile(f, ".hwpx");
+        assertTrue(html.contains("text-align:justify;") && html.contains("padding-left:30.0pt;") && html.contains("text-indent:-15.0pt;") && html.contains("margin-top:6.0pt;"), html);
+        assertTrue(html.contains("가.\t목 내용"), html);
+    }
 }

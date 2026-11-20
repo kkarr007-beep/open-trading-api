@@ -30,7 +30,7 @@ public final class HtmlClean {
     private static final Set<String> CSS = Set.of("color", "background-color", "font-size", "font-weight", "font-style", "font-family",
         "text-decoration", "text-decoration-line", "text-align", "vertical-align", "padding-left", "margin-left", "text-indent",
         "line-height", "letter-spacing", "width", "min-width", "border", "border-top", "border-bottom", "border-left", "border-right",
-        "border-collapse", "border-color", "border-style", "border-width", "padding", "white-space", "list-style-type", "height", "table-layout");
+        "border-collapse", "border-color", "border-style", "border-width", "padding", "white-space", "list-style-type", "height", "table-layout", "margin-top", "margin-bottom", "tab-size");
 
     private static final Pattern COMMENT = Pattern.compile("(?s)<!--.*?-->|<!\\[[^]]*]>|<\\?[^>]*>|<!DOCTYPE[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][a-zA-Z0-9:_-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>");

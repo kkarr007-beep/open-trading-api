@@ -107,8 +107,8 @@ public final class HwpHtml {
                 case Justify, Distribute, Divide -> st.append("text-align:justify;");
                 default -> { }
             }
-            int left = ps.getLeftMargin();
-            if (left > 0) st.append("padding-left:").append(Math.min(20, Math.round(left / 2000.0 * 10) / 10.0)).append("em;");
+            // 문단 여백(HWPUNIT×2, 1pt = 200): 왼쪽, 첫 줄(음수면 내어쓰기), 문단 위·아래
+            st.append(Rich.indent(ps.getLeftMargin() / 200.0, ps.getIndent() / 200.0, ps.getTopParaSpace() / 200.0, ps.getBottomParaSpace() / 200.0));
             return st.toString();
         }
 
@@ -157,7 +157,7 @@ public final class HwpHtml {
                             }
                         }
                     } else if (ch.getCode() == 10) para.append("<br>");
-                    else if (ch.getCode() == 9) para.append("&emsp;");
+                    else if (ch.getCode() == 9) para.append('\t');
                     pos += ch.getCharSize();
                 }
             }
