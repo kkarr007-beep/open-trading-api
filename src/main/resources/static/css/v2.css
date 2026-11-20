@@ -250,3 +250,9 @@ table.pin-th thead th { position: sticky; z-index: 6; background: var(--paper) !
   .rule-page .reg-toc { position: static; max-height: 240px; }
 }
 @media print { .rule-page { max-width: none; } .rule-page .reg-layout { grid-template-columns: 1fr; } }
+
+/* 대화 상자 끌어 옮기기: 제목 줄에 손 모양 */
+dialog .dialog-head, dialog .preview-bar { cursor: move; user-select: none; }
+dialog .dialog-head :is(button, a, input, select) { cursor: pointer; }
+dialog.dlg-moved { position: fixed; }
+dialog.dlg-dragging { transition: none !important; opacity: .96; }

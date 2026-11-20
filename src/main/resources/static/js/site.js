@@ -605,3 +605,46 @@ document.addEventListener("click", function (event) {
   }, { rootMargin: "-140px 0px -45% 0px", threshold: 0 });
   arts.forEach(function (el) { io.observe(el); });
 })();
+
+// 프로그램 안의 창(대화 상자): 제목 줄을 잡고 끌어 옮긴다. 닫으면 다음에는 다시 가운데에서 열린다.
+(function () {
+  var drag = null;
+  function handleOf(dlg, target) {
+    if (target.closest("input, select, textarea, button, a, label, [contenteditable], .rte, summary")) return null;
+    var head = target.closest(".dialog-head, .preview-bar");
+    if (head && dlg.contains(head)) return head;
+    var first = dlg.querySelector("h2, h3");
+    return first && first.contains(target) ? first : null;
+  }
+  document.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    var dlg = e.target.closest && e.target.closest("dialog[open]");
+    if (!dlg || !handleOf(dlg, e.target)) return;
+    var r = dlg.getBoundingClientRect();
+    dlg.style.margin = "0";
+    dlg.style.left = r.left + "px";
+    dlg.style.top = r.top + "px";
+    dlg.style.right = "auto";
+    dlg.style.bottom = "auto";
+    dlg.classList.add("dlg-moved", "dlg-dragging");
+    drag = { dlg: dlg, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width };
+    e.preventDefault();
+  });
+  document.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    // 제목 줄이 화면 밖으로 나가지 않게
+    var x = Math.min(Math.max(e.clientX - drag.dx, 60 - drag.w), window.innerWidth - 60);
+    var y = Math.min(Math.max(e.clientY - drag.dy, 0), window.innerHeight - 40);
+    drag.dlg.style.left = x + "px";
+    drag.dlg.style.top = y + "px";
+  });
+  function end() { if (drag) { drag.dlg.classList.remove("dlg-dragging"); drag = null; } }
+  document.addEventListener("pointerup", end);
+  document.addEventListener("pointercancel", end);
+  document.addEventListener("close", function (e) {
+    var d = e.target;
+    if (!d || d.tagName !== "DIALOG" || !d.classList.contains("dlg-moved")) return;
+    ["margin", "left", "top", "right", "bottom"].forEach(function (k) { d.style[k] = ""; });
+    d.classList.remove("dlg-moved");
+  }, true);
+})();
