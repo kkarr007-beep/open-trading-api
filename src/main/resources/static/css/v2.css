@@ -327,3 +327,9 @@ table.fit-a4 col { min-width: 0 !important; }
 /* 읽어 온 문서: 탭은 4칸 폭, 문단 들여쓰기·간격은 원본 값(문서에서 읽은 style)을 그대로 쓴다 */
 .rich, .abody, .rte-body, .anote, .meet-text { tab-size: 4; }
 .rich .para, .abody .para, .rte-body .para { white-space: pre-wrap; }
+
+/* 감사 건 목록 등 표의 줄 머리(제목 칸)는 색을 채우지 않는다. 표 위 제목 줄만 옅은 배경 */
+table.data tbody th { background: transparent; color: var(--ink); }
+/* 목록 줄의 긴 글·주소가 박스를 넘지 않게(프로그램 창의 브라우저에서도) */
+.wrow .t { min-width: 0; }
+.wrow .t a, .wrow .t small { overflow-wrap: break-word; word-break: break-word; }

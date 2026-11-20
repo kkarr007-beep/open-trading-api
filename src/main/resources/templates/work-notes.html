@@ -10,11 +10,11 @@
     </div>
     <div class="row-actions no-print"></div>
 </div>
-<nav class="section-tabs" aria-label="노트 종류">
+<nav class="section-tabs" aria-label="노트 종류" data-no-pin>
     <a th:href="@{/work/notes(q=${q})}" th:aria-current="${#strings.isEmpty(cat)} ? 'page'">전체</a>
     <a th:each="g : ${groups}" th:href="@{/work/notes(cat=${g.key()},q=${q})}" th:aria-current="${cat == g.key()} ? 'page'" th:text="|${g.name()} ${g.count()}|"></a>
 </nav>
-<form method="get" action="/work/notes" class="toolbar" style="margin-bottom:14px">
+<form method="get" action="/work/notes" class="toolbar" data-no-pin style="margin-bottom:14px">
     <input type="hidden" name="cat" th:value="${cat}" />
     <div class="search-row">
         <label class="search">

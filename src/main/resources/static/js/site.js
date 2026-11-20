@@ -500,7 +500,7 @@ document.addEventListener("click", function (event) {
   function pin() {
     var top = headH(), stuck = [];
     Array.prototype.forEach.call(main.querySelectorAll(BAR), function (b) {
-      if (inFloating(b) || b.parentElement.closest(BAR)) return;            // 대화창·펼침 안, 다른 줄 안의 줄은 빼고
+      if (inFloating(b) || b.parentElement.closest(BAR) || b.closest("[data-no-pin]")) return;   // data-no-pin: 고정하지 않는 화면            // 대화창·펼침 안, 다른 줄 안의 줄은 빼고
       if (b.closest("table") || b.offsetHeight === 0 || b.offsetHeight > window.innerHeight * 0.35) return;
       var off = top;
       stuck.forEach(function (s) { if (s.parentElement.contains(b) && s.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) off += s.offsetHeight; });
