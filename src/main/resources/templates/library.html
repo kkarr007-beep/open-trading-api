@@ -147,6 +147,7 @@
                 <div class="ex-form">
                     <div class="row-actions" style="margin:0">
                         <a class="btn btn-sm" th:href="|/library/${d.Id}/file|" th:data-open-local="|/library/${d.Id}/open|">열기</a>
+                        <a class="btn btn-sm" th:href="|/original/doc-${d.Id}|" target="_blank" rel="noopener" title="등록 당시 원본 모양으로 보기(새 창, 글자 찾기 됨)">원본 보기</a>
                         <a class="btn btn-sm" th:href="|/library/${d.Id}/file?dl=1|">내려받기</a>
                         <a class="btn btn-sm" th:href="@{/library(f=${d.CategoryId})} + '#d-' + ${d.Id}" th:if="${view != '' or scope == 'all' or v.deep}">들어 있는 폴더</a>
                     </div>

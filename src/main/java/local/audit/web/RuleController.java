@@ -34,8 +34,10 @@ public class RuleController {
     private final Paths2 paths;
 
     private final local.audit.LinkService links;
-    public RuleController(RuleService rules, TextReader reader, Paths2 paths, local.audit.LinkService links) {
+    private final local.audit.OriginalService originals;
+    public RuleController(RuleService rules, TextReader reader, Paths2 paths, local.audit.LinkService links, local.audit.OriginalService originals) {
         this.links = links;
+        this.originals = originals;
         this.rules = rules;
         this.reader = reader;
         this.paths = paths;
@@ -197,6 +199,7 @@ public class RuleController {
         model.addAttribute("m", m);
         model.addAttribute("cats", rules.categories());
         model.addAttribute("linkedCases", links.casesFor("rule", id));
+        model.addAttribute("orig", originals.info("rule-" + id));
         model.addAttribute("caseChoices", links.caseChoices());
         return "rule-read";
     }
@@ -206,6 +209,7 @@ public class RuleController {
     @PostMapping("/rules/new")
     public Object add(@RequestParam Map<String, String> p, @RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
         String text = p.get("text");
+        String orig = "";
         if (upload != null && !upload.isEmpty()) {
             if (upload.getSize() > 150L * 1024 * 1024) return Web.reply(req, Op.bad("파일이 너무 큽니다."), null);
             String name = Txt.str(upload.getOriginalFilename());
@@ -216,11 +220,13 @@ public class RuleController {
                 if (!res.ok() || Txt.blank(res.text())) return Web.reply(req, Op.bad("파일에서 글을 읽지 못했습니다. " + Txt.str(res.note())), null);
                 text = res.text();
                 if (Txt.blank(p.get("title")) && Txt.blank(p.get("reviseOf"))) p.put("title", Txt.stem(name));
+                if (local.audit.OriginalService.supports(name)) orig = originals.stash(tmp, name);
             } finally {
                 Files.deleteIfExists(tmp);
             }
         }
         Op op = rules.add(p, text);
+        if (op.ok && !orig.isEmpty()) originals.adopt(orig, "rule-" + op.id);
         return Web.reply(req, op, op.ok ? "/rules/" + op.id : null);
     }
 
@@ -243,6 +249,7 @@ public class RuleController {
             out.put("name", Txt.stem(name));
             out.put("text", Txt.str(res.text()));
             out.put("html", res.html());
+            if (res.ok() && local.audit.OriginalService.supports(name)) out.put("orig", originals.stash(tmp, name));
             return ResponseEntity.ok(out);
         } finally {
             Files.deleteIfExists(tmp);
@@ -279,9 +286,27 @@ public class RuleController {
         Map<String, Object> out = new java.util.LinkedHashMap<>();
         out.put("ok", op.ok);
         out.put("message", op.message);
+        String orig = Txt.str(body.get("orig"));
+        if (op.ok && Txt.isId(orig)) originals.adopt(orig, "rule-" + op.id);
         if (op.ok) out.put("go", "/rules/" + op.id);
         if (op.status == 409) out.put("dupId", op.extra);
         return ResponseEntity.ok(out);
+    }
+
+    /** 이미 있는 사규에 원본 파일(원본 보기용)을 붙이거나 바꾼다. 조문은 그대로 둔다. */
+    @PostMapping("/rules/{id}/original")
+    public Object original(@PathVariable String id, @RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
+        if (rules.read(id, null, null, false) == null) return Web.reply(req, Op.fail(404, "사규가 없습니다."), null);
+        if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("원본 파일을 고르세요."), null);
+        if (upload.getSize() > 150L * 1024 * 1024) return Web.reply(req, Op.bad("파일이 너무 큽니다."), null);
+        String name = Txt.str(upload.getOriginalFilename());
+        Path tmp = Files.createTempFile(paths.tmp, "orig", Txt.ext(name).isEmpty() ? ".bin" : Txt.ext(name));
+        try {
+            upload.transferTo(tmp);
+            return Web.reply(req, originals.request("rule-" + id, tmp, name), "/rules/" + id);
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
     }
 
     @PostMapping("/rules/{id}/reviewed")
@@ -297,6 +322,7 @@ public class RuleController {
     @PostMapping("/rules/{id}/delete")
     public Object delete(@PathVariable String id, HttpServletRequest req) {
         Op op = rules.delete(id);
+        if (op.ok) originals.delete("rule-" + id);
         return Web.reply(req, op, op.ok ? "/rules" : null);
     }
 

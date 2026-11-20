@@ -8,6 +8,7 @@
   var prev = document.getElementById("imPrev");
   var DRAFT = null;
   var DOC_HTML = "";   // 고른 문서를 읽은 원본 서식(HTML)
+  var ORIG = "";       // 고른 문서 원본(원본 보기용으로 잠시 맡긴 표)
 
   // ── 원본 서식을 조마다 잘라 붙이기 ──
   // 조 나누기는 글로 하고, 화면에는 원본 문서의 서식(굵게·글꼴·정렬·띄어쓰기·줄바꿈·표)을 그대로 쓰기 위해서다.
@@ -104,7 +105,7 @@
   $("imF").addEventListener("change", function () { if (this.files && this.files[0]) $("imP").click(); });
   $("imP").addEventListener("click", function () {
     var f = $("imF").files && $("imF").files[0];
-    if (!f) { DOC_HTML = ""; analyzeText($("imX").value); return; }
+    if (!f) { DOC_HTML = ""; ORIG = ""; analyzeText($("imX").value); return; }
     var fd = new FormData(); fd.append("upload", f);
     $("imP").disabled = true; $("imP").textContent = "읽는 중…";
     fetch("/rules/analyze", { method: "POST", body: fd, headers: { "X-Audit-Fetch": "1" } }).then(function (r) { return r.json(); }).then(function (r) {
@@ -114,6 +115,7 @@
       // 문서 모양(HTML)이 있으면 표 안의 표까지 칸을 살려 사규 글 꼴로 바꾼다
       var t = r.text;
       DOC_HTML = r.html || "";
+      ORIG = r.orig || "";
       if (r.html && window.sagyuPaste) { try { t = window.sagyuPaste.htmlToText(r.html) || r.text; } catch (e) { t = r.text; } }
       $("imX").value = t;
       analyzeText(t);
@@ -182,7 +184,7 @@
     sync();
     DRAFT.forEach(function (a) { if (a.html && a.content !== a._orig) delete a.html; });
     var body = { title: $("imT").value.trim(), categoryId: $("imC").value, label: $("imV").value, effectiveDate: $("imD").value, note: $("imR").value,
-      reviseOf: revise, mode: mode, articles: DRAFT, editOf: editOf };
+      reviseOf: revise, mode: mode, articles: DRAFT, editOf: editOf, orig: ORIG };
     if (!revise && !editOf && !body.title) { toast("사규명을 적으세요."); $("imT").focus(); return; }
     post("/rules/save", body).then(function (r) {
       if (r.ok) { toast(r.message); location.href = r.go; return; }

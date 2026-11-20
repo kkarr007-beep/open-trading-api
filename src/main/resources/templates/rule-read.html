@@ -30,6 +30,12 @@
         <a class="btn" th:if="${m.diff}" th:href="@{|/rules/${row.id()}|(v=${v.id})}">견주기 끄기</a>
         <a class="btn" th:href="@{/rules/new(revise=${row.id()})}">개정판 넣기</a>
         <a class="btn" th:href="|/rules/${row.id()}/export|">글로 내려받기</a>
+        <a class="btn" th:if="${orig != null}" th:href="|/original/rule-${row.id()}|" target="_blank" rel="noopener" title="등록할 때 올린 원본 파일의 모양 그대로(새 창, 글자 찾기 됨, 고칠 수 없음)">원본 보기</a>
+        <form method="post" th:action="|/rules/${row.id()}/original|" enctype="multipart/form-data" data-write="1" class="inline-form no-print orig-up"
+              th:data-confirm="${orig != null} ? '원본 파일을 바꿀까요? 원본 보기만 바뀌고 조문은 그대로입니다.' : null">
+            <label class="btn" th:title="${orig != null} ? '원본 보기에 쓸 파일을 바꿉니다. 조문은 바뀌지 않습니다.' : '한글·워드·PDF 원본을 올리면 원본 모양 그대로 볼 수 있습니다. 조문은 바뀌지 않습니다.'"
+                   ><span th:text="${orig != null} ? '원본 바꾸기' : '원본 파일 붙이기'">원본 파일 붙이기</span><input type="file" name="upload" hidden accept=".hwp,.hwpx,.doc,.docx,.rtf,.odt,.pdf,.xls,.xlsx,.xlsm,.ods,.ppt,.pptx,.odp,.png,.jpg,.jpeg" data-autosubmit /></label>
+        </form>
         <button type="button" class="btn" data-dialog="meta-dialog">사규 수정</button>
         <a class="btn" th:href="@{/rules/new(edit=${row.id()})}" th:if="${m.current}" title="분석 미리보기 편집기에서 조를 고치고·합치고·나누고·지웁니다">조문 전체 고치기</a>
         <form method="post" th:action="|/rules/${row.id()}/delete|" data-write="1" class="inline-form" th:data-confirm="|「${row.title()}」를 지울까요? 모든 판과 메모·북마크가 함께 지워집니다.|">

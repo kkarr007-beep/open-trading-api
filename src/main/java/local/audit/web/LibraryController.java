@@ -30,7 +30,8 @@ public class LibraryController {
     private final LibraryService lib;
 
     private final local.audit.LinkService links;
-    public LibraryController(LibraryService lib, local.audit.LinkService links) { this.lib = lib; this.links = links; }
+    private final local.audit.OriginalService originals;
+    public LibraryController(LibraryService lib, local.audit.LinkService links, local.audit.OriginalService originals) { this.lib = lib; this.links = links; this.originals = originals; }
 
     @GetMapping("/library")
     public String list(@RequestParam(required = false) String f, @RequestParam(required = false) String cat,
@@ -88,7 +89,7 @@ public class LibraryController {
             case "tag": return Web.reply(req, lib.addTags(ids, tags), null);
             case "delete": {
                 int n = 0;
-                for (String id : ids) if (Txt.isId(id) && lib.delete(id).ok) n++;
+                for (String id : ids) if (Txt.isId(id) && lib.delete(id).ok) { n++; originals.delete("doc-" + id); }
                 return Web.reply(req, Op.ok("자료 " + n + "건을 지웠습니다."), null);
             }
             default: return Web.reply(req, Op.bad("할 일을 고르세요."), null);
@@ -189,7 +190,7 @@ public class LibraryController {
             case "open" -> openLocally(id);
             case "meta" -> lib.meta(id, p);
             case "reread" -> lib.reread(id);
-            case "delete" -> lib.delete(id);
+            case "delete" -> { Op d = lib.delete(id); if (d.ok) originals.delete("doc-" + id); yield d; }
             default -> Op.fail(404, "없는 작업입니다.");
         };
         return Web.reply(req, op, null);
