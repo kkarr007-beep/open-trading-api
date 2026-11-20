@@ -33,7 +33,10 @@ public class WorkController {
     private final local.audit.Paths2 paths;
 
     private final local.audit.LinkService links;
-    public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths, local.audit.LinkService links) {
+    private final local.audit.OriginalService originals;
+    public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths, local.audit.LinkService links,
+                          local.audit.OriginalService originals) {
+        this.originals = originals;
         this.links = links;
         this.work = work;
         this.reports = reports;
@@ -190,7 +193,8 @@ public class WorkController {
             local.audit.extract.TextReader.Result res = reader.read(tmp, name);
             if (!res.ok() || Txt.blank(res.text())) return new String[] { null, null, "파일에서 글을 읽지 못했습니다. " + Txt.str(res.note()) };
             String html = res.html() != null ? res.html() : local.audit.extract.Rich.fromText(res.text());
-            return new String[] { res.text(), html, Txt.stem(name) };
+            String orig = local.audit.OriginalService.supports(name) ? originals.stash(tmp, name) : "";
+            return new String[] { res.text(), html, Txt.stem(name), orig };
         } finally {
             java.nio.file.Files.deleteIfExists(tmp);
         }
@@ -205,6 +209,7 @@ public class WorkController {
         if (d[0] == null) return Web.reply(req, Op.bad(d[2]), null);
         String t = Txt.blank(title) ? d[2] : title;
         Op op = work.change("문서로 노트 만들기", () -> work.noteFromDocument(t, ntype, d[0], d[1]));
+        if (op.ok && !d[3].isEmpty()) originals.adopt(d[3], "work-" + op.id);
         return Web.reply(req, op, op.ok ? "/work/item/" + op.id : null);
     }
 
@@ -215,6 +220,7 @@ public class WorkController {
         String[] d = readDocument(upload);
         if (d[0] == null) return Web.reply(req, Op.bad(d[2]), null);
         Op op = work.change("문서 가져오기", () -> work.importIntoItem(id, d[0], d[1], "replace".equals(mode)));
+        if (op.ok && !d[3].isEmpty()) originals.adopt(d[3], "work-" + id);
         return Web.reply(req, op, op.ok ? "/work/item/" + id : null);
     }
 
@@ -293,6 +299,7 @@ public class WorkController {
     @PostMapping("/work/meetings/new")
     public Object addMeeting(@RequestParam Map<String, String> p, @RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
         String text = p.get("text");
+        String orig = "";
         if (upload != null && !upload.isEmpty()) {
             String name = Txt.str(upload.getOriginalFilename());
             java.nio.file.Path tmp = java.nio.file.Files.createTempFile(paths.tmp, "meet", Txt.ext(name).isEmpty() ? ".txt" : Txt.ext(name));
@@ -302,12 +309,14 @@ public class WorkController {
                 if (!res.ok() || Txt.blank(res.text())) return Web.reply(req, Op.bad("파일에서 글을 읽지 못했습니다. " + Txt.str(res.note())), null);
                 text = (Txt.blank(text) ? "" : text + "\n\n") + res.text();
                 if (Txt.blank(p.get("title"))) p.put("title", Txt.stem(name));
+                if (local.audit.OriginalService.supports(name)) orig = originals.stash(tmp, name);
             } finally {
                 java.nio.file.Files.deleteIfExists(tmp);
             }
         }
         String body = text;
         Op op = work.change("회의록 넣기", () -> reports.addMeeting(p, body));
+        if (op.ok && !orig.isEmpty()) originals.adopt(orig, "work-" + op.id);
         return Web.reply(req, op, op.ok ? "/work/meetings?id=" + op.id : null);
     }
 
@@ -373,7 +382,7 @@ public class WorkController {
             default -> Op.fail(404, "없는 작업입니다.");
         });
         String go = null;
-        if (op.ok && "delete".equals(what)) go = Txt.blank(p.get("back")) ? "/work/list" : p.get("back");
+        if (op.ok && "delete".equals(what)) { go = Txt.blank(p.get("back")) ? "/work/list" : p.get("back"); originals.delete("work-" + id); }
         if (op.ok && "towork".equals(what)) go = "/work/item/" + op.id;
         return Web.reply(req, op, go);
     }

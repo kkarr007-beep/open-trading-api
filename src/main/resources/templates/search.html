@@ -41,7 +41,7 @@
             <strong th:text="${f.DisplayName}"></strong>
             <span th:text="|${f.Kind} · ${f.DocumentNo} ${f.CaseTitle} · ${f.RegisteredAtDisplay}|"></span>
             <span th:if="${f.Snippet != null}" th:text="${f.Snippet}"></span>
-        </a></li>
+        </a><a class="orig-link" th:if="${@originalService.supports(f.DisplayName)}" th:href="|/original/att-${f.CaseId}_${f.AttachmentId}|" target="_blank" rel="noopener" title="원본 모양으로 보기(새 창)">원본 보기</a></li>
     </ul>
 </section>
 <section class="search-group" aria-labelledby="s-rules" th:unless="${#lists.isEmpty(ruleHits)}">

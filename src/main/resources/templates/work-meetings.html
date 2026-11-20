@@ -79,6 +79,7 @@
     </section>
     <section class="card" th:if="${cur != null}">
         <div class="card-head"><h2 th:text="${cur.title}"></h2><span class="sub" th:text="|${cur.mdate ?: ''} ${cur.org ?: ''}|"></span>
+            <a class="btn btn-quiet" th:if="${@originalService.info('work-' + cur.id) != null}" th:href="|/original/work-${cur.id}|" target="_blank" rel="noopener" title="올린 회의록 파일의 원본 모양(새 창)">원본 보기</a>
             <a class="btn btn-quiet" th:href="|/work/item/${cur.id}|">고치기</a></div>
         <h3 class="h3">결정 사항</h3>
         <p class="empty" th:if="${#lists.isEmpty(decisions)}">결정 사항이 없습니다.</p>

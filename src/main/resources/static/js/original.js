@@ -10,10 +10,10 @@
     fetch("/original/" + KEY + "/state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) {
       S = s;
       if (s.state === "없음") return;
-      document.getElementById("dsrc").hidden = false;
+      var ds = document.getElementById("dsrc"); ds.href = "/original/" + KEY + "/source"; ds.hidden = false;
       if (s.state === "만드는 중") { showMaking(s); setTimeout(poll, 1200); return; }
       if (s.state === "실패") { showFail(s); return; }
-      document.getElementById("dpdf").hidden = !s.pdf;
+      var dp = document.getElementById("dpdf"); if (s.pdf) dp.href = "/original/" + KEY + "/pdf"; dp.hidden = !s.pdf;
       document.getElementById("via").textContent = "등록 당시 원본 모양 · " + (s.via ? s.via + "로 만듦 · " : "") + "고칠 수 없음 · 글자 찾기 됨" + (s.note ? " · " + s.note : "");
       box.innerHTML = "";
       fetch("/original/" + KEY + "/text.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (t) { TEXT = t || []; build(); });

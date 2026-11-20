@@ -171,6 +171,7 @@
                                     <input type="hidden" name="attachmentId" th:value="${file.AttachmentId}" />
                                     <button type="submit" class="btn btn-quiet" title="이 컴퓨터의 프로그램으로 엽니다">열기</button>
                                 </form>
+                                <a class="btn btn-quiet" th:if="${@originalService.supports(file.DisplayName)}" th:href="|/original/att-${item.CaseId}_${file.AttachmentId}|" target="_blank" rel="noopener" title="원본 모양 그대로 보기(새 창, 글자 찾기 됨, 고칠 수 없음)">원본 보기</a>
                                 <a class="btn btn-quiet" th:if="${file.HasText}" th:href="${href + '/view'}" data-preview="text" th:data-title="|${file.DisplayName} — 읽은 내용|"
                                    th:data-meta="|${file.ReadMethod} 읽기|" data-tile="TXT" data-tile-kind="txt">읽은 내용</a>
                                 <button type="button" class="btn btn-quiet file-del" th:if="${caps.DeleteFile}" th:data-dialog="|del-${file.AttachmentId}|" title="이 자료를 지웁니다">삭제</button>

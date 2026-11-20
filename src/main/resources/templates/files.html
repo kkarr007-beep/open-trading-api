@@ -45,6 +45,7 @@
         <div class="file-side">
             <span class="read-tag" th:data-read="${f.ReadState}" th:text="${f.Encrypted == 1} ? |암호화 · ${f.ReadState}| : ${f.ReadState}"></span>
             <a class="btn" th:href="|/cases/${f.CaseId}#files|">건 열기</a>
+            <a class="btn" th:if="${@originalService.supports(f.DisplayName)}" th:href="|/original/att-${f.CaseId}_${f.AttachmentId}|" target="_blank" rel="noopener" title="원본 모양 그대로 보기(새 창, 글자 찾기 됨, 고칠 수 없음)">원본 보기</a>
             <th:block th:with="blocked=${f.CaseHold == 1 or f.CaseCleared == 1}, needReason=${f.CaseEver == 1 or f.CasePhase != '초안'}">
             <button type="button" class="btn btn-quiet" th:unless="${blocked}" th:data-dialog="|del-${f.AttachmentId}|">삭제</button>
             <button type="button" class="btn btn-quiet" th:if="${blocked}" disabled title="삭제 보류 중이거나 보존 만료로 정리된 건의 자료입니다.">삭제</button>

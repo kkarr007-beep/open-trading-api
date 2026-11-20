@@ -68,7 +68,7 @@ public class OriginalService {
         });
     }
 
-    public static boolean validKey(String key) { return key != null && key.matches("(doc|rule)-[A-Za-z0-9_]{3,64}"); }
+    public static boolean validKey(String key) { return key != null && key.matches("(doc|rule|att|work)-[A-Za-z0-9_-]{3,80}"); }
 
     public static boolean supports(String fileName) {
         return Set_EXT.contains(ext(fileName));

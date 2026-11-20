@@ -35,15 +35,39 @@ public class OriginalController {
     private final OriginalService originals;
     private final LibraryService lib;
     private final RuleService rules;
+    private final local.audit.CaseService cases;
+    private final FileStore files;
+    private final local.audit.work.WorkService work;
 
-    public OriginalController(OriginalService originals, LibraryService lib, RuleService rules) {
+    public OriginalController(OriginalService originals, LibraryService lib, RuleService rules, local.audit.CaseService cases, FileStore files,
+                              local.audit.work.WorkService work) {
         this.originals = originals;
         this.lib = lib;
         this.rules = rules;
+        this.cases = cases;
+        this.files = files;
+        this.work = work;
+    }
+
+    /** att-{건}_{첨부} → 감사기록 첨부 행. */
+    private Map<String, Object> attachment(String key) {
+        String rest = key.substring(4);
+        int u = rest.indexOf('_');
+        if (u <= 0) return null;
+        Map<String, Object> a = cases.attachment(rest.substring(0, u), rest.substring(u + 1));
+        return a == null || !"Present".equals(a.get("StorageState")) ? null : a;
     }
 
     /** 원본이 어디서 왔는지: 자료는 보관 파일을 쓰고, 사규는 등록 때 붙인 파일을 쓴다. */
     private String title(String key) {
+        if (key.startsWith("att-")) {
+            Map<String, Object> a = attachment(key);
+            return a == null ? null : Txt.str(a.get("DisplayName"));
+        }
+        if (key.startsWith("work-")) {
+            local.audit.work.WorkItem x = work.get(key.substring(5));
+            return x == null ? null : Txt.str(x.title);
+        }
         if (key.startsWith("doc-")) {
             Map<String, Object> d = lib.get(key.substring(4));
             return d == null ? null : Txt.str(d.get("Title"));
@@ -56,7 +80,15 @@ public class OriginalController {
 
     /** 자료는 처음 열 때 만든다. */
     private void ensure(String key) {
-        if (originals.info(key) != null || !key.startsWith("doc-")) return;
+        if (originals.info(key) != null) return;
+        if (key.startsWith("att-")) {
+            Map<String, Object> a = attachment(key);
+            Path f = a == null ? null : files.resolve((String) a.get("StoragePath"));
+            String name = a == null ? "" : Txt.str(a.get("DisplayName"));
+            if (f != null && Files.isRegularFile(f) && OriginalService.supports(name)) originals.request(key, f, name);
+            return;
+        }
+        if (!key.startsWith("doc-")) return;
         String id = key.substring(4);
         Map<String, Object> d = lib.get(id);
         Path f = d == null ? null : lib.file(id);
@@ -73,6 +105,7 @@ public class OriginalController {
         if (title != null) ensure(key);
         model.addAttribute("info", title == null ? null : originals.info(key));
         model.addAttribute("isRule", key.startsWith("rule-"));
+        model.addAttribute("isWork", key.startsWith("work-"));
         return "original";
     }
 
@@ -134,7 +167,7 @@ public class OriginalController {
     public ResponseEntity<Map<String, Object>> make(@PathVariable String key, @RequestParam(required = false) String x) {
         Op op;
         if (!OriginalService.validKey(key) || title(key) == null) op = Op.fail(404, "원본을 찾을 수 없습니다.");
-        else if (key.startsWith("doc-")) { originals.delete(key); ensure(key); op = originals.info(key) == null ? Op.bad("이 형식은 원본 보기를 만들 수 없습니다.") : Op.ok("다시 만들고 있습니다."); }
+        else if (key.startsWith("doc-") || key.startsWith("att-")) { originals.delete(key); ensure(key); op = originals.info(key) == null ? Op.bad("이 형식은 원본 보기를 만들 수 없습니다.") : Op.ok("다시 만들고 있습니다."); }
         else op = originals.remake(key);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", op.ok);

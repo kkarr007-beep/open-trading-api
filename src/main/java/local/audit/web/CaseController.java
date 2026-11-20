@@ -38,10 +38,12 @@ public class CaseController {
     private final local.audit.RichTexts rich;
     private final local.audit.LibraryService library;
     private final local.audit.LinkService links;
+    private final local.audit.OriginalService originals;
 
     public CaseController(CaseService cases, DisciplineService discipline, FileStore files,
                           local.audit.work.WorkService work, local.audit.rule.RuleService rules, local.audit.RichTexts rich,
-                          local.audit.LibraryService library, local.audit.LinkService links) {
+                          local.audit.LibraryService library, local.audit.LinkService links, local.audit.OriginalService originals) {
+        this.originals = originals;
         this.links = links;
         this.library = library;
         this.rich = rich;
@@ -177,6 +179,7 @@ public class CaseController {
             case "open" -> openLocally(id, att);
             default -> Op.fail(404, "없는 작업입니다.");
         };
+        if (op.ok && att != null && (what.equals("remove") || what.equals("early") || what.equals("delete"))) originals.delete("att-" + id + "_" + att);
         return Web.reply(req, op, null);
     }
 

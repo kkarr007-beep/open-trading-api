@@ -20,15 +20,16 @@
     <button class="b" id="zf" type="button" title="창 너비에 맞춤">맞춤</button>
     <button class="b" id="zi" type="button" title="크게">+</button>
     <button class="b" id="pr" type="button">인쇄</button>
-    <a class="b" id="dpdf" th:href="|/original/${key}/pdf|" hidden>PDF 내려받기</a>
-    <a class="b" id="dsrc" th:href="|/original/${key}/source|" hidden>원본 내려받기</a>
+    <a class="b" id="dpdf" hidden>PDF 내려받기</a>
+    <a class="b" id="dsrc" hidden>원본 내려받기</a>
 </div>
 <div id="box">
     <div class="msg" th:if="${missing}"><h2>원본을 찾을 수 없습니다</h2><p>자료나 사규가 지워졌을 수 있습니다. 창을 닫으세요.</p></div>
     <div class="msg" th:if="${!missing and info == null}">
         <h2>원본 파일이 없습니다</h2>
         <p th:if="${isRule}">이 사규는 원본 파일 없이 글로만 등록되었습니다. 사규 화면의 <b>원본 파일 붙이기</b>로 한글·워드·PDF 파일을 올리면 원본 모양을 볼 수 있습니다.</p>
-        <p th:unless="${isRule}">이 자료 형식은 원본 보기를 만들 수 없습니다. 목록에서 제목을 눌러 이 컴퓨터의 프로그램으로 여세요.</p>
+        <p th:if="${isWork}">이 항목에는 원본 파일이 없습니다. '문서 가져오기'나 '회의록 넣기'로 파일을 올리면 원본 모양을 볼 수 있습니다.</p>
+        <p th:unless="${isRule or isWork}">이 파일 형식은 원본 보기를 만들 수 없습니다. 목록에서 제목을 눌러 이 컴퓨터의 프로그램으로 여세요.</p>
     </div>
 </div>
 <div id="pages"></div>
