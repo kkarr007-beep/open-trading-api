@@ -111,11 +111,21 @@
     var hiddenName = ta.getAttribute("data-rich");
     var hidden = form ? form.querySelector('input[type=hidden][name="' + hiddenName + '"]') : null;
     if (!hidden && form) { hidden = document.createElement("input"); hidden.type = "hidden"; hidden.name = hiddenName; form.appendChild(hidden); }
+    // 편집기가 이름표(label) 안에 있으면, 본문을 누를 때 이름표가 첫 입력칸(도구줄의 '문단')으로 커서를 보낸다.
+    // 이름표를 같은 모양의 div로 바꿔 그 일을 막는다.
+    var lab = ta.closest("label");
+    var labText = lab && lab.firstChild ? (lab.firstChild.textContent || "").trim() : "";
+    if (lab) {
+      var dv = document.createElement("div");
+      Array.prototype.forEach.call(lab.attributes, function (a) { if (a.name !== "for") dv.setAttribute(a.name, a.value); });
+      while (lab.firstChild) dv.appendChild(lab.firstChild);
+      lab.parentNode.replaceChild(dv, lab);
+    }
     var wrap = document.createElement("div"); wrap.className = "rte";
     var bar = document.createElement("div"); bar.className = "rte-bar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", "서식");
     var body = document.createElement("div"); body.className = "rte-body rich"; body.contentEditable = "true";
     body.setAttribute("role", "textbox"); body.setAttribute("aria-multiline", "true");
-    body.setAttribute("aria-label", ta.getAttribute("aria-label") || (ta.closest("label") ? ta.closest("label").firstChild.textContent.trim() : "내용"));
+    body.setAttribute("aria-label", ta.getAttribute("aria-label") || labText || "내용");
     var rows = parseInt(ta.getAttribute("rows") || "8", 10);
     body.style.minHeight = Math.max(120, rows * 24) + "px";
     var initial = ta.getAttribute("data-html");
@@ -183,7 +193,9 @@
     bar.addEventListener("mousedown", function (e) { if (e.target.closest("button")) e.preventDefault(); });
     bar.addEventListener("click", function (e) {
       var b = e.target.closest("button[data-cmd]");
-      if (b) exec(b.dataset.cmd);
+      if (!b) return;
+      if (b.dataset.cmd === "indent" || b.dataset.cmd === "outdent") { shiftLevel(b.dataset.cmd === "indent" ? 1 : -1); return; }
+      exec(b.dataset.cmd);
     });
     font.addEventListener("change", function () { if (font.value) exec("fontName", font.value); font.value = ""; });
     block.addEventListener("change", function () { if (block.value) exec("formatBlock", block.value); block.value = ""; });
@@ -206,16 +218,78 @@
     bgB.addEventListener("click", function () { exec("hiliteColor", bg.value); });
     bg.addEventListener("change", function () { exec("hiliteColor", bg.value); });
 
-    tableB.addEventListener("click", function () {
-      var spec = window.prompt("표 크기를 '행x열'로 적으세요. (예: 3x4)", "3x3");
-      if (!spec) return;
-      var m = /^(\d{1,2})\s*[x×*,]\s*(\d{1,2})$/.exec(spec.trim());
-      if (!m) return;
-      var r = Math.min(60, +m[1]), c = Math.min(20, +m[2]), h = "<table>";
+    // 표 넣기: 화면 안의 칸판에서 행·열을 고른다(프로그램 창은 입력 창이 뜨지 않아서)
+    var grid = null;
+    function insertTable(r, c) {
+      var h = "<table>";
       for (var i = 0; i < r; i++) { h += "<tr>"; for (var j = 0; j < c; j++) h += (i === 0 ? "<th>" : "<td>") + "<br>" + (i === 0 ? "</th>" : "</td>"); h += "</tr>"; }
       h += "</table><p><br></p>";
       exec("insertHTML", h);
+    }
+    function closeGrid() { if (grid) { grid.remove(); grid = null; } document.removeEventListener("mousedown", outside, true); }
+    function outside(e) { if (grid && !grid.contains(e.target) && e.target !== tableB) closeGrid(); }
+    tableB.addEventListener("click", function () {
+      if (grid) { closeGrid(); return; }
+      keep();
+      grid = document.createElement("div"); grid.className = "rte-grid"; grid.setAttribute("role", "dialog"); grid.setAttribute("aria-label", "표 크기 고르기");
+      var R = 10, C = 8, cells = [];
+      var label = document.createElement("div"); label.className = "rte-grid-l"; label.textContent = "표 크기를 고르세요";
+      var board = document.createElement("div"); board.className = "rte-grid-b"; board.style.gridTemplateColumns = "repeat(" + C + ", 18px)";
+      for (var i = 1; i <= R; i++) for (var j = 1; j <= C; j++) {
+        var d = document.createElement("button"); d.type = "button"; d.dataset.r = i; d.dataset.c = j; d.setAttribute("aria-label", i + "행 " + j + "열");
+        board.appendChild(d); cells.push(d);
+      }
+      function mark(r, c) { cells.forEach(function (x) { x.classList.toggle("on", +x.dataset.r <= r && +x.dataset.c <= c); }); label.textContent = r + "행 × " + c + "열"; }
+      board.addEventListener("mouseover", function (e) { var t = e.target.closest("button"); if (t) mark(+t.dataset.r, +t.dataset.c); });
+      board.addEventListener("focusin", function (e) { var t = e.target.closest("button"); if (t) mark(+t.dataset.r, +t.dataset.c); });
+      board.addEventListener("mousedown", function (e) { e.preventDefault(); });
+      board.addEventListener("click", function (e) { var t = e.target.closest("button"); if (!t) return; var r = +t.dataset.r, c = +t.dataset.c; closeGrid(); insertTable(r, c); });
+      var more = document.createElement("div"); more.className = "rte-grid-m";
+      more.innerHTML = '<input type="number" min="1" max="60" value="3" aria-label="행"> × <input type="number" min="1" max="20" value="3" aria-label="열"> <button type="button" class="btn btn-sm">넣기</button>';
+      more.querySelector("button").addEventListener("click", function () {
+        var ins = more.querySelectorAll("input"), r = Math.max(1, Math.min(60, +ins[0].value || 1)), c = Math.max(1, Math.min(20, +ins[1].value || 1));
+        closeGrid(); insertTable(r, c);
+      });
+      grid.appendChild(label); grid.appendChild(board); grid.appendChild(more);
+      wrap.appendChild(grid);
+      var br = tableB.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      grid.style.left = Math.max(0, br.left - wr.left) + "px"; grid.style.top = (br.bottom - wr.top + 4) + "px";
+      setTimeout(function () { document.addEventListener("mousedown", outside, true); }, 0);
     });
+    // 고른 줄들을 한 단계 들이거나 내어 쓴다. 사규 글(para)은 본문·항 → 호 → 목, 목록은 목록 단계, 그 밖은 왼쪽 여백 2글자.
+    function blocksInSelection() {
+      restore();
+      var s = window.getSelection(); if (!s.rangeCount) return [];
+      var rg = s.getRangeAt(0), out = [];
+      function blockOf(n) {
+        while (n && n !== body) { if (n.nodeType === 1 && /^(P|DIV|LI|H[1-6]|BLOCKQUOTE)$/.test(n.tagName) && !n.closest("td,th")) return n; n = n.parentNode; }
+        return null;
+      }
+      var start = blockOf(rg.startContainer), end = blockOf(rg.endContainer);
+      if (!start) return [];
+      var all = Array.prototype.slice.call(body.querySelectorAll("p,div,li,h1,h2,h3,h4,h5,h6,blockquote"));
+      var a = all.indexOf(start), z = end ? all.indexOf(end) : a;
+      for (var i = a; i <= Math.max(a, z); i++) if (all[i] && !all[i].closest("td,th") && !all[i].querySelector("p,div,li")) out.push(all[i]);
+      return out.length ? out : [start];
+    }
+    function shiftLevel(dir) {
+      var blocks = blocksInSelection();
+      if (!blocks.length) { exec(dir > 0 ? "indent" : "outdent"); return; }
+      if (blocks[0].tagName === "LI") { exec(dir > 0 ? "indent" : "outdent"); return; }
+      blocks.forEach(function (bk) {
+        if (bk.classList.contains("para")) {
+          var lv = bk.classList.contains("m") ? 3 : bk.classList.contains("h") ? 2 : 1;
+          var circled = /^\s*[\u2460-\u2473]/.test(bk.textContent);
+          var next = Math.max(1, Math.min(3, lv + dir));
+          ["b", "p", "h", "m"].forEach(function (c) { bk.classList.remove(c); });
+          bk.classList.add(next === 3 ? "m" : next === 2 ? "h" : circled ? "p" : "b");
+        } else {
+          var cur = parseFloat(bk.style.marginLeft) || 0, nv = Math.max(0, cur + dir * 2);
+          bk.style.marginLeft = nv ? nv + "em" : "";
+        }
+      });
+      keep(); sync();
+    }
     function cellNow() { restore(); var s = window.getSelection(); return s.rangeCount ? closestCell(s.anchorNode, body) : null; }
     rowAdd.addEventListener("click", function () {
       var td = cellNow(); if (!td) return;
@@ -266,8 +340,81 @@
       if (text && text.indexOf("\t") >= 0) { e.preventDefault(); exec("insertHTML", textToHtml(text)); }
     });
     body.addEventListener("keydown", function (e) {
-      if (e.key === "Tab") { e.preventDefault(); exec(e.shiftKey ? "outdent" : "indent"); }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (closestCell(window.getSelection().anchorNode, body)) return; // 표 칸 안에서는 아무것도 하지 않는다
+        shiftLevel(e.shiftKey ? -1 : 1);
+      }
       e.stopPropagation(); // 화면 단축키(Ctrl+Z 되돌리기 등)와 섞이지 않게
+    });
+
+    // 표 칸의 오른쪽 경계를 끌면 그 열 너비가, 아래 경계를 끌면 그 행 높이가 바뀐다
+    var EDGE = 5, drag = null;
+    function edgeOf(e) {
+      var cell = e.target && e.target.closest ? e.target.closest("td,th") : null;
+      if (!cell || !body.contains(cell)) return null;
+      var r = cell.getBoundingClientRect();
+      if (r.right - e.clientX <= EDGE) return { kind: "col", cell: cell };
+      if (r.bottom - e.clientY <= EDGE) return { kind: "row", cell: cell };
+      return null;
+    }
+    body.addEventListener("mousemove", function (e) {
+      if (drag) return;
+      var ed = edgeOf(e);
+      body.style.cursor = ed ? (ed.kind === "col" ? "col-resize" : "row-resize") : "";
+    });
+    body.addEventListener("mousedown", function (e) {
+      var ed = edgeOf(e);
+      if (!ed) return;
+      e.preventDefault();
+      var table = ed.cell.closest("table"), r0 = ed.cell.getBoundingClientRect();
+      if (ed.kind === "col") {
+        var idx = 0, x = ed.cell.previousElementSibling;
+        while (x) { idx += x.colSpan || 1; x = x.previousElementSibling; }
+        idx += (ed.cell.colSpan || 1) - 1;
+        // 표의 칸마다 지금 너비를 고정해 두고(다른 열이 따라 움직이지 않게), 경계 양쪽 열만 바꾼다(워드처럼)
+        function colCells(i) {
+          var out = [];
+          Array.prototype.forEach.call(table.rows, function (tr) {
+            if (tr.closest("table") !== table) return;
+            var k = 0;
+            for (var c = tr.firstElementChild; c; c = c.nextElementSibling) { var span = c.colSpan || 1, end = k + span - 1; if (span === 1 && end === i) { out.push(c); break; } k = end + 1; }
+          });
+          return out;
+        }
+        var cols = 0;
+        Array.prototype.forEach.call(table.rows, function (tr) { var n = 0; for (var c = tr.firstElementChild; c; c = c.nextElementSibling) n += c.colSpan || 1; cols = Math.max(cols, n); });
+        var widths = [];
+        for (var i = 0; i < cols; i++) { var cc = colCells(i); widths.push(cc.length ? cc[0].getBoundingClientRect().width : table.getBoundingClientRect().width / cols); }
+        // 열 너비는 표의 <colgroup>에 둔다(칸 너비는 화면 규칙이 자동으로 되돌리므로)
+        var cg = table.querySelector(":scope > colgroup");
+        if (!cg) { cg = document.createElement("colgroup"); table.insertBefore(cg, table.firstChild); }
+        while (cg.children.length < cols) cg.appendChild(document.createElement("col"));
+        while (cg.children.length > cols) cg.lastChild.remove();
+        for (var k2 = 0; k2 < cols; k2++) cg.children[k2].style.width = Math.round(widths[k2]) + "px";
+        Array.prototype.forEach.call(table.querySelectorAll("td,th"), function (c) { if (c.closest("table") === table) { c.style.width = ""; c.style.minWidth = ""; } });
+        table.style.tableLayout = "fixed";
+        drag = { kind: "col", x0: e.clientX, left: [cg.children[idx]], right: idx + 1 < cols ? [cg.children[idx + 1]] : [], lw: widths[idx] || r0.width, rw: widths[idx + 1] || 0 };
+      } else {
+        drag = { kind: "row", y0: e.clientY, h0: r0.height, cells: Array.prototype.slice.call(ed.cell.parentNode.children) };
+      }
+      document.body.classList.add("rte-resizing");
+    });
+    document.addEventListener("mousemove", function (e) {
+      if (!drag) return;
+      if (drag.kind === "col") {
+        var dx = e.clientX - drag.x0;
+        if (drag.right.length) dx = Math.max(24 - drag.lw, Math.min(drag.rw - 24, dx));
+        else dx = Math.max(24 - drag.lw, dx);
+        var lw = Math.round(drag.lw + dx), rw = Math.round(drag.rw - dx);
+        drag.left.forEach(function (c) { c.style.width = lw + "px"; });
+        drag.right.forEach(function (c) { c.style.width = rw + "px"; });
+      }
+      else { var h = Math.max(20, Math.round(drag.h0 + e.clientY - drag.y0)); drag.cells.forEach(function (c) { c.style.height = h + "px"; }); }
+    });
+    document.addEventListener("mouseup", function () {
+      if (!drag) return;
+      drag = null; document.body.classList.remove("rte-resizing"); body.style.cursor = ""; sync();
     });
 
     function sync() {

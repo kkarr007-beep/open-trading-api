@@ -134,13 +134,61 @@
     host.appendChild(node);
     if (tone === "ok") setTimeout(function () { node.remove(); }, 4200);
   }
-  function refreshMain(focusSelector) {
+  // 저장하지 않고 고치던 칸(다른 양식)을 기억해 두었다가, 화면을 새로 그린 뒤 그대로 돌려놓는다.
+  document.addEventListener("input", function (e) { var f = e.target.closest && e.target.closest("main form"); if (f) f.dataset.touched = "1"; }, true);
+  document.addEventListener("change", function (e) { var f = e.target.closest && e.target.closest("main form"); if (f) f.dataset.touched = "1"; }, true);
+  function formKey(f, all) {
+    var a = f.getAttribute("action") || "", same = all.filter(function (x) { return (x.getAttribute("action") || "") === a; });
+    return a + "#" + same.indexOf(f);
+  }
+  function snapshot(main, except) {
+    var forms = Array.prototype.slice.call(main.querySelectorAll("form"));
+    var out = [];
+    forms.forEach(function (f) {
+      if (f === except || f.dataset.touched !== "1" || (f.method || "").toLowerCase() === "get") return;
+      var fields = [];
+      Array.prototype.forEach.call(f.elements, function (el) {
+        if (!el.name || el.name === "version" || el.type === "file" || el.type === "submit" || el.type === "button") return;
+        fields.push({ name: el.name, value: el.value, checked: el.checked, type: el.type, idx: fields.filter(function (x) { return x.name === el.name; }).length });
+      });
+      var rich = Array.prototype.map.call(f.querySelectorAll(".rte-body"), function (b) { return b.innerHTML; });
+      out.push({ key: formKey(f, forms), fields: fields, rich: rich });
+    });
+    var open = Array.prototype.map.call(main.querySelectorAll("details[open][id]"), function (d) { return d.id; });
+    return { forms: out, open: open };
+  }
+  function restoreSnap(main, snap) {
+    var forms = Array.prototype.slice.call(main.querySelectorAll("form")), n = 0;
+    snap.open.forEach(function (id) { var d = document.getElementById(id); if (d && d.tagName === "DETAILS") d.open = true; });
+    if (window.richEditorInit) window.richEditorInit(main);
+    snap.forms.forEach(function (s) {
+      var f = forms.filter(function (x) { return formKey(x, forms) === s.key; })[0];
+      if (!f) return;
+      s.fields.forEach(function (fd) {
+        var els = Array.prototype.filter.call(f.elements, function (el) { return el.name === fd.name; });
+        var el = fd.type === "radio" || fd.type === "checkbox" ? els.filter(function (x) { return x.value === fd.value; })[0] : els[fd.idx];
+        if (!el) return;
+        if (fd.type === "radio" || fd.type === "checkbox") el.checked = fd.checked; else el.value = fd.value;
+      });
+      var bodies = f.querySelectorAll(".rte-body");
+      s.rich.forEach(function (h, i) { if (bodies[i]) bodies[i].innerHTML = h; });
+      f.querySelectorAll("textarea[data-rich-ready]").forEach(function (t) { if (t.__richSync) t.__richSync(); });
+      f.dataset.touched = "1";
+      n++;
+    });
+    return n;
+  }
+  function refreshMain(focusSelector, savedForm) {
     var y = window.scrollY;
+    var main0 = document.querySelector("main");
+    var snap = main0 ? snapshot(main0, savedForm) : { forms: [], open: [] };
     return fetch(location.href, { headers: { "X-Audit-Fetch": "page" } }).then(function (response) { return response.text(); }).then(function (html) {
       var doc = new DOMParser().parseFromString(html, "text/html");
       var next = doc.querySelector("main");
       var main = document.querySelector("main");
       if (next && main) main.innerHTML = next.innerHTML;
+      var kept = main ? restoreSnap(main, snap) : 0;
+      if (kept) toast("다른 칸에 쓰던 내용은 그대로 두었습니다. 그 칸도 저장 단추를 눌러 저장하세요.");
       window.scrollTo(0, y);
       var focus = focusSelector ? document.querySelector(focusSelector) : null;
       if (focus) focus.focus();
@@ -244,7 +292,8 @@
       if (form.hasAttribute('data-reload')) { location.reload(); return; }
       var section = form.closest("section");
       var selector = section && section.id ? "#" + section.id + " button" : "h1";
-      refreshMain(selector).finally(function () { finishButton(button, label); });
+      form.dataset.touched = "";
+      refreshMain(selector, form).finally(function () { finishButton(button, label); });
     };
     xhr.onerror = function () {
       toast("저장하지 못했습니다.", "danger");

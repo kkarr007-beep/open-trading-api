@@ -66,6 +66,8 @@
                     <p class="hint">결과 한 줄은 연한 후에도 남습니다. 본문은 만료 후 비워집니다. 초안 저장은 확정이 아닙니다.</p>
                     <button type="submit" class="btn btn-primary">결과 저장</button>
                 </form>
+                <p class="lock-note" th:if="${!caps.EditResult and caps.Cancel}">결과 한 줄과 본문은 확정되면 잠깁니다. 고치려면 아래 <a href="#danger-title">확정·종결·연한</a>에서 <strong>확정 취소</strong>를 먼저 하세요. (건 정보는 확정 뒤에도 고칠 수 있습니다.)</p>
+                <p class="lock-note" th:if="${!caps.EditResult and !caps.Cancel}">이 건의 결과는 지금 고칠 수 없습니다(종결 또는 보존 만료).</p>
                 <dl class="facts" th:unless="${caps.EditResult}">
                     <dt>문서번호</dt><dd th:text="${item.DocumentNo}"></dd>
                     <dt>결과 한 줄</dt><dd th:text="${#strings.isEmpty(item.SummaryLine)} ? '없음' : ${item.SummaryLine}"></dd>

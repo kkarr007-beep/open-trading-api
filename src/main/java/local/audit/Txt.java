@@ -11,15 +11,18 @@ public final class Txt {
     /** 앞뒤 공백을 떼고 길이와 제어문자를 본다. 맞지 않으면 null. */
     public static String clean(String value, int max, boolean multiline) {
         if (value == null) return "";
-        String s = value.replace("\r\n", "\n").replace('\r', '\n').strip();
-        if (!multiline) s = s.replace('\n', ' ').strip();
-        if (s.length() > max) return null;
+        // 워드·한글에서 옮겨 온 글의 보이지 않는 문자: 줄 나눔 꼴(Shift+Enter·쪽 나눔·줄/문단 구분자)은 줄바꿈으로,
+        // 나머지 제어 문자는 지운다. 예전에는 저장을 통째로 거부해서 '입력값을 확인하세요'만 떴다.
+        String s = value.replace("\r\n", "\n").replace('\r', '\n')
+            .replace((char) 11, '\n').replace((char) 12, '\n').replace((char) 0x2028, '\n').replace((char) 0x2029, '\n').replace((char) 0x85, '\n');
+        StringBuilder b = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
             char ch = s.charAt(i);
-            if (ch == '\n' && multiline) continue;
-            if (ch == '\t') continue;
-            if (Character.isISOControl(ch)) return null;
+            if (ch == '\n' || ch == '\t' || !Character.isISOControl(ch)) b.append(ch);
         }
+        s = b.toString().strip();
+        if (!multiline) s = s.replace('\n', ' ').replaceAll(" {2,}", " ").strip();
+        if (s.length() > max) return null;
         return s;
     }
 

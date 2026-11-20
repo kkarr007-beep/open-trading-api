@@ -624,7 +624,8 @@ public class RuleService {
             case "edit" -> {
                 String title = Txt.clean(p.get("title"), 120, false);
                 String content = Txt.clean(p.get("content"), 400_000, true);
-                if (title == null || content == null) return Op.bad("입력을 확인하세요.");
+                if (title == null) return Op.bad("조 제목은 120자까지 적을 수 있습니다.");
+                if (content == null) return Op.bad("조문이 너무 깁니다(40만 자까지).");
                 a.put("title", title);
                 a.put("content", content);
                 if (p.containsKey("html")) { String h = local.audit.HtmlClean.clean(p.get("html")); if (h.isBlank()) a.remove("html"); else a.put("html", h); }

@@ -99,6 +99,16 @@ public final class Desktop {
         new Thread(() -> SpringApplication.run(App.class, args), "main-fallback").start();
     }
 
+    /** 화면이 묻는 한 줄 입력(prompt). 취소하면 빈 답. */
+    private static String ask(Stage owner, String message, String value) {
+        javafx.scene.control.TextInputDialog d = new javafx.scene.control.TextInputDialog(value == null ? "" : value);
+        d.initOwner(owner);
+        d.setTitle("경영진단 Portal");
+        d.setHeaderText(null);
+        d.setContentText(message);
+        return d.showAndWait().orElse(null);
+    }
+
     /** 새 창. 큰 표처럼 따로 펼쳐 보는 화면을 띄운다. 창을 닫아도 본 창은 그대로다. */
     private static WebEngine popup(Stage owner) {
         Stage p = new Stage();
@@ -117,6 +127,7 @@ public final class Desktop {
             alert.setHeaderText(null);
             return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
         });
+        e.setPromptHandler(pd -> ask(p, pd.getMessage(), pd.getDefaultValue()));
         e.setOnAlert(ev -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION, ev.getData(), ButtonType.OK);
             alert.initOwner(p);
@@ -164,6 +175,7 @@ public final class Desktop {
             alert.setTitle("경영진단 Portal");
             return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
         });
+        engine.setPromptHandler(pd -> ask(s, pd.getMessage(), pd.getDefaultValue()));
         engine.setOnAlert(e -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION, e.getData(), ButtonType.OK);
             alert.initOwner(s);

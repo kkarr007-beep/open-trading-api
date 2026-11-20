@@ -22,6 +22,7 @@ public final class HtmlClean {
         "mark", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "pre", "code", "table", "caption", "colgroup", "col",
         "thead", "tbody", "tfoot", "tr", "th", "td", "img", "a", "hr", "figure", "figcaption", "section");
     private static final Set<String> VOID = Set.of("br", "img", "col", "hr");
+    private static final Set<String> KEEP_CLASS = Set.of("para", "b", "p", "h", "m", "t", "gap", "img", "muted", "ctbl", "ctblw", "xref");
     private static final Map<String, String> RENAME = Map.of("strike", "s", "font", "span", "center", "div", "article", "div", "header", "div",
         "footer", "div", "main", "div", "nav", "div", "dl", "div", "dd", "div");
     private static final Set<String> DROP_WITH_CONTENT = Set.of("script", "style", "head", "title", "xml", "noscript", "iframe", "object",
@@ -29,7 +30,7 @@ public final class HtmlClean {
     private static final Set<String> CSS = Set.of("color", "background-color", "font-size", "font-weight", "font-style", "font-family",
         "text-decoration", "text-decoration-line", "text-align", "vertical-align", "padding-left", "margin-left", "text-indent",
         "line-height", "letter-spacing", "width", "min-width", "border", "border-top", "border-bottom", "border-left", "border-right",
-        "border-collapse", "border-color", "border-style", "border-width", "padding", "white-space", "list-style-type");
+        "border-collapse", "border-color", "border-style", "border-width", "padding", "white-space", "list-style-type", "height", "table-layout");
 
     private static final Pattern COMMENT = Pattern.compile("(?s)<!--.*?-->|<!\\[[^]]*]>|<\\?[^>]*>|<!DOCTYPE[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][a-zA-Z0-9:_-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>");
@@ -99,6 +100,12 @@ public final class HtmlClean {
             v = v.replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&");
             switch (k) {
                 case "style" -> style.append(css(v));
+                case "class" -> {
+                    // 사규 글의 단계 표시(본문·항·호·목)와 표 꼴은 남긴다. 그 밖의 class는 버린다.
+                    StringBuilder c = new StringBuilder();
+                    for (String t : v.trim().split("\\s+")) if (KEEP_CLASS.contains(t)) c.append(c.length() == 0 ? "" : " ").append(t);
+                    if (c.length() > 0) a.append(" class=\"").append(c).append('"');
+                }
                 case "colspan", "rowspan" -> {
                     if ((name.equals("td") || name.equals("th")) && v.matches("\\d{1,3}") && Integer.parseInt(v) > 1 && Integer.parseInt(v) <= 200)
                         a.append(' ').append(k).append("=\"").append(v).append('"');

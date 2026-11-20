@@ -190,9 +190,11 @@ public class CaseService {
         String t = Txt.clean(title, 120, false), tg = Txt.clean(target, 120, false);
         String sh = Txt.clean(shelf, 80, false), bi = Txt.clean(binder, 80, false);
         String su = Txt.clean(summary, 160, false), bo = Txt.clean(body, 20000, true);
-        if (year < 1990 || year > 2100 || !isCategory(category) || Txt.blank(t) || Txt.blank(tg)
-            || sh == null || bi == null || su == null || bo == null || (retention != null && (retention < 1 || retention > 100)))
-            return Op.bad(BAD);
+        String why = why(year, category, t, tg, null, sh, bi);
+        if (why == null && su == null) why = "결과 한 줄은 160자까지 적을 수 있습니다.";
+        if (why == null && bo == null) why = "결과 본문은 2만 자까지 적을 수 있습니다. 나머지는 첨부 파일로 붙이세요.";
+        if (why == null && retention != null && (retention < 1 || retention > 100)) why = "보존연한은 1~100년으로 적으세요.";
+        if (why != null) return Op.bad(why);
         return db.run(conn -> {
             String id = Txt.newId();
             String no = allocateDocumentNo(conn, year, category);
@@ -206,12 +208,26 @@ public class CaseService {
         });
     }
 
+    /** 건 정보 입력이 왜 안 되는지 칸 이름으로 알려 준다. 괜찮으면 null. */
+    private String why(int year, String category, String t, String tg, String ow, String sh, String bi) {
+        if (year < 1990 || year > 2100) return "연도를 확인하세요(1990~2100).";
+        if (!isCategory(category)) return "구분을 고르세요.";
+        if (t == null) return "제목은 120자까지 적을 수 있습니다.";
+        if (Txt.blank(t)) return "제목을 적으세요.";
+        if (tg == null) return "대상은 120자까지 적을 수 있습니다.";
+        if (Txt.blank(tg)) return "대상을 적으세요.";
+        if (sh == null) return "서가는 80자까지 적을 수 있습니다.";
+        if (bi == null) return "철번호는 80자까지 적을 수 있습니다.";
+        return null;
+    }
+
     public Op saveCase(String caseId, Integer version, int year, String category, String title, String target,
                        String owner, String shelf, String binder) {
         String t = Txt.clean(title, 120, false), tg = Txt.clean(target, 120, false), ow = Txt.clean(owner, 40, false);
         String sh = Txt.clean(shelf, 80, false), bi = Txt.clean(binder, 80, false);
-        if (year < 1990 || year > 2100 || !isCategory(category) || Txt.blank(t) || Txt.blank(tg) || ow == null || sh == null || bi == null)
-            return Op.bad(BAD);
+        String why = why(year, category, t, tg, ow, sh, bi);
+        if (why == null && ow == null) why = "담당은 40자까지 적을 수 있습니다.";
+        if (why != null) return Op.bad(why);
         return withCase(caseId, version, (conn, row) -> {
             if (row.get("PurgedAt") != null) throw Op.abort(409, LOCKED);
             bump(conn, caseId, "Year=?, Category=?, Title=?, Target=?, Owner=?, Shelf=?, BinderNo=?",
@@ -223,7 +239,8 @@ public class CaseService {
 
     public Op saveResult(String caseId, Integer version, String summary, String body) {
         String line = Txt.clean(summary, 160, false), text = Txt.clean(body, 20000, true);
-        if (line == null || text == null) return Op.bad(BAD);
+        if (line == null) return Op.bad("결과 한 줄은 160자까지 적을 수 있습니다.");
+        if (text == null) return Op.bad("결과 본문은 2만 자까지 적을 수 있습니다. 나머지는 첨부 파일로 붙이세요.");
         return withCase(caseId, version, (conn, row) -> {
             if (!"초안".equals(row.get("Phase"))) throw Op.abort("확정된 결과 본문은 확정 취소 뒤에만 고칠 수 있습니다.");
             if (contentLocked(row)) throw Op.abort(409, LOCKED);
