@@ -206,3 +206,18 @@ body.rte-resizing, body.rte-resizing * { user-select: none !important; }
 .rte-grid-m { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
 .rte-grid-m input { width: 52px; min-height: 28px; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--paper); color: var(--ink); }
 .lock-note { margin: 6px 0 12px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 9%, var(--paper)); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); font-size: 13.5px; }
+
+/* ── 아이콘: 한 가지 선 그림, 글자 색을 따른다 ── */
+.ei, .mi, .hi, .qi, .fi, .bi, .ai, .ti { display: inline-block; flex: none; fill: none; stroke: currentColor; }
+.sn-group .ei, .ft-quick .qi { width: 18px; height: 18px; color: var(--muted); }
+.sn-group > a[aria-current="page"] .ei, .ft-quick a[aria-current="page"] .qi { color: var(--accent); }
+.ft-quick a[href*="view=star"] .qi { color: #d99a00; }
+.mods a .mi { width: 19px; height: 19px; margin-bottom: 1px; }
+.v2-head .hi { width: 18px; height: 18px; color: var(--muted); }
+.v2-icon .hi { color: var(--ink); opacity: .75; }
+.v2-icon:hover .hi { opacity: 1; }
+.fab .fi { width: 24px; height: 24px; stroke-width: 2.2; }
+.bi { width: 15px; height: 15px; margin-right: 4px; vertical-align: -2px; }
+.ai { width: 17px; height: 17px; }
+.ti { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; color: var(--faint); }
+.fpath { display: inline-flex; align-items: center; }

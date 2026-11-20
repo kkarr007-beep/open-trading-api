@@ -126,7 +126,7 @@
                     <a class="doc-title" th:href="|/library/${d.Id}/file|" th:data-open-local="|/library/${d.Id}/open|" th:text="${d.Title}" title="눌러서 원본 열기"></a>
                     <small>
                         <a class="mini-tag" th:each="t : ${d.TagList}" th:href="@{/library(f=${f},view=${view},tag=${t})}" th:text="|#${t}|"></a>
-                        <span class="muted" th:if="${view != '' or scope == 'all' or v.deep}" th:text="|📁 ${d.FolderPath}|"></span>
+                        <span class="muted fpath" th:if="${view != '' or scope == 'all' or v.deep}"><svg class="ti" aria-hidden="true"><use href="#i-folder" xlink:href="#i-folder"/></svg><span th:text="${d.FolderPath}"></span></span>
                         <span class="muted" th:text="${d.FileName}"></span>
                     </small>
                     <small class="snip" th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></small>
