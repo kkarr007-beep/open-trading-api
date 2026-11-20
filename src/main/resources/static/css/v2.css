@@ -221,3 +221,15 @@ body.rte-resizing, body.rte-resizing * { user-select: none !important; }
 .ai { width: 17px; height: 17px; }
 .ti { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; color: var(--faint); }
 .fpath { display: inline-flex; align-items: center; }
+
+/* 머리 고정(site.js가 top 값을 넣는다): 위 줄 60px 아래에 찾기·거르기·탭 줄, 그 아래에 표 제목 줄 */
+.pin-bar { position: sticky !important; z-index: 18; background: var(--bg); box-shadow: 0 6px 8px -8px rgba(16,24,40,.25); }
+.card .pin-bar { background: var(--paper); }
+.pin-open { overflow: visible !important; }
+table.pin-th thead th { position: sticky; z-index: 6; background: var(--paper) !important; box-shadow: inset 0 -1px 0 var(--line); }
+.rte-bar { position: sticky; top: var(--rte-top, 60px) !important; z-index: 12; }
+.v2-drawer .rte-bar, dialog .rte-bar { top: 0 !important; }
+@media print { .pin-bar, table.pin-th thead th { position: static !important; box-shadow: none !important; } }
+.pin-bar.toolbar { background: var(--paper); }
+.v2-sub { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--ink); padding-left: 12px; border-left: 2px solid var(--line); }
+.ex-head.pin-bar { padding-top: 8px; padding-bottom: 8px; }

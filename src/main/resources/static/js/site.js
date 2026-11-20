@@ -482,3 +482,97 @@ document.addEventListener("click", function (event) {
   event.preventDefault();
   if (history.length > 1) history.back(); else location.href = "/todo";
 });
+
+// 머리 고정: 스크롤해도 '무슨 화면인지·어디서 찾는지·표의 어느 칸인지'가 보이게 한다.
+// 위 줄(화면 제목·전체 찾기) 아래에 그 화면의 찾기·거르기·탭 줄을 붙이고, 표 제목 줄은 그 아래에 붙인다.
+(function () {
+  var BAR = ".sticky-tools, .hitbar, .lib-bulk, .section-tabs, .toolbar, .filters, .search-row, .seg-bar, .ex-head";
+  var main = document.getElementById("main");
+  if (!main) return;
+  function headH() {
+    var h = document.querySelector(".v2-head");
+    if (!h) return 0;
+    var p = getComputedStyle(h).position;
+    return p === "sticky" || p === "fixed" ? Math.round(h.getBoundingClientRect().height) : 0;
+  }
+  function inFloating(el) { return !!el.closest("dialog, details, .v2-drawer, .ctx, [hidden], .rte, .modal"); }
+  function scrolls(el) { var cs = getComputedStyle(el); return /(auto|scroll|hidden|clip)/.test(cs.overflowX + cs.overflowY); }
+  function pin() {
+    var top = headH(), stuck = [];
+    Array.prototype.forEach.call(main.querySelectorAll(BAR), function (b) {
+      if (inFloating(b) || b.parentElement.closest(BAR)) return;            // 대화창·펼침 안, 다른 줄 안의 줄은 빼고
+      if (b.closest("table") || b.offsetHeight === 0 || b.offsetHeight > window.innerHeight * 0.35) return;
+      var off = top;
+      stuck.forEach(function (s) { if (s.parentElement.contains(b) && s.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) off += s.offsetHeight; });
+      b.classList.add("pin-bar");
+      b.style.top = off + "px";
+      stuck.push(b);
+      if (ro) { heights.set(b, b.offsetHeight); if (!b._pinWatch) { b._pinWatch = 1; ro.observe(b); } }
+    });
+    // 편집기 도구 줄도 고정된 줄 아래에 붙인다
+    Array.prototype.forEach.call(main.querySelectorAll(".rte-bar"), function (rb) {
+      if (rb.closest("dialog, .v2-drawer")) return;
+      var off = top;
+      stuck.forEach(function (s) { if (s.parentElement.contains(rb) && s.compareDocumentPosition(rb) & Node.DOCUMENT_POSITION_FOLLOWING) off += s.offsetHeight; });
+      rb.style.setProperty("--rte-top", off + "px");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll("table"), function (t) {
+      var head = t.tHead;
+      if (!head || inFloating(t) || t.closest(".rich, .rte-body, .doc-view, .ctblw")) return;   // 글 본문 속 표는 빼고
+      // 표를 감싼 틀이 스크롤 틀이면 붙지 않으므로, 표가 화면 너비에 들어가면 틀을 연다
+      var ok = true;
+      for (var a = t.parentElement; a && a !== main; a = a.parentElement) {
+        if (!scrolls(a)) continue;
+        if (a.scrollWidth <= a.clientWidth + 1) a.classList.add("pin-open"); else { ok = false; break; }
+      }
+      if (!ok) return;
+      var off = top;
+      stuck.forEach(function (s) { if (s.parentElement.contains(t) && s.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) off += s.offsetHeight; });
+      t.classList.add("pin-th");
+      Array.prototype.forEach.call(head.rows[0] ? head.rows[0].cells : [], function (c) { c.style.top = off + "px"; });
+      // 제목 줄이 두 줄 이상이면 다음 줄은 그 아래로
+      for (var r = 1; r < head.rows.length; r++) {
+        off += head.rows[r - 1].offsetHeight;
+        Array.prototype.forEach.call(head.rows[r].cells, function (c) { c.style.top = off + "px"; });
+      }
+    });
+  }
+  var timer;
+  function later() { clearTimeout(timer); timer = setTimeout(pin, 120); }
+  var heights = new WeakMap();
+  var ro = window.ResizeObserver ? new ResizeObserver(function (es) {
+    var changed = es.some(function (e) { var h = e.target.offsetHeight, was = heights.get(e.target); heights.set(e.target, h); return was !== undefined && was !== h; });
+    if (changed) later();
+  }) : null;
+  window.pinHeads = pin;
+  // 본문 제목(건·사규·업무 이름)이 위로 사라지면 위 줄의 화면 이름 옆에 보여 준다
+  var sub = document.getElementById("v2-sub"), seen = null, io = null;
+  function watchTitle() {
+    if (!sub || !window.IntersectionObserver) return;
+    var h1 = main.querySelector("h1");
+    if (h1 === seen) return;
+    seen = h1;
+    if (io) io.disconnect();
+    sub.hidden = true;
+    if (!h1) return;
+    var top = headH();
+    io = new IntersectionObserver(function (es) {
+      var gone = !es[0].isIntersecting && es[0].boundingClientRect.top < top;
+      var t = (h1.textContent || "").replace(/\s+/g, " ").trim();
+      var name = (document.getElementById("v2-title") || {}).textContent || "";
+      sub.textContent = t;
+      sub.title = t;
+      sub.hidden = !gone || !t || t === name.trim();
+    }, { rootMargin: "-" + top + "px 0px 0px 0px", threshold: 0 });
+    io.observe(h1);
+  }
+  var pin0 = pin;
+  pin = function () { pin0(); watchTitle(); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", pin); else pin();
+  window.addEventListener("load", later);
+  window.addEventListener("resize", later);
+  document.addEventListener("toggle", later, true);
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) if (!ms[i].target.closest || !ms[i].target.closest("[contenteditable], .rte")) { later(); return; }
+  }).observe(main, { childList: true, subtree: true });
+})();

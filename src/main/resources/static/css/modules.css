@@ -890,7 +890,7 @@ tr.bd-add td { background: var(--paper-2); }
 #hits { scroll-margin-top: 60px; }
 
 /* ── 2.0.2 스크롤 원칙: 맨 위 메뉴줄(과 왼쪽 메뉴)만 고정, 나머지는 화면과 함께 흐르고 안쪽 스크롤 없음 ── */
-.sticky-tools, .reg-toc, .history, .rte-bar { position: static !important; top: auto !important; }
+.reg-toc, .history { position: static !important; top: auto !important; }
 .reg-toc, .history, .loglist, .rte-body, .read-preview, .meet-text,
 dd > .rich, li > .rich, .rich-box > .rich, .table-wrap, .people-wrap { max-height: none !important; }
 .reg-toc, .history, .loglist, .read-preview, .meet-text, dd > .rich, li > .rich, .rich-box > .rich { overflow: visible !important; }

@@ -191,6 +191,7 @@
         <header class="v2-head no-print">
             <a class="v2-back" th:if="${listHref != null}" th:href="${listHref}" th:title="|${listLabel}으로|" th:aria-label="|${listLabel}으로|">←</a>
             <div class="v2-title" id="v2-title" th:text="${navGroupName}">경영진단 Portal</div>
+            <div class="v2-sub" id="v2-sub" aria-live="polite" hidden></div>
             <form th:if="${navGroup == 'work' or navGroup == 'home'}" class="v2-quick" method="post" action="/work/quick" data-write="1">
                 <input type="hidden" name="owner" value="mine" />
                 <svg class="hi" aria-hidden="true"><use href="#i-plus" xlink:href="#i-plus"/></svg>
