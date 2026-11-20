@@ -1,22 +1,55 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>개정 타임라인 · 사규</title></head>
+<head><title>개정 이력 · 사규</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1>개정 타임라인</h1>
-        <p class="hint">모든 사규의 제정·개정을 시행일 순서로 봅니다. 개정판은 앞 판과 견줄 수 있습니다.</p>
+        <h1>개정 이력</h1>
+        <p class="hint">모든 사규의 제정·개정을 시행일 순서(최근 것이 위)로 봅니다. 카드를 누르면 아래로 펼쳐져 바뀐 조와 사유가 나옵니다.</p>
+    </div>
+    <div class="row-actions" th:unless="${#lists.isEmpty(events)}">
+        <button type="button" class="btn" data-tl-all="open">모두 펼치기</button>
+        <button type="button" class="btn" data-tl-all="close">모두 접기</button>
     </div>
 </div>
 <p class="empty" th:if="${#lists.isEmpty(events)}">개정 이력이 없습니다.</p>
-<ol class="tl card" th:unless="${#lists.isEmpty(events)}">
-    <li th:each="e : ${events}">
-        <div class="d" th:text="${#strings.isEmpty(e.date()) ? '시행일 없음' : e.date()}"></div>
-        <a th:href="@{|/rules/${e.regId()}|(v=${e.versionId()})}"><strong th:text="${e.regTitle()}"></strong></a> — <span th:text="${e.label()}"></span>
-        <span class="small muted" th:text="|조 ${e.articles()}개${#strings.isEmpty(e.note()) ? '' : ' · ' + e.note()}|"></span>
-        <a class="btn btn-quiet" th:if="${e.prevVersionId() != null}" th:href="@{/rules/compare(reg=${e.regId()},v1=${e.prevVersionId()},v2=${e.versionId()})}">신구 비교</a>
-    </li>
+<ol class="vtl" th:unless="${#lists.isEmpty(events)}">
+    <th:block th:each="e, st : ${events}">
+        <li class="vtl-year" th:if="${st.first or events[st.index - 1].year() != e.year()}"><span th:text="${e.year()}">2026</span></li>
+        <li class="vtl-ev" th:classappend="${st.even} ? 'l' : 'r'">
+            <span class="vtl-dot" th:classappend="${e.prevVersionId() == null} ? 'first'" aria-hidden="true"></span>
+            <details class="vtl-card" th:open="${st.first}">
+                <summary>
+                    <span class="vtl-date" th:text="${#strings.isEmpty(e.date()) ? '시행일 없음' : e.date()}"></span>
+                    <span class="vtl-title" th:text="${e.regTitle()}"></span>
+                    <span class="vtl-tags">
+                        <span class="pill" th:classappend="${e.prevVersionId() == null} ? 'info'" th:text="${#strings.isEmpty(e.label()) ? (e.prevVersionId() == null ? '제정' : '개정') : e.label()}"></span>
+                        <span class="dtag new" th:if="${e.count('new') > 0}" th:text="|신설 ${e.count('new')}|"></span>
+                        <span class="dtag chg" th:if="${e.count('chg') > 0}" th:text="|변경 ${e.count('chg')}|"></span>
+                        <span class="dtag del" th:if="${e.count('del') > 0}" th:text="|삭제 ${e.count('del')}|"></span>
+                    </span>
+                </summary>
+                <div class="vtl-body">
+                    <p class="vtl-note" th:if="${!#strings.isEmpty(e.note())}"><b>사유</b> <span th:text="${e.note()}"></span></p>
+                    <p class="muted" th:if="${e.prevVersionId() == null}" th:text="|처음 제정 · 조 ${e.articles()}개|"></p>
+                    <th:block th:if="${e.prevVersionId() != null}">
+                        <p class="muted" th:if="${#lists.isEmpty(e.changes())}" th:text="|조문 변경 없음 · 조 ${e.articles()}개|"></p>
+                        <ul class="vtl-changes" th:unless="${#lists.isEmpty(e.changes())}">
+                            <li th:each="c : ${e.changes()}">
+                                <span class="dtag" th:classappend="${c.tag()}" th:text="${c.tag() == 'new'} ? '신설' : (${c.tag() == 'del'} ? '삭제' : '변경')"></span>
+                                <span th:text="${c.label()}"></span>
+                            </li>
+                        </ul>
+                    </th:block>
+                    <p class="row-actions">
+                        <a class="btn btn-sm" th:href="@{|/rules/${e.regId()}|(v=${e.versionId()})}">이 판 읽기</a>
+                        <a class="btn btn-sm btn-primary" th:if="${e.prevVersionId() != null}" th:href="@{/rules/compare(reg=${e.regId()},v1=${e.prevVersionId()},v2=${e.versionId()})}">신구 비교</a>
+                    </p>
+                </div>
+            </details>
+        </li>
+    </th:block>
 </ol>
 </th:block>
 </body>

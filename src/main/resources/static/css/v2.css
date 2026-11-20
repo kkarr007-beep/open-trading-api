@@ -234,25 +234,84 @@ table.pin-th thead th { position: sticky; z-index: 6; background: var(--paper) !
 .v2-sub { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--ink); padding-left: 12px; border-left: 2px solid var(--line); }
 .ex-head.pin-bar { padding-top: 8px; padding-bottom: 8px; }
 
-/* 사규 읽기: 본문은 A4 너비(210mm)로 가운데, 목차는 왼쪽에 붙여 둔다 */
-.rule-page { max-width: calc(794px + 236px + 24px); margin: 0 auto; }
-.rule-page .reg-layout { display: grid; grid-template-columns: minmax(170px, 236px) minmax(0, 794px); gap: 24px; justify-content: center; align-items: start; }
-.rule-page .reg-toc { position: sticky; top: var(--rte-top, 60px); max-height: calc(100vh - var(--rte-top, 60px) - 16px); overflow-y: auto;
-  padding: 12px 10px; font-size: 12.5px; }
-.rule-page .reg-toc strong { display: block; margin: 0 0 6px 6px; font-size: 13px; }
-.rule-page .reg-toc a { padding: 4px 8px; border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
-.rule-page .reg-toc a.on { background: var(--accent-soft); color: var(--accent-deep); border-left-color: var(--accent); font-weight: 700; }
+/* 사규 읽기: 본문은 A4 너비(210mm)로 제목·찾기 줄과 같은 왼쪽 선에, 목차는 본문 오른쪽에 붙여 둔다 */
+.rule-page { max-width: calc(794px + 24px + 300px); margin: 0; }
+.rule-page .reg-layout { display: grid; grid-template-columns: minmax(0, 794px) minmax(220px, 300px); gap: 24px; justify-content: start; align-items: start; }
 .rule-page .reg-main { min-width: 0; }
+.rule-page .reg-toc { position: sticky; top: var(--rte-top, 60px); max-height: calc(100vh - var(--rte-top, 60px) - 16px); overflow-y: auto;
+  padding: 16px 12px; font-size: 15px; line-height: 1.5; border-radius: 12px; }
+.rule-page .reg-toc strong { display: block; margin: 0 0 8px 8px; font-size: 16px; }
+.rule-page .reg-toc .tch { margin: 14px 0 4px 8px; font-size: 13px; }
+.rule-page .reg-toc a { padding: 6px 10px; font-size: 15px; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; }
+.rule-page .reg-toc a.on { background: var(--accent-soft); color: var(--accent-deep); border-left-color: var(--accent); font-weight: 700; }
 .rule-page .art { padding: 18px 26px; scroll-margin-top: calc(var(--toc-top, 60px) + 12px); }
 .rule-page .abody { font-size: 15px; }
-@media (max-width: 980px) {
+.rule-page .art.found { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.rule-page .abody mark.fhit { background: #ffd54a; }
+html[data-theme="dark"] .rule-page .abody mark.fhit { background: #8a6d00; }
+/* 찾기 결과 목록(엑셀 '모두 찾기'처럼): 조 · 찾은 곳 앞뒤 글 */
+.rule-page .toolbar { position: relative; }
+.rfind { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--sh-2, 0 8px 24px rgba(16,24,40,.16)); max-height: min(60vh, 520px); overflow-y: auto; }
+.rfind .rf-head { position: sticky; top: 0; display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; font-size: 13px; color: var(--muted);
+  background: var(--paper); border-bottom: 1px solid var(--line); }
+.rfind table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rfind th { position: sticky; top: 35px; background: var(--bg); text-align: left; font-size: 12.5px; color: var(--muted); padding: 6px 14px; font-weight: 700; }
+.rfind td { padding: 8px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+.rfind td.rf-art { white-space: nowrap; font-weight: 700; color: var(--accent-deep); width: 1%; }
+.rfind tr.rf-row { cursor: pointer; }
+.rfind tr.rf-row:hover td, .rfind tr.rf-row.sel td { background: var(--accent-soft); }
+.rfind mark { background: #fff3a3; color: inherit; border-radius: 3px; padding: 0 1px; }
+.rfind .rf-none { padding: 14px; color: var(--muted); }
+@media (max-width: 1100px) {
   .rule-page .reg-layout { grid-template-columns: minmax(0, 794px); }
-  .rule-page .reg-toc { position: static; max-height: 240px; }
+  .rule-page .reg-toc { position: static; max-height: 280px; order: -1; }
 }
-@media print { .rule-page { max-width: none; } .rule-page .reg-layout { grid-template-columns: 1fr; } }
+@media print { .rule-page { max-width: none; } .rule-page .reg-layout { grid-template-columns: 1fr; } .rfind { display: none !important; } }
 
 /* 대화 상자 끌어 옮기기: 제목 줄에 손 모양 */
 dialog .dialog-head, dialog .preview-bar { cursor: move; user-select: none; }
 dialog .dialog-head :is(button, a, input, select) { cursor: pointer; }
 dialog.dlg-moved { position: fixed; }
 dialog.dlg-dragging { transition: none !important; opacity: .96; }
+.note-del { margin-top: 6px; }
+.note-row { display: flex; align-items: flex-start; gap: 8px; }
+.note-row > .hit { flex: 1; min-width: 0; }
+.note-row > form { margin-top: 10px; }
+.btn.danger-text { color: var(--danger); }
+
+/* 개정 이력: 가운데 세로선, 연도 표시, 좌우로 번갈아 놓인 카드. 누르면 아래로 펼쳐진다 */
+.vtl { list-style: none; margin: 8px auto 40px; padding: 0; position: relative; max-width: 1080px; }
+.vtl::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--line); }
+.vtl > li { position: relative; }
+.vtl-year { text-align: center; margin: 18px 0 14px; }
+.vtl-year span { position: relative; display: inline-block; padding: 4px 16px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px; }
+.vtl-ev { width: 50%; padding: 0 34px 16px; box-sizing: border-box; }
+.vtl-ev.l { margin-right: 50%; }
+.vtl-ev.r { margin-left: 50%; }
+.vtl-dot { position: absolute; top: 18px; width: 14px; height: 14px; border-radius: 50%; background: var(--paper); border: 3px solid var(--accent); box-sizing: border-box; }
+.vtl-ev.l .vtl-dot { right: -7px; }
+.vtl-ev.r .vtl-dot { left: -7px; }
+.vtl-dot.first { background: var(--accent); }
+.vtl-card { background: var(--paper); border: 1px solid var(--card-edge, var(--line)); border-radius: 12px; box-shadow: var(--sh-1, none); }
+.vtl-card[open] { border-color: var(--accent); }
+.vtl-card > summary { list-style: none; cursor: pointer; padding: 12px 16px 12px 36px; display: grid; gap: 4px; position: relative; }
+.vtl-card > summary::-webkit-details-marker { display: none; }
+.vtl-card > summary::before { content: "▸"; position: absolute; left: 14px; top: 12px; color: var(--muted); transition: transform .15s; }
+.vtl-card[open] > summary::before { transform: rotate(90deg); color: var(--accent); }
+.vtl-date { font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vtl-title { font-size: 16px; font-weight: 800; color: var(--ink); }
+.vtl-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vtl-body { padding: 4px 16px 14px 36px; border-top: 1px solid var(--line); }
+.vtl-note { margin: 10px 0 6px; font-size: 14px; }
+.vtl-note b { color: var(--muted); margin-right: 6px; font-size: 12.5px; }
+.vtl-changes { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.vtl-changes li { display: flex; gap: 8px; align-items: baseline; }
+.vtl-body .row-actions { margin: 10px 0 0; }
+@media (max-width: 1000px) {
+  .vtl::before { left: 18px; }
+  .vtl-year { text-align: left; padding-left: 0; }
+  .vtl-ev, .vtl-ev.l, .vtl-ev.r { width: auto; margin: 0; padding: 0 0 14px 44px; }
+  .vtl-ev .vtl-dot, .vtl-ev.l .vtl-dot, .vtl-ev.r .vtl-dot { left: 11px; right: auto; }
+}
+@media print { .vtl-card { break-inside: avoid; } .vtl-card > summary::before { display: none; } }

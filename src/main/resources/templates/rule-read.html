@@ -49,19 +49,14 @@
         <label class="search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span class="sr">이 사규에서 표시</span>
-            <input name="q" th:value="${m.q}" placeholder="이 사규 안에서 표시할 말" maxlength="80" />
+            <input name="q" th:value="${m.q}" placeholder="이 사규 안에서 찾기 — 적으면 해당 조가 아래에 나옵니다" maxlength="80" autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rfind" data-rule-find />
         </label>
-        <button class="btn" type="submit">표시</button>
+        <button class="btn" type="submit" title="찾은 말을 본문 전체에 노란색으로 표시합니다">표시</button>
     </div>
+    <div class="rfind" id="rfind" role="listbox" hidden></div>
 </form>
 <div class="reg-layout">
-    <nav class="reg-toc" aria-label="목차">
-        <strong>목차</strong>
-        <th:block th:each="a : ${m.items}">
-            <div class="tch" th:if="${a.newChapter()}" th:text="${a.chapter()}"></div>
-            <a th:href="|#a-${a.id()}|" th:text="${a.label()}" th:title="${a.label()}"></a>
-        </th:block>
-    </nav>
     <div class="reg-main">
         <th:block th:each="a : ${m.items}">
             <h2 class="chap" th:if="${a.newChapter()}" th:text="${a.chapter()}"></h2>
@@ -92,6 +87,11 @@
                         <label class="field grow">메모<textarea name="text" rows="4" maxlength="20000" th:text="${a.note()}" data-rich="html" th:attr="data-html=${a.noteHtml()}"></textarea></label>
                         <p style="margin-top:6px"><button type="submit" class="btn">메모 저장</button></p>
                     </form>
+                    <form th:if="${!#strings.isEmpty(a.note())}" method="post" th:action="|/rules/${row.id()}/art/${a.id()}/note|" data-write="1"
+                          class="inline-form note-del" th:data-confirm="|${a.label()}의 메모를 지울까요? 되돌릴 수 없습니다.|">
+                        <input type="hidden" name="text" value="" />
+                        <button type="submit" class="btn btn-quiet danger-text">메모 삭제</button>
+                    </form>
                     <form method="post" th:action="|/rules/${row.id()}/art/${a.id()}/edit|" data-write="1" style="margin-top:12px">
                         <label class="field">조 제목<input name="title" maxlength="120" th:value="${a.title()}" /></label>
                         <label class="field grow" style="margin-top:6px"><span class="flabel">본문 <span class="field-note">①②는 항, 1.은 호, 가.는 목으로 들여 씁니다. 표는 | 칸 | 칸 | 꼴로 적습니다.</span></span>
@@ -110,6 +110,13 @@
         </th:block>
         <p class="empty" th:if="${#lists.isEmpty(m.items)}">조문이 없습니다.</p>
     </div>
+    <nav class="reg-toc" aria-label="목차">
+        <strong>목차</strong>
+        <th:block th:each="a : ${m.items}">
+            <div class="tch" th:if="${a.newChapter()}" th:text="${a.chapter()}"></div>
+            <a th:href="|#a-${a.id()}|" th:text="${a.label()}" th:title="${a.label()}"></a>
+        </th:block>
+    </nav>
 </div>
 <div th:replace="~{link-parts :: linked('rule', ${row.id()}, ${linkedCases}, ${caseChoices})}"></div>
 </div>

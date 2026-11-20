@@ -1001,7 +1001,12 @@ public class RuleService {
     }
 
     // ───── 개정 타임라인 ─────
-    public record Event(String regId, String regTitle, String versionId, String prevVersionId, String label, String date, int articles, String note) { }
+    public record Change(String tag, String label) { }
+    public record Event(String regId, String regTitle, String versionId, String prevVersionId, String label, String date, int articles, String note,
+                        List<Change> changes) {
+        public String year() { return date == null || date.length() < 4 ? "시행일 없음" : date.substring(0, 4); }
+        public long count(String tag) { return changes.stream().filter(c -> c.tag().equals(tag)).count(); }
+    }
 
     public List<Event> timeline() {
         List<Event> ev = new ArrayList<>();
@@ -1010,8 +1015,11 @@ public class RuleService {
             for (int i = 0; i < vs.size(); i++) {
                 Map<String, Object> v = vs.get(i);
                 String note = Rules.str(v, "note").isEmpty() ? Rules.str(v, "reason") : Rules.str(v, "note");
+                List<Change> changes = new ArrayList<>();
+                if (i > 0) for (Cmp c : compare(Rules.str(r, "id"), Rules.str(vs.get(i - 1), "id"), Rules.str(v, "id")))
+                    if (!"same".equals(c.tag())) changes.add(new Change(c.tag(), (c.number() + (c.title().isEmpty() ? "" : "(" + c.title() + ")")).strip()));
                 ev.add(new Event(Rules.str(r, "id"), Rules.str(r, "title"), Rules.str(v, "id"), i > 0 ? Rules.str(vs.get(i - 1), "id") : null,
-                    Rules.str(v, "label"), date(Rules.str(v, "effectiveDate")), Rules.maps(v, "articles").size(), note));
+                    Rules.str(v, "label"), date(Rules.str(v, "effectiveDate")), Rules.maps(v, "articles").size(), note, changes));
             }
         }
         ev.sort(Comparator.comparing(Event::date).reversed());

@@ -19,9 +19,16 @@
 <section class="card" id="notes">
     <h2>메모 <span class="count" th:text="${#lists.size(m.notes)}">0</span></h2>
     <p class="empty" th:if="${#lists.isEmpty(m.notes)}">메모가 없습니다.</p>
-    <a class="hit" th:each="x : ${m.notes}" th:href="|/rules/${x.regId()}#a-${x.articleId()}|">
-        <strong th:text="|${x.regTitle()} · ${x.label()}|"></strong><span class="snip" style="white-space:pre-wrap" th:text="${x.text()}"></span>
-    </a>
+    <div class="note-row" th:each="x : ${m.notes}">
+        <a class="hit" th:href="|/rules/${x.regId()}#a-${x.articleId()}|">
+            <strong th:text="|${x.regTitle()} · ${x.label()}|"></strong><span class="snip" style="white-space:pre-wrap" th:text="${x.text()}"></span>
+        </a>
+        <form method="post" th:action="|/rules/${x.regId()}/art/${x.articleId()}/note|" data-write="1" class="inline-form"
+              th:data-confirm="|${x.regTitle()} ${x.label()}의 메모를 지울까요? 되돌릴 수 없습니다.|">
+            <input type="hidden" name="text" value="" />
+            <button type="submit" class="btn btn-quiet btn-sm danger-text">삭제</button>
+        </form>
+    </div>
 </section>
 <section class="card" id="difficult">
     <h2>해석 어려운 조항 <span class="count" th:text="${#lists.size(m.difficult)}">0</span></h2>
