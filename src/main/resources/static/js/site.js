@@ -740,3 +740,40 @@ document.addEventListener("click", function (e) {
   var open = b.getAttribute("data-tl-all") === "open";
   Array.prototype.forEach.call(document.querySelectorAll(".vtl-card"), function (d) { d.open = open; });
 });
+
+// 사규 본문 속 표: 본문(A4) 너비를 넘으면 지금 열 너비 비율대로 본문 너비에 맞춘다. 긴 글은 칸 안에서 줄을 바꾼다.
+(function () {
+  function fit() {
+    Array.prototype.forEach.call(document.querySelectorAll(".rule-page .abody table"), function (t) {
+      if (t.closest("table") !== t && t.parentElement.closest("table")) return;   // 표 안의 표는 바깥 표를 따른다
+      var box = t.closest(".abody");
+      if (!box || t.getBoundingClientRect().width <= box.clientWidth + 1) return;
+      // 칸이 가장 많고 합친 칸이 없는 줄로 열 너비를 잰다
+      var best = null;
+      Array.prototype.forEach.call(t.rows, function (r) {
+        var merged = Array.prototype.some.call(r.cells, function (c) { return c.colSpan > 1; });
+        if (!merged && (!best || r.cells.length > best.cells.length)) best = r;
+      });
+      var n = 0;
+      Array.prototype.forEach.call(t.rows, function (r) { var k = 0; Array.prototype.forEach.call(r.cells, function (c) { k += c.colSpan; }); n = Math.max(n, k); });
+      var widths = [];
+      if (best && best.cells.length === n) widths = Array.prototype.map.call(best.cells, function (c) { return c.getBoundingClientRect().width; });
+      else for (var i = 0; i < n; i++) widths.push(1);
+      var sum = widths.reduce(function (a, b) { return a + b; }, 0) || 1;
+      // 한 열이 너무 좁아지지 않게(긴 글 칸이 비율을 다 가져가는 것 막기): 열마다 최소 몫을 둔다
+      var pct = widths.map(function (w) { return w / sum * 100; }), floor = Math.min(12, 70 / Math.max(1, n)), extra = 0;
+      pct = pct.map(function (x) { if (x < floor) { extra += floor - x; return floor; } return x; });
+      var big = pct.reduce(function (a, x) { return a + (x > floor ? x : 0); }, 0);
+      if (extra > 0 && big > 0) pct = pct.map(function (x) { return x > floor ? x - extra * x / big : x; });
+      Array.prototype.forEach.call(t.querySelectorAll(":scope > colgroup"), function (g) { g.remove(); });
+      var cg = document.createElement("colgroup");
+      pct.forEach(function (x) { var col = document.createElement("col"); col.style.width = x.toFixed(2) + "%"; cg.appendChild(col); });
+      t.insertBefore(cg, t.firstChild);
+      t.classList.add("fit-a4");
+    });
+  }
+  if (!document.querySelector(".rule-page .abody table")) return;
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fit); else fit();
+  window.addEventListener("load", fit);
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(fit, 150); });
+})();
