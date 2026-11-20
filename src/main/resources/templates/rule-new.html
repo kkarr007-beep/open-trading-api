@@ -5,15 +5,21 @@
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1 th:text="${edit != null} ? |조문 전체 고치기 — ${edit.title}| : (${revise != null} ? |새 개정 버전 추가 — ${revise.title}| : '사규 등록')">사규 등록</h1>
+        <h1 th:text="${replace != null} ? |문서로 통째로 바꾸기 — ${replace.title}| : (${edit != null} ? |조문 전체 고치기 — ${edit.title}| : (${revise != null} ? |새 개정 버전 추가 — ${revise.title}| : '사규 등록'))">사규 등록</h1>
         <p class="hint">① 사규 정보를 적고 ② 문서 파일(한글 hwp·hwpx, 워드, PDF, txt)을 고르면 ③ 조·항·호·부칙·별표로 나눈 <strong>분석 미리보기</strong>가 나옵니다.
             조 번호·제목·내용을 고치고, 잘못 나뉜 조는 '위와 병합'·'분할'로 바로잡은 뒤 ④ 확정 저장합니다.</p>
     </div>
 </div>
 <p class="hint" th:if="${edit != null}">지금 판의 조문을 불러왔습니다. 조 번호·제목·내용을 고치고 '위와 병합'·'분할'·'↑'·'삭제'로 정리한 뒤 '확정 저장'을 누르세요. 조 번호가 같은 조는 북마크·메모가 그대로 이어집니다.
     <a th:href="|/rules/${edit.id}|">취소하고 돌아가기</a></p>
-<section class="card" id="rule-import" th:attr="data-revise=${revise != null ? revise.id : ''},data-edit=${edit != null ? edit.id : ''},data-arts=${editArts}" th:classappend="${edit != null} ? 'hidden-edit'">
-    <div class="form-grid">
+<div class="banner warn card" th:if="${replace != null}">
+    <p><strong>지금 판의 조문 전체를 고른 문서의 내용으로 바꿉니다.</strong></p>
+    <p class="hint">백업에서 옮겨 온 조문이 원문과 다를 때 씁니다. 개정 이력(판)은 늘지 않고 지금 판이 바뀝니다. 조 번호가 같은 조의 북마크·메모·해석 어려움 표시는 그대로 이어집니다.
+        새 개정으로 남기려면 <a th:href="@{/rules/new(revise=${replace.id})}">개정판 넣기</a>를 쓰세요. 고른 문서는 '원본 보기'에도 붙습니다.
+        <a th:href="|/rules/${replace.id}|">취소하고 돌아가기</a></p>
+</div>
+<section class="card" id="rule-import" th:attr="data-revise=${revise != null ? revise.id : ''},data-edit=${edit != null ? edit.id : (replace != null ? replace.id : '')},data-arts=${edit != null ? editArts : ''},data-replace=${replace != null ? replace.id : ''},data-count=${replaceCount}" th:classappend="${edit != null} ? 'hidden-edit'">
+    <div class="form-grid" th:hidden="${replace != null}">
         <label class="field grow">사규명<input id="imT" maxlength="120" th:value="${revise != null ? revise.title : ''}" th:disabled="${revise != null}" placeholder="예) 취업규칙 (비우면 파일 이름)" /></label>
         <label class="field">카테고리<select id="imC" th:disabled="${revise != null}"><option value="">미분류</option><option th:each="c : ${cats}" th:value="${c.id}" th:text="${c.name}"></option></select></label>
         <label class="field">버전 이름<input id="imV" maxlength="60" th:value="${revise != null} ? |개정 ${#lists.size(revise.versions) + 1}| : '제정'" /></label>

@@ -251,11 +251,12 @@ table.pin-th thead th { position: sticky; z-index: 6; background: var(--paper) !
 html[data-theme="dark"] .rule-page .abody mark.fhit { background: #8a6d00; }
 /* 찾기 결과 목록(엑셀 '모두 찾기'처럼): 조 · 찾은 곳 앞뒤 글 */
 .rule-page .toolbar { position: relative; }
-.rfind { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; background: var(--paper); border: 1px solid var(--line);
+.rfind { overflow-y: auto !important; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; background: var(--paper); border: 1px solid var(--line);
   border-radius: 12px; box-shadow: var(--sh-2, 0 8px 24px rgba(16,24,40,.16)); max-height: min(60vh, 520px); overflow-y: auto; }
 .rfind .rf-head { position: sticky; top: 0; display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; font-size: 13px; color: var(--muted);
   background: var(--paper); border-bottom: 1px solid var(--line); }
-.rfind table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rfind table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--paper); }
+.rfind td { background: var(--paper); }
 .rfind th { position: sticky; top: 35px; background: var(--bg); text-align: left; font-size: 12.5px; color: var(--muted); padding: 6px 14px; font-weight: 700; }
 .rfind td { padding: 8px 14px; border-top: 1px solid var(--line); vertical-align: top; }
 .rfind td.rf-art { white-space: nowrap; font-weight: 700; color: var(--accent-deep); width: 1%; }
@@ -315,3 +316,4 @@ dialog.dlg-dragging { transition: none !important; opacity: .96; }
   .vtl-ev .vtl-dot, .vtl-ev.l .vtl-dot, .vtl-ev.r .vtl-dot { left: 11px; right: auto; }
 }
 @media print { .vtl-card { break-inside: avoid; } .vtl-card > summary::before { display: none; } }
+#rule-import .form-grid[hidden] { display: none !important; }

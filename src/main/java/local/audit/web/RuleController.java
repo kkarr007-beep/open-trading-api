@@ -90,8 +90,12 @@ public class RuleController {
     }
 
     @GetMapping("/rules/new")
-    public String fresh(@RequestParam(required = false) String revise, @RequestParam(required = false) String edit, Model model) throws IOException {
+    public String fresh(@RequestParam(required = false) String revise, @RequestParam(required = false) String edit,
+                        @RequestParam(required = false) String replace, Model model) throws IOException {
         model.addAttribute("cats", rules.categories());
+        Map<String, Object> rr = replace == null ? null : rules.reg(replace);
+        model.addAttribute("replace", rr);
+        model.addAttribute("replaceCount", rr == null ? 0 : local.audit.rule.Rules.arts(rr).size());
         model.addAttribute("revise", rules.reg(revise));
         Map<String, Object> er = edit == null ? null : rules.reg(edit);
         model.addAttribute("edit", er);

@@ -495,7 +495,7 @@ document.addEventListener("click", function (event) {
     var p = getComputedStyle(h).position;
     return p === "sticky" || p === "fixed" ? Math.round(h.getBoundingClientRect().height) : 0;
   }
-  function inFloating(el) { return !!el.closest("dialog, details, .v2-drawer, .ctx, [hidden], .rte, .modal"); }
+  function inFloating(el) { return !!el.closest("dialog, details, .v2-drawer, .ctx, [hidden], .rte, .modal, .rfind"); }
   function scrolls(el) { var cs = getComputedStyle(el); return /(auto|scroll|hidden|clip)/.test(cs.overflowX + cs.overflowY); }
   function pin() {
     var top = headH(), stuck = [];

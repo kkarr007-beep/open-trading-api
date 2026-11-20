@@ -186,6 +186,7 @@
     var body = { title: $("imT").value.trim(), categoryId: $("imC").value, label: $("imV").value, effectiveDate: $("imD").value, note: $("imR").value,
       reviseOf: revise, mode: mode, articles: DRAFT, editOf: editOf, orig: ORIG };
     if (!revise && !editOf && !body.title) { toast("사규명을 적으세요."); $("imT").focus(); return; }
+    if (root.getAttribute("data-replace") && !confirm("지금 조문 " + (root.getAttribute("data-count") || "") + "개를 문서의 조 " + DRAFT.length + "개로 모두 바꿀까요?\n조 번호가 같은 조의 북마크·메모는 이어집니다.")) return;
     post("/rules/save", body).then(function (r) {
       if (r.ok) { toast(r.message); location.href = r.go; return; }
       if (r.dupId) {
@@ -203,7 +204,7 @@
     });
   }
   // 조문 전체 고치기: 지금 판의 조문을 불러와 바로 편집
-  if (editOf) {
+  if (editOf && root.getAttribute("data-arts")) {
     try { DRAFT = JSON.parse(root.getAttribute("data-arts") || "[]"); } catch (e) { DRAFT = []; }
     draw(null);
   }
