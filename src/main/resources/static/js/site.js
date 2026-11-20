@@ -510,11 +510,12 @@ document.addEventListener("click", function (event) {
       if (ro) { heights.set(b, b.offsetHeight); if (!b._pinWatch) { b._pinWatch = 1; ro.observe(b); } }
     });
     // 편집기 도구 줄도 고정된 줄 아래에 붙인다
-    Array.prototype.forEach.call(main.querySelectorAll(".rte-bar"), function (rb) {
+    Array.prototype.forEach.call(main.querySelectorAll(".rte-bar, .reg-toc"), function (rb) {
       if (rb.closest("dialog, .v2-drawer")) return;
       var off = top;
       stuck.forEach(function (s) { if (s.parentElement.contains(rb) && s.compareDocumentPosition(rb) & Node.DOCUMENT_POSITION_FOLLOWING) off += s.offsetHeight; });
       rb.style.setProperty("--rte-top", off + "px");
+      if (rb.classList.contains("reg-toc")) main.style.setProperty("--toc-top", off + "px");
     });
     Array.prototype.forEach.call(main.querySelectorAll("table"), function (t) {
       var head = t.tHead;
@@ -575,4 +576,32 @@ document.addEventListener("click", function (event) {
   new MutationObserver(function (ms) {
     for (var i = 0; i < ms.length; i++) if (!ms[i].target.closest || !ms[i].target.closest("[contenteditable], .rte")) { later(); return; }
   }).observe(main, { childList: true, subtree: true });
+})();
+
+// 사규 목차: 지금 읽는 조를 목차에 표시하고, 목차 안에서 보이게 한다
+(function () {
+  var toc = document.querySelector(".reg-toc");
+  if (!toc || !window.IntersectionObserver) return;
+  var links = {}, current = null;
+  Array.prototype.forEach.call(toc.querySelectorAll('a[href^="#a-"]'), function (a) { links[a.getAttribute("href").slice(1)] = a; });
+  var arts = Array.prototype.slice.call(document.querySelectorAll(".reg-main article.art[id]"));
+  if (!arts.length) return;
+  var visible = {};
+  function mark() {
+    var best = null;
+    arts.forEach(function (el) { if (visible[el.id] && (!best || el.offsetTop < best.offsetTop)) best = el; });
+    if (!best || best === current) return;
+    current = best;
+    Array.prototype.forEach.call(toc.querySelectorAll("a.on"), function (a) { a.classList.remove("on"); });
+    var a = links[best.id];
+    if (!a) return;
+    a.classList.add("on");
+    var t = a.offsetTop - toc.offsetTop;
+    if (t < toc.scrollTop + 30 || t > toc.scrollTop + toc.clientHeight - 30) toc.scrollTop = t - toc.clientHeight / 3;
+  }
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+    mark();
+  }, { rootMargin: "-140px 0px -45% 0px", threshold: 0 });
+  arts.forEach(function (el) { io.observe(el); });
 })();

@@ -233,3 +233,20 @@ table.pin-th thead th { position: sticky; z-index: 6; background: var(--paper) !
 .pin-bar.toolbar { background: var(--paper); }
 .v2-sub { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--ink); padding-left: 12px; border-left: 2px solid var(--line); }
 .ex-head.pin-bar { padding-top: 8px; padding-bottom: 8px; }
+
+/* 사규 읽기: 본문은 A4 너비(210mm)로 가운데, 목차는 왼쪽에 붙여 둔다 */
+.rule-page { max-width: calc(794px + 236px + 24px); margin: 0 auto; }
+.rule-page .reg-layout { display: grid; grid-template-columns: minmax(170px, 236px) minmax(0, 794px); gap: 24px; justify-content: center; align-items: start; }
+.rule-page .reg-toc { position: sticky; top: var(--rte-top, 60px); max-height: calc(100vh - var(--rte-top, 60px) - 16px); overflow-y: auto;
+  padding: 12px 10px; font-size: 12.5px; }
+.rule-page .reg-toc strong { display: block; margin: 0 0 6px 6px; font-size: 13px; }
+.rule-page .reg-toc a { padding: 4px 8px; border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
+.rule-page .reg-toc a.on { background: var(--accent-soft); color: var(--accent-deep); border-left-color: var(--accent); font-weight: 700; }
+.rule-page .reg-main { min-width: 0; }
+.rule-page .art { padding: 18px 26px; scroll-margin-top: calc(var(--toc-top, 60px) + 12px); }
+.rule-page .abody { font-size: 15px; }
+@media (max-width: 980px) {
+  .rule-page .reg-layout { grid-template-columns: minmax(0, 794px); }
+  .rule-page .reg-toc { position: static; max-height: 240px; }
+}
+@media print { .rule-page { max-width: none; } .rule-page .reg-layout { grid-template-columns: 1fr; } }
