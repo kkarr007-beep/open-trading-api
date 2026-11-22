@@ -61,7 +61,7 @@ public class Web {
         model.addAttribute("nav", nav);
         // 업무 일정·사규 메뉴의 현재 위치: work, work/list, rules, rules/search …
         String navKey = "";
-        java.util.regex.Matcher km = java.util.regex.Pattern.compile("^/(work|rules)(?:/(list|board|calendar|timeline|annual|team|directives|plans|notes|meetings|insight|report|settings|search|marks|compare|new|solution|index|glossary|scan|checklists))?").matcher(path);
+        java.util.regex.Matcher km = java.util.regex.Pattern.compile("^/(work|rules)(?:/(list|board|calendar|timeline|annual|team|directives|plans|inbox|notes|meetings|insight|report|settings|search|marks|compare|new|solution|index|glossary|scan|checklists))?").matcher(path);
         if (km.find()) navKey = km.group(1) + (km.group(2) == null ? "" : "/" + km.group(2));
         if (path.startsWith("/work/item/")) navKey = "work/list";
         if (path.startsWith("/work/report")) navKey = "work/insight";

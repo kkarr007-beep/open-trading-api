@@ -333,3 +333,10 @@ table.data tbody th { background: transparent; color: var(--ink); }
 /* 목록 줄의 긴 글·주소가 박스를 넘지 않게(프로그램 창의 브라우저에서도) */
 .wrow .t { min-width: 0; }
 .wrow .t a, .wrow .t small { overflow-wrap: break-word; word-break: break-word; }
+/* 노트 화면 오른쪽의 좁은 '생각 담기' 상자: 글은 한 줄 전체, 단추는 그 아래. 상자 밖으로는 그리지 않는다 */
+#inbox { overflow: hidden; }
+#inbox .wrow { flex-wrap: wrap; }
+#inbox .wrow .t { flex: 1 1 100%; }
+#inbox .wrow form { margin-left: auto; }
+#inbox .wrow form + form { margin-left: 0; }
+.inbox-list .wrow .t a { font-size: 15px; }

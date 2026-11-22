@@ -124,6 +124,16 @@ public class WorkController {
     }
 
     /** 계획 대기함: 아직 하기로 정하지 않은 일. 업무 목록·부하 계산에는 들어가지 않는다. */
+    /** 수집함: 담아 둔 생각(최근 것이 위). */
+    @GetMapping("/work/inbox")
+    public String inbox(Model model) {
+        common(model);
+        List<WorkItem> all = new java.util.ArrayList<>(work.ofKind("inbox"));
+        all.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.str(x.created)).reversed());
+        model.addAttribute("inbox", all);
+        return "work-inbox";
+    }
+
     @GetMapping("/work/plans")
     public String plans(Model model) {
         common(model);

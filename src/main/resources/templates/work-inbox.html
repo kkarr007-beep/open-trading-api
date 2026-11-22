@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>수집함 · 업무</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker" th:text="|담아 둔 생각 ${#lists.size(inbox)}건|"></p>
+        <h1>수집함</h1>
+        <p class="hint">떠오른 생각이나 할지 말지 정하지 않은 일을 한 줄로 담아 둡니다. 할 일로 정해지면 '업무로', 필요 없으면 '버리기'를 누르세요.</p>
+    </div>
+</div>
+<section class="card">
+    <h2>생각 담기</h2>
+    <form method="post" action="/work/new/inbox" data-write="1" class="line-add">
+        <input name="title" required maxlength="200" placeholder="떠오른 생각 한 줄 (Enter)" class="wide" aria-label="생각 한 줄" />
+        <button type="submit" class="btn btn-primary">담기</button>
+    </form>
+</section>
+<section class="card">
+    <h2>담아 둔 생각 <span class="count" th:text="${#lists.size(inbox)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(inbox)}">담아 둔 생각이 없습니다.</p>
+    <ul class="wlist inbox-list">
+        <li class="wrow" th:each="x : ${inbox}">
+            <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+                <small th:text="|담은 날 ${#strings.substring(x.created + '          ', 0, 10)}|"></small></div>
+            <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="no-print"><button type="submit" class="btn btn-quiet">업무로</button></form>
+            <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="no-print" data-confirm="이 생각을 버릴까요?">
+                <input type="hidden" name="back" value="/work/inbox" /><button type="submit" class="btn btn-quiet">버리기</button></form>
+        </li>
+    </ul>
+</section>
+</th:block>
+</body>
+</html>

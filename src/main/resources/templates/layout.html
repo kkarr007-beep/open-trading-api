@@ -87,7 +87,7 @@
         <nav class="sn-group" data-group="work" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'work'}" aria-label="업무">
             <p class="sn-title">오늘</p>
                 <a href="/work" th:aria-current="${navKey == 'work'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-home" xlink:href="#i-home"/></svg><span>홈 · 오늘 할 일</span><b class="n red" th:if="${workUrgent > 0}" th:text="${workUrgent}">0</b></a>
-                <a href="/work/notes#inbox" th:aria-current="${false} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-inbox" xlink:href="#i-inbox"/></svg><span>수집함</span><b class="n" th:if="${workInbox > 0}" th:text="${workInbox}">0</b></a>
+                <a href="/work/inbox" th:aria-current="${navKey == 'work/inbox'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-inbox" xlink:href="#i-inbox"/></svg><span>수집함</span><b class="n" th:if="${workInbox > 0}" th:text="${workInbox}">0</b></a>
                 <a href="/work/list?scope=mine" th:aria-current="${navKey == 'work/list' and qScope == 'mine'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-user" xlink:href="#i-user"/></svg><span>내 업무</span><b class="n" th:if="${workMine > 0}" th:text="${workMine}">0</b></a>
             <p class="sn-title">업무 보기</p>
                 <a href="/work/board" th:aria-current="${navKey == 'work/board'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-columns" xlink:href="#i-columns"/></svg><span>진행 상태판</span></a>

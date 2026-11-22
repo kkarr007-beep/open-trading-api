@@ -83,7 +83,7 @@
             </form>
         </section>
         <section class="card" id="inbox">
-            <div class="card-head"><h2>생각 담기 <span class="sub" th:text="|${#lists.size(inbox)}건|"></span></h2></div>
+            <div class="card-head"><h2>생각 담기 <span class="sub" th:text="|${#lists.size(inbox)}건|"></span></h2><a class="btn btn-quiet btn-sm" href="/work/inbox">수집함에서 보기</a></div>
             <form method="post" action="/work/new/inbox" data-write="1" class="line-add">
                 <input name="title" required maxlength="200" placeholder="떠오른 생각 한 줄" class="wide" aria-label="생각 한 줄" />
                 <button type="submit" class="btn btn-primary">담기</button>
