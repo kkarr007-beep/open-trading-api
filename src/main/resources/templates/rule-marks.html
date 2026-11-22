@@ -19,7 +19,7 @@
 <section class="card" id="notes">
     <h2>메모 <span class="count" th:text="${#lists.size(m.notes)}">0</span></h2>
     <p class="empty" th:if="${#lists.isEmpty(m.notes)}">메모가 없습니다.</p>
-    <div class="note-row" th:each="x : ${m.notes}">
+    <div class="memo-row" th:each="x : ${m.notes}">
         <a class="hit" th:href="|/rules/${x.regId()}#a-${x.articleId()}|">
             <strong th:text="|${x.regTitle()} · ${x.label()}|"></strong><span class="snip" style="white-space:pre-wrap" th:text="${x.text()}"></span>
         </a>

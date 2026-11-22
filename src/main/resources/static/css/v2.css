@@ -276,9 +276,9 @@ dialog .dialog-head :is(button, a, input, select) { cursor: pointer; }
 dialog.dlg-moved { position: fixed; }
 dialog.dlg-dragging { transition: none !important; opacity: .96; }
 .note-del { margin-top: 6px; }
-.note-row { display: flex; align-items: flex-start; gap: 8px; }
-.note-row > .hit { flex: 1; min-width: 0; }
-.note-row > form { margin-top: 10px; }
+.memo-row { display: flex; align-items: flex-start; gap: 8px; }
+.memo-row > .hit { flex: 1; min-width: 0; }
+.memo-row > form { margin-top: 10px; }
 .btn.danger-text { color: var(--danger); }
 
 /* 개정 이력: 가운데 세로선, 연도 표시, 좌우로 번갈아 놓인 카드. 누르면 아래로 펼쳐진다 */
