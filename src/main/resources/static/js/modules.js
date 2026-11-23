@@ -131,16 +131,24 @@
   });
 })();
 
-// 사규 읽기: 조의 '수정' 단추 → 그 조의 메모·수정 칸을 열고 제목 칸으로
+// 사규 읽기: 조의 '수정' 단추 → 그 조의 조문 수정 칸(제목·본문)을 열고 본문 편집기에 커서를 둔다(메모 칸은 따로)
 document.addEventListener("click", function (event) {
   var b = event.target.closest && event.target.closest("[data-open]");
   if (!b) return;
   var d = document.getElementById(b.getAttribute("data-open"));
   if (!d) return;
   d.open = true;
-  d.scrollIntoView({ behavior: "smooth", block: "center" });
-  var f = d.querySelector("form[action$='/edit'] input[name=title]");
-  if (f) setTimeout(function () { f.focus(); }, 250);
+  d.scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(function () {
+    var body = d.querySelector("form[action$='/edit'] .rte-body[contenteditable]") || d.querySelector("form[action$='/edit'] textarea[name=content]");
+    if (!body) return;
+    body.focus();
+    // 커서를 본문 맨 끝에
+    if (body.isContentEditable && window.getSelection) {
+      var r = document.createRange(); r.selectNodeContents(body); r.collapse(false);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }
+  }, 300);
 });
 
 // 감사 건 '관련 항목': 종류를 바꾸면 추천 목록도 그 종류로 바꾼다.

@@ -355,3 +355,10 @@ table.data tbody th { background: transparent; color: var(--ink); }
 .dc-rule-row input { width: 120px; }
 .dc-rule-row input[type=number] { width: 64px; }
 .dc-rule-row span { color: var(--muted); font-size: 13px; }
+.art-edit, .art-memo { margin-top: 8px; }
+/* 편집기: 고른 표 칸, 서식 복사, 도구 줄 눌림 표시 */
+.rte-body td.rte-cellsel, .rte-body th.rte-cellsel { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; outline: 1px solid var(--accent); }
+.rte-body.rte-painting { cursor: copy; }
+.rte-bar button.on, .rte-bar button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-deep); border-color: var(--accent); }
+/* 편집기는 이름표(.field)의 굵은 글씨를 물려받지 않는다(굵게 단추가 거꾸로 동작하던 원인) */
+.rte, .rte-body { font-weight: 400; }
