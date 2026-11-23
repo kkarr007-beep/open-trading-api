@@ -95,6 +95,7 @@
                 <a href="/work/calendar" th:aria-current="${navKey == 'work/calendar'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg><span>달력</span></a>
                 <a href="/work/timeline" th:aria-current="${navKey == 'work/timeline'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-timeline" xlink:href="#i-timeline"/></svg><span>일정표</span></a>
                 <a href="/work/annual" th:aria-current="${navKey == 'work/annual'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-grid" xlink:href="#i-grid"/></svg><span>연간 정기 현황</span></a>
+                <a href="/work/monthly" th:aria-current="${navKey == 'work/monthly'} ? 'page'" title="월간 업무보고를 올려 주차별 계획으로 봅니다"><svg class="ei" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg><span>월간 계획</span></a>
             <p class="sn-title">팀</p>
                 <a href="/work/team" th:aria-current="${navKey == 'work/team'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"/></svg><span>담당별 부하</span></a>
                 <a href="/work/directives" th:aria-current="${navKey == 'work/directives'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-pin" xlink:href="#i-pin"/></svg><span>지시 · 피드백</span><b class="n red" th:if="${workDirs > 0}" th:text="${workDirs}">0</b></a>

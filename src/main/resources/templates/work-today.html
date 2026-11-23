@@ -50,7 +50,7 @@
             <ul class="wlist"><th:block th:each="x : ${v.lateDue}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>
         <section class="card">
-            <div class="card-head"><h2>이번 주 남은 기한 <span class="sub" th:text="${v.weekRange}"></span></h2></div>
+            <div class="card-head"><h2>이번 주 남은 기한 <span class="sub" th:text="${v.weekRange}"></span></h2><a class="btn btn-quiet btn-sm" href="/work/monthly">월간 계획 보기</a></div>
             <p class="empty" th:if="${#lists.isEmpty(v.week)}">이번 주 남은 기한이 없습니다.</p>
             <ul class="wlist"><th:block th:each="x : ${v.week}"><li th:replace="~{work-parts :: wrow(${x})}"></li></th:block></ul>
         </section>

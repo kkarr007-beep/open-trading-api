@@ -356,7 +356,8 @@ public class WorkService {
         } else if ("plan".equals(x.kind)) {
             x.when = Txt.fit(p.get("when"), 60, false);
         } else if ("work".equals(x.kind)) {
-            x.due = Work.date(p.get("due")) == null ? "" : p.get("due");
+            // 달력에서 '업무로 추가'하면 날짜 칸(date)이 기한이 된다
+            x.due = Work.date(p.get("due")) != null ? p.get("due") : Work.date(p.get("date")) != null ? p.get("date") : "";
             x.due0 = x.due;
             addLog(x, "등록");
         }
@@ -500,6 +501,73 @@ public class WorkService {
     }
 
     /** 지시·생각 담기·계획 대기를 업무로 옮긴다. 원래 항목은 남겨 두고 연결한다. */
+    // ───── 월간 업무보고에서 온 업무 ─────
+
+    static String norm(String t) { return Txt.str(t).replaceAll("[\\s·・.,()\\[\\]]+", "").toLowerCase(); }
+
+    /** 월간 업무보고에서 온 업무(태그 '월간계획')인지. */
+    public static boolean fromMonthly(WorkItem x) { return x.tags != null && x.tags.contains("월간계획"); }
+
+    /**
+     * 다음달 일정 한 줄을 업무로. 같은 구분·같은 추진항목의 끝나지 않은 월간 업무가 있으면 새로 만들지 않고 이어서 갱신한다.
+     * 돌려주는 값: "new:ID" 또는 "upd:ID".
+     */
+    public String upsertMonthly(String month, String cat, String title, String detail, String start, String due) {
+        String t = Txt.fit(Txt.clean(title, 200, false), 200, false);
+        if (Txt.blank(t)) return null;
+        String c = Txt.fit(Txt.str(cat).strip(), 30, false);
+        WorkItem found = null;
+        for (WorkItem x : all()) {
+            if (!x.isWork() || !fromMonthly(x) || !isOpen(x)) continue;
+            if (norm(x.title).equals(norm(t)) && (c.isEmpty() || x.tags.contains(c))) { found = x; break; }
+        }
+        String body = Txt.fit(Txt.str(detail), 20_000, true);
+        if (found != null) {
+            if (!Txt.blank(start) && (Txt.blank(found.start) || start.compareTo(found.start) < 0)) found.start = start;
+            if (!Txt.blank(due) && !due.equals(found.due)) setDue(found, due);
+            if (!body.isBlank() && !found.content.contains(body)) found.content = (found.content.isBlank() ? "" : found.content + "\n\n") + "[" + month + "] " + body;
+            addLog(found, month + " 월간 일정 반영");
+            store.save(found);
+            return "upd:" + found.id;
+        }
+        WorkItem x = fresh("work");
+        x.title = t;
+        x.content = body.isBlank() ? "" : "[" + month + "] " + body;
+        x.start = Txt.str(start);
+        x.due = Txt.str(due);
+        x.due0 = x.due;
+        x.tags = new ArrayList<>(c.isEmpty() ? List.of("월간계획") : List.of(c, "월간계획"));
+        x.srcId = "monthly:" + month;
+        addLog(x, "등록 (" + month + " 월간 업무보고에서)");
+        store.add(x);
+        return "new:" + x.id;
+    }
+
+    /** 지난달 현황 한 줄을 같은 업무의 진행 기록으로 남긴다. 맞는 업무가 없으면 false. */
+    public boolean noteMonthlyStatus(String month, String cat, String title, String detail) {
+        for (WorkItem x : all()) {
+            if (!x.isWork() || !norm(x.title).equals(norm(title))) continue;
+            addLog(x, month + " 현황: " + Txt.fit(Txt.str(detail).replace('\n', ' '), 300, false));
+            store.save(x);
+            return true;
+        }
+        return false;
+    }
+
+    /** 한 달(YYYY-MM)에 걸친 업무와 일정. 업무는 시작~기한이 그 달과 겹치면, 일정은 날짜가 그 달이면. */
+    public List<WorkItem> inMonth(java.time.YearMonth ym) {
+        String a = ym.atDay(1).toString(), b = ym.atEndOfMonth().toString();
+        List<WorkItem> out = new ArrayList<>();
+        for (WorkItem x : all()) {
+            if ("event".equals(x.kind)) { if (!Txt.blank(x.date) && x.date.compareTo(a) >= 0 && x.date.compareTo(b) <= 0) out.add(x); continue; }
+            if (!x.isWork() && !"dir".equals(x.kind)) continue;
+            String s0 = Txt.blank(x.start) ? x.due : x.start, e0 = Txt.blank(x.due) ? x.start : x.due;
+            if (Txt.blank(s0) || Txt.blank(e0)) continue;
+            if (s0.compareTo(b) <= 0 && e0.compareTo(a) >= 0) out.add(x);
+        }
+        return out;
+    }
+
     /** 수집함의 생각을 '나중에 할 일'(계획)로 돌린다. 같은 항목의 종류만 바꾸고 예상 시기·다시 볼 날을 적는다. */
     public Op toPlan(String id, String when, String tick) {
         WorkItem x = get(id);

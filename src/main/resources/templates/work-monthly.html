@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>월간 계획 · 업무</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <p class="kicker">월간 업무보고 · 주차별 계획 · 달력과 같은 업무</p>
+        <h1 th:text="|월간 계획 · ${ymLabel}|">월간 계획</h1>
+        <p class="hint">월간 업무보고(지난달 현황 표·다음달 일정 표)를 올리면 다음달 일정이 업무로 들어가 달력·이번 주 할 일·이 화면에 함께 나옵니다. 달력에서 넣은 업무·일정도 여기 주차 칸에 나옵니다.</p>
+    </div>
+    <div class="row-actions no-print">
+        <a class="btn" th:href="@{/work/monthly(m=${prevYm})}">← 지난달</a>
+        <a class="btn" href="/work/monthly">이번 달</a>
+        <a class="btn" th:href="@{/work/monthly(m=${nextYm})}">다음달 →</a>
+        <a class="btn" th:href="@{/work/calendar(ym=${ym})}">달력</a>
+    </div>
+</div>
+
+<section class="card mo-up no-print" th:if="${pv == null}">
+    <form method="post" action="/work/monthly/read" data-write="1" enctype="multipart/form-data" class="mo-upform">
+        <div class="drop">
+            <p class="drop-copy"><strong>월간 업무보고를 고르거나 끌어 놓으세요</strong> — 한글·워드·PDF. 읽은 결과를 먼저 보여 드리고, 확인한 뒤 등록합니다.</p>
+            <input type="file" name="upload" required accept=".hwp,.hwpx,.docx,.doc,.pdf" aria-label="월간 업무보고 파일" />
+        </div>
+        <button type="submit" class="btn btn-primary">읽어서 미리보기</button>
+    </form>
+</section>
+
+<!-- 미리보기: 고쳐서 등록 -->
+<section class="card" id="preview" th:if="${pv != null}">
+    <div class="card-head"><h2 th:text="|보고서 미리보기 — ${pv.fileName}|">미리보기</h2></div>
+    <p class="banner warn" th:if="${!#strings.isEmpty(pv.note)}" th:text="${pv.note}"></p>
+    <form method="post" action="/work/monthly/save" data-write="1">
+        <input type="hidden" name="token" th:value="${pv.token}" />
+        <label class="field mo-month">일정 달 <input type="month" name="month" th:value="${pv.ym}" required /></label>
+        <p class="hint">줄마다 고칠 수 있습니다. 등록하지 않을 줄은 앞의 칸을 끄세요. 날짜는 주요내용 속 날짜(12.5~12.20, 2주, 하순 등)로 채웠고, 없으면 그 달 전체입니다.</p>
+        <h3 class="h3" th:text="|다음달 업무 일정 (${#lists.size(pv.plan)}줄) → 업무로 등록|"></h3>
+        <div class="table-wrap"><table class="data mo-edit">
+            <thead><tr><th scope="col">등록</th><th scope="col">구분</th><th scope="col">추진항목</th><th scope="col">주요내용</th><th scope="col">시작</th><th scope="col">끝</th></tr></thead>
+            <tbody><tr th:each="r, st : ${pv.plan}">
+                <td><input type="checkbox" th:name="|puse${st.index}|" value="1" checked aria-label="등록" /></td>
+                <td><input th:name="|pcat${st.index}|" th:value="${r.cat()}" maxlength="30" class="mo-cat" aria-label="구분" /></td>
+                <td><input th:name="|pitem${st.index}|" th:value="${r.item()}" maxlength="200" aria-label="추진항목" /></td>
+                <td><textarea th:name="|pdetail${st.index}|" rows="2" maxlength="4000" th:text="${r.detail()}" aria-label="주요내용"></textarea></td>
+                <td><input type="date" th:name="|pstart${st.index}|" th:value="${r.start()}" aria-label="시작" /></td>
+                <td><input type="date" th:name="|pdue${st.index}|" th:value="${r.due()}" aria-label="끝" /></td>
+            </tr></tbody>
+        </table></div>
+        <h3 class="h3" th:if="${!#lists.isEmpty(pv.status)}" th:text="|지난달 업무 현황 (${#lists.size(pv.status)}줄) → 같은 업무의 진행 기록·월별 기록으로|"></h3>
+        <div class="table-wrap" th:if="${!#lists.isEmpty(pv.status)}"><table class="data mo-edit">
+            <thead><tr><th scope="col">기록</th><th scope="col">구분</th><th scope="col">추진항목</th><th scope="col">주요내용</th><th scope="col">시작</th><th scope="col">끝</th></tr></thead>
+            <tbody><tr th:each="r, st : ${pv.status}">
+                <td><input type="checkbox" th:name="|suse${st.index}|" value="1" checked aria-label="기록" /></td>
+                <td><input th:name="|scat${st.index}|" th:value="${r.cat()}" maxlength="30" class="mo-cat" aria-label="구분" /></td>
+                <td><input th:name="|sitem${st.index}|" th:value="${r.item()}" maxlength="200" aria-label="추진항목" /></td>
+                <td><textarea th:name="|sdetail${st.index}|" rows="2" maxlength="4000" th:text="${r.detail()}" aria-label="주요내용"></textarea></td>
+                <td><input type="date" th:name="|sstart${st.index}|" th:value="${r.start()}" aria-label="시작" /></td>
+                <td><input type="date" th:name="|sdue${st.index}|" th:value="${r.due()}" aria-label="끝" /></td>
+            </tr></tbody>
+        </table></div>
+        <p class="row-actions"><button type="submit" class="btn btn-primary">등록</button> <a class="btn" href="/work/monthly">취소</a></p>
+    </form>
+</section>
+
+<!-- 보고서 원본 -->
+<section class="card mo-doc">
+    <div class="card-head"><h2>이 달 보고서</h2></div>
+    <th:block th:if="${!#strings.isEmpty(rec.docId)}">
+        <p><strong th:text="${rec.docTitle}"></strong> <small class="muted" th:text="|등록 ${#strings.substring(rec.updated + '          ', 0, 10)}|"></small></p>
+        <p class="row-actions">
+            <a class="btn btn-primary" th:href="|/original/doc-${rec.docId}|" target="_blank" rel="noopener">원본 보기</a>
+            <a class="btn" th:href="|/library/${rec.docId}|">자료에서 열기</a>
+            <a class="btn" th:href="|/library/${rec.docId}/file?dl=1|">내려받기</a>
+        </p>
+    </th:block>
+    <p class="muted" th:if="${#strings.isEmpty(rec.docId)}" th:text="|${ymLabel} 일정이 담긴 보고서가 아직 없습니다. 위에서 올리면 자료 › 월간 업무보고에 함께 보관됩니다.|"></p>
+</section>
+
+<!-- 주차별 계획 -->
+<section class="card">
+    <div class="card-head"><h2 th:text="|${ymLabel} 주차별 계획|"></h2><span class="sub">업무는 시작~기한이 그 주와 겹치면, 일정은 그 날짜의 주에 나옵니다. 누르면 업무 화면.</span></div>
+    <div class="table-wrap"><table class="data mo-grid">
+        <thead><tr><th scope="col">구분</th><th scope="col" th:each="w : ${weeks}" th:classappend="${w.now()} ? 'mo-now'" th:text="${w.label()}"></th></tr></thead>
+        <tbody>
+        <tr th:each="g : ${grid}">
+            <th scope="row"><b th:text="${g.cat()}"></b><small class="muted" th:if="${g.total() > 0}" th:text="|${g.done()}/${g.total()} 완료|"></small></th>
+            <td th:each="cell, st : ${g.byWeek()}" th:classappend="${weeks[st.index].now()} ? 'mo-now'">
+                <a th:each="x : ${cell}" class="mo-chip" th:classappend="|${x.kind == 'event' ? 'ev' : ''} ${x.status == 'done' ? 'done' : ''}|"
+                   th:href="|/work/item/${x.id}|" th:title="${x.title}"
+                   th:text="${x.kind == 'event'} ? |${#strings.substring(x.date, 5)} ${x.title}| : ${x.title}"></a>
+            </td>
+        </tr>
+        </tbody>
+    </table></div>
+</section>
+
+<section class="card" th:if="${!#lists.isEmpty(statusRows)}">
+    <div class="card-head"><h2 th:text="|${ymLabel} 추진 현황 (보고서)|"></h2><span class="sub">다음달 보고서의 '지난달 업무 현황' 표</span></div>
+    <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">구분</th><th scope="col">추진항목</th><th scope="col">주요내용</th></tr></thead>
+        <tbody><tr th:each="r : ${statusRows}"><td th:text="${r.cat()}"></td><td th:text="${r.item()}"></td><td class="pre" th:text="${r.detail()}"></td></tr></tbody>
+    </table></div>
+</section>
+
+<section class="card" th:if="${!#lists.isEmpty(planRows)}">
+    <div class="card-head"><h2 th:text="|${ymLabel} 업무 일정 (보고서 원문)|"></h2></div>
+    <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">구분</th><th scope="col">추진항목</th><th scope="col">주요내용</th><th scope="col">기간</th></tr></thead>
+        <tbody><tr th:each="r : ${planRows}"><td th:text="${r.cat()}"></td><td th:text="${r.item()}"></td><td class="pre" th:text="${r.detail()}"></td>
+            <td class="nowrap" th:text="|${#strings.substring(r.start() + '     ', 5).trim()}~${#strings.substring(r.due() + '     ', 5).trim()}|"></td></tr></tbody>
+    </table></div>
+</section>
+</th:block>
+</body>
+</html>

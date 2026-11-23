@@ -35,7 +35,8 @@ public class WorkController {
     private final local.audit.LinkService links;
     private final local.audit.OriginalService originals;
     public WorkController(WorkService work, local.audit.work.WorkReports reports, local.audit.extract.TextReader reader, local.audit.Paths2 paths, local.audit.LinkService links,
-                          local.audit.OriginalService originals) {
+                          local.audit.OriginalService originals, local.audit.work.MonthlyService monthly) {
+        this.monthly = monthly;
         this.originals = originals;
         this.links = links;
         this.work = work;
@@ -43,6 +44,8 @@ public class WorkController {
         this.reader = reader;
         this.paths = paths;
     }
+
+    private final local.audit.work.MonthlyService monthly;
 
     private void common(Model model) {
         model.addAttribute("cfg", work.config());
@@ -141,6 +144,55 @@ public class WorkController {
         model.addAttribute("waitPlans", plans.stream().filter(x -> Txt.blank(x.tick) || x.tick.compareTo(t) > 0).toList());
         model.addAttribute("staleBefore", Kst.today().minusDays(7).toString());   // 7일 넘게 정리 안 된 생각 표시
         return "work-inbox";
+    }
+
+    // ───── 월간 계획: 월간 업무보고 올리기·미리보기·등록, 한 달 주차별 계획 ─────
+
+    @GetMapping("/work/monthly")
+    public String monthly(@RequestParam(required = false) String m, @RequestParam(required = false) String token, Model model) {
+        common(model);
+        java.time.YearMonth ym;
+        try { ym = java.time.YearMonth.parse(Txt.str(m)); } catch (Exception e) { ym = java.time.YearMonth.from(Kst.today()); }
+        local.audit.work.MonthlyService.Preview pv = token == null ? null : monthly.preview(token);
+        if (pv != null && m == null) ym = java.time.YearMonth.of(pv.year(), pv.month());
+        model.addAttribute("pv", pv);
+        model.addAttribute("ym", ym.toString());
+        model.addAttribute("ymLabel", ym.getYear() + "년 " + ym.getMonthValue() + "월");
+        model.addAttribute("prevYm", ym.minusMonths(1).toString());
+        model.addAttribute("nextYm", ym.plusMonths(1).toString());
+        Map<String, Object> rec = monthly.record(ym), prevRec = monthly.record(ym.minusMonths(1));
+        model.addAttribute("rec", rec);
+        model.addAttribute("statusRec", rec);
+        // 구분 순서: 보고서 일정·현황의 구분 → 이 달 월간 업무의 구분 → 일정
+        java.util.LinkedHashSet<String> cats = new java.util.LinkedHashSet<>();
+        for (Object o : (List<?>) rec.get("plan")) cats.add(((local.audit.work.MonthlyReport.Row) o).cat());
+        for (Object o : (List<?>) rec.get("status")) cats.add(((local.audit.work.MonthlyReport.Row) o).cat());
+        for (WorkItem x : work.inMonth(ym)) if (WorkService.fromMonthly(x)) for (String t : x.tags) if (!"월간계획".equals(t)) cats.add(t);
+        cats.remove("");
+        List<String> order = new java.util.ArrayList<>(cats);
+        order.add("기타");
+        order.add("일정");
+        var weeks = local.audit.work.MonthlyService.weeks(ym, Kst.today());
+        model.addAttribute("weeks", weeks);
+        model.addAttribute("grid", monthly.grid(ym, weeks, order));
+        model.addAttribute("statusRows", rec.get("status"));
+        model.addAttribute("planRows", rec.get("plan"));
+        return "work-monthly";
+    }
+
+    @PostMapping("/work/monthly/read")
+    public Object monthlyRead(@RequestParam(required = false) MultipartFile upload, HttpServletRequest req) throws IOException {
+        if (upload == null || upload.isEmpty()) return Web.reply(req, Op.bad("월간 업무보고 파일을 고르세요."), null);
+        if (upload.getSize() > 100L * 1024 * 1024) return Web.reply(req, Op.bad("파일이 너무 큽니다."), null);
+        Op op;
+        try (java.io.InputStream in = upload.getInputStream()) { op = monthly.read(upload.getOriginalFilename(), in); }
+        return Web.reply(req, op, op.ok ? "/work/monthly?token=" + op.id + "#preview" : null);
+    }
+
+    @PostMapping("/work/monthly/save")
+    public Object monthlySave(@RequestParam Map<String, String> p, HttpServletRequest req) {
+        Op op = work.change("월간 업무보고 등록", () -> monthly.save(Txt.str(p.get("token")), p));
+        return Web.reply(req, op, op.ok ? "/work/monthly?m=" + op.id : null);
     }
 
     /** 연간 정기 현황에서 바로 정기 업무를 만든다. 고른 달마다 이행 칸이 생긴다. */

@@ -399,3 +399,24 @@ table.data tbody th { background: transparent; color: var(--ink); }
 /* 수집함: 나중으로(예상 시기·다시 볼 날) */
 .line-add .when-in { width: 160px; flex: none; }
 .later-menu .ex-form { width: 260px; }
+
+/* 월간 계획 */
+.mo-upform { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.mo-upform .drop { flex: 1; min-width: 320px; margin: 0; }
+.mo-month { max-width: 220px; margin-bottom: 8px; }
+.mo-edit td { vertical-align: top; }
+.mo-edit input:not([type=checkbox]), .mo-edit textarea { width: 100%; min-width: 0; font-size: 13px; }
+.mo-edit .mo-cat { width: 110px; }
+.mo-edit input[type=date] { width: 140px; }
+.mo-grid { table-layout: fixed; }
+.mo-grid th[scope=row] { width: 130px; vertical-align: top; }
+.mo-grid th[scope=row] small { display: block; font-weight: 400; margin-top: 2px; }
+.mo-grid td { vertical-align: top; }
+.mo-grid .mo-now { background: color-mix(in srgb, var(--accent) 7%, transparent) !important; }
+.mo-grid thead th.mo-now { color: var(--accent-deep); }
+.mo-chip { display: block; margin: 0 0 4px; padding: 3px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-deep);
+  font-size: 12.5px; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mo-chip.ev { background: var(--paper-2); color: var(--ink); border: 1px dashed var(--line); }
+.mo-chip.done { text-decoration: line-through; opacity: .6; }
+.mo-chip:hover { text-decoration: none; filter: brightness(.96); }
+td.pre { white-space: pre-wrap; }

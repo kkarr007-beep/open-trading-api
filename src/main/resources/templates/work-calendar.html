@@ -59,7 +59,9 @@
             <label class="field">담당<select name="ownerId"><option th:each="o : ${cfg.owners}" th:if="${o.on}" th:value="${o.id}" th:text="${o.n}" th:selected="${o.id == cfg.me}"></option></select></label>
             <label class="field">장소<input name="place" maxlength="120" /></label>
         </div>
-        <div class="row-actions"><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn btn-primary">추가</button></div>
+        <div class="row-actions"><button type="button" class="btn" data-close>닫기</button>
+            <button type="submit" class="btn" formaction="/work/new/work" title="이 날짜를 기한으로 한 업무(진행 상태·담당 부하에 들어감)로 넣습니다. 월간 계획·이번 주 할 일에도 나옵니다.">업무로 추가</button>
+            <button type="submit" class="btn btn-primary">일정으로 추가</button></div>
     </form>
 </dialog>
 </th:block>
