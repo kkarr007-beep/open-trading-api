@@ -32,7 +32,6 @@ public class OfficeBridge {
     private final Paths2 paths;
     private final ReentrantLock lock = new ReentrantLock();
     private final boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
-    private Path script;
 
     public OfficeBridge(Paths2 paths) { this.paths = paths; }
 
@@ -101,17 +100,62 @@ public class OfficeBridge {
         }
     }
 
+    /** PDF를 MS 워드로 열어 워드 문서(docx)로 바꾼다(표를 살려 읽기 위해). Windows·워드가 없거나 실패하면 null. 받은 파일은 부른 쪽이 지운다. */
+    public Path pdfToDocx(Path pdf) {
+        if (!windows) return null;
+        lock.lock();
+        Path out = paths.tmp.resolve("pdf-" + Txt.newId() + ".docx");
+        try {
+            Path ps1 = script("pdf-to-docx.ps1");
+            Process process = new ProcessBuilder(List.of(
+                "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1.toString(),
+                "-Path", pdf.toAbsolutePath().toString(), "-Out", out.toString()))
+                .redirectErrorStream(true).start();
+            process.getOutputStream().close();
+            Thread killer = new Thread(() -> {
+                try {
+                    if (!process.waitFor(PDF_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        process.descendants().forEach(ProcessHandle::destroyForcibly);
+                        process.destroyForcibly();
+                    }
+                } catch (InterruptedException ignored) { }
+            });
+            killer.setDaemon(true);
+            killer.start();
+            byte[] console;
+            try (InputStream in = process.getInputStream()) { console = in.readAllBytes(); }
+            boolean done = process.waitFor(5, TimeUnit.SECONDS);
+            if (done && process.exitValue() == 0 && Files.isRegularFile(out) && Files.size(out) > 0) return out;
+            log.info("PDF→워드 변환 안 됨: {}", new String(console, StandardCharsets.UTF_8).strip());
+            Files.deleteIfExists(out);
+            return null;
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            try { Files.deleteIfExists(out); } catch (IOException ignored) { }
+            return null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private static final int PDF_TIMEOUT_SECONDS = 120;
+
     private static String lastLine(String message) {
         String[] lines = message.split("\\R");
         String last = lines[lines.length - 1].strip();
         return last.length() > 200 ? last.substring(0, 200) : last;
     }
 
-    private synchronized Path script() throws IOException {
-        if (script != null && Files.isRegularFile(script)) return script;
-        Path target = paths.tmp.resolve("read-document.ps1");
-        try (InputStream in = OfficeBridge.class.getResourceAsStream("/scripts/read-document.ps1")) {
-            if (in == null) throw new IOException("read-document.ps1 없음");
+    private Path script() throws IOException { return script("read-document.ps1"); }
+
+    private final java.util.Map<String, Path> scripts = new java.util.HashMap<>();
+
+    private synchronized Path script(String name) throws IOException {
+        Path known = scripts.get(name);
+        if (known != null && Files.isRegularFile(known)) return known;
+        Path target = paths.tmp.resolve(name);
+        try (InputStream in = OfficeBridge.class.getResourceAsStream("/scripts/" + name)) {
+            if (in == null) throw new IOException(name + " 없음");
             // PowerShell 5는 BOM이 있어야 UTF-8로 읽는다.
             byte[] body = in.readAllBytes();
             byte[] withBom = new byte[body.length + 3];
@@ -121,7 +165,7 @@ public class OfficeBridge {
             Files.write(temp, withBom);
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
         }
-        script = target;
+        scripts.put(name, target);
         return target;
     }
 }

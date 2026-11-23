@@ -69,6 +69,11 @@ public class TextReader {
                 if (text == null) return new Result("미지원", "", "내용을 읽지 않는 형식입니다.", "", false);
                 text = tidy(text);
                 if (text.isBlank()) return new Result("읽음", "직접", "글자가 없는 문서입니다(스캔본일 수 있음).", "", false);
+                if (".pdf".equals(ext)) {
+                    String[] how = new String[1];
+                    String html = pdfHtml(file, how);
+                    return new Result("읽음", how[0] == null ? "직접" : how[0], "", text, false, html);
+                }
                 return new Result("읽음", "직접", "", text, false, Rich.fromFile(file, ext));
             }
         } catch (Exception e) {
@@ -392,6 +397,34 @@ public class TextReader {
         kr.dogfoot.hwplib.object.HWPFile doc = kr.dogfoot.hwplib.reader.HWPReader.fromFile(file.toString());
         return kr.dogfoot.hwplib.tool.textextractor.TextExtractor.extract(doc,
             kr.dogfoot.hwplib.tool.textextractor.TextExtractMethod.InsertControlTextBetweenParagraphText);
+    }
+
+    static final int PDF_WORD_MAX_PAGES = 80;
+
+    /**
+     * PDF의 표를 살린 모양(HTML). PDF에는 표 구조가 없으므로
+     * 1) 이 컴퓨터의 MS 워드가 PDF를 워드 문서로 바꾼 것을 읽고(표·합친 칸·들여쓰기가 가장 잘 남음),
+     * 2) 워드가 없거나 실패하면 테두리 선과 글자 위치로 표를 직접 찾는다.
+     * 둘 다 표를 못 찾으면 null(지금처럼 글만).
+     */
+    String pdfHtml(Path file, String[] how) {
+        int pages = 0;
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(file.toFile())) { pages = doc.getNumberOfPages(); }
+        catch (Exception ignored) { }
+        if (settings.office() && office.available() && pages > 0 && pages <= PDF_WORD_MAX_PAGES) {
+            Path docx = office.pdfToDocx(file);
+            if (docx != null) {
+                try {
+                    String h = Rich.fromFile(docx, ".docx");
+                    if (h != null && !h.isBlank()) { how[0] = "직접·워드 표"; return h; }
+                } finally {
+                    try { Files.deleteIfExists(docx); } catch (IOException ignored) { }
+                }
+            }
+        }
+        String h = PdfTables.html(file);
+        if (h != null) how[0] = "직접·표 찾기";
+        return h;
     }
 
     private static String pdf(Path file) throws Exception {

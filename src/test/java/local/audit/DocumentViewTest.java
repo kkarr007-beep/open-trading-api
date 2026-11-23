@@ -176,4 +176,50 @@ class DocumentViewTest {
         assertTrue(html.contains("text-align:justify;") && html.contains("padding-left:30.0pt;") && html.contains("text-indent:-15.0pt;") && html.contains("margin-top:6.0pt;"), html);
         assertTrue(html.contains("가.\t목 내용"), html);
     }
+
+    static Path pdfWithTable(Path f, boolean lines) throws Exception {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            for (int pg = 0; pg < 2; pg++) {
+                org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+                doc.addPage(page);
+                var font = new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+                try (var cs = new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                    float x0 = 72, y0 = 700, w = 150, h = 24;
+                    if (lines) {
+                        cs.setLineWidth(0.8f);
+                        for (int r = 0; r <= 3; r++) { cs.moveTo(x0, y0 - r * h); cs.lineTo(x0 + 2 * w, y0 - r * h); }
+                        cs.moveTo(x0, y0); cs.lineTo(x0, y0 - 3 * h);
+                        cs.moveTo(x0 + 2 * w, y0); cs.lineTo(x0 + 2 * w, y0 - 3 * h);
+                        cs.moveTo(x0 + w, y0); cs.lineTo(x0 + w, y0 - 2 * h);          // 마지막 줄은 두 칸을 합침
+                        cs.stroke();
+                    }
+                    String[][] cells = { { "Item", "Amount" }, { "Daily", "20000" } };
+                    for (int r = 0; r < 2; r++) for (int c = 0; c < 2; c++) {
+                        cs.beginText(); cs.setFont(font, 11); cs.newLineAtOffset(x0 + 6 + c * w, y0 - 16 - r * h); cs.showText(cells[r][c] + (pg == 1 ? " p2" : "")); cs.endText();
+                    }
+                    cs.beginText(); cs.setFont(font, 11); cs.newLineAtOffset(x0 + 6, y0 - 16 - 2 * h); cs.showText("Merged note"); cs.endText();
+                    cs.beginText(); cs.setFont(font, 11); cs.newLineAtOffset(x0, y0 + 30); cs.showText("Article 1 before table"); cs.endText();
+                    cs.beginText(); cs.setFont(font, 11); cs.newLineAtOffset(x0, y0 - 3 * h - 30); cs.showText("Article 2 after table"); cs.endText();
+                }
+            }
+            doc.save(f.toFile());
+        }
+        return f;
+    }
+
+    @Test
+    void pdfTablesFromRuledLines() throws Exception {
+        String html = local.audit.extract.PdfTables.html(pdfWithTable(dir.resolve("t.pdf"), true));
+        assertNotNull(html);
+        assertTrue(html.contains("<td><div class=\"para\">Item</div></td><td><div class=\"para\">Amount</div></td>"), html);
+        assertTrue(html.contains("<td><div class=\"para\">Daily</div></td><td><div class=\"para\">20000</div></td>"), html);
+        assertTrue(html.contains("<td colspan=\"2\"><div class=\"para\">Merged note</div></td>"), "선 없는 경계는 합친 칸: " + html);
+        assertTrue(html.indexOf("Article 1") < html.indexOf("<table>") && html.indexOf("Article 2") > html.indexOf("</table>"), "표 앞뒤 글 순서: " + html);
+        assertTrue(html.contains("Item p2"), "둘째 쪽 표도: " + html);
+    }
+
+    @Test
+    void pdfWithoutLinesStaysPlainText() throws Exception {
+        assertTrue(local.audit.extract.PdfTables.html(pdfWithTable(dir.resolve("n.pdf"), false)) == null, "선 없는 PDF는 지금처럼 글만");
+    }
 }
