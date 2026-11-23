@@ -508,11 +508,38 @@ public class LibraryService {
     }
 
     /** 폴더를 지운다. 안의 자료와 하위 폴더는 한 단계 위 폴더로 올린다(맨 위 폴더는 비어 있어야 지운다). */
+    /** 맨 위 폴더를 지울 때 안의 자료를 모아 두는 폴더. */
+    public static final String UNSORTED = "정리 필요";
+
     public Op deleteFolder(String id) {
         Folder f = folder(id);
         if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
-        if (f.parentId.isEmpty() && f.total > 0) return Op.bad("맨 위 폴더는 비어 있어야 지울 수 있습니다. 안의 자료를 옮긴 뒤 지우세요.");
-        if (folders().size() <= 1 && f.parentId.isEmpty()) return Op.bad("폴더가 하나는 있어야 합니다.");
+        if (f.parentId.isEmpty()) {
+            // 맨 위 폴더: 안에 바로 든 자료는 '정리 필요' 폴더로(없으면 만든다), 하위 폴더는 맨 위로 올린다. 자료는 지워지지 않는다.
+            if (UNSORTED.equals(f.name) && f.total > 0) return Op.bad("'" + UNSORTED + "' 폴더는 안의 자료를 다른 폴더로 옮긴 뒤 지우세요.");
+            return db.run(conn -> {
+                String target = null;
+                int docs = Db.intOf(conn, "SELECT COUNT(*) FROM LibDocs WHERE CategoryId=?", id);
+                if (docs > 0) {
+                    Map<String, Object> u = Db.row(conn, "SELECT Id FROM LibCategories WHERE Name=? AND ParentId='' AND Id<>?", UNSORTED, id);
+                    if (u != null) target = (String) u.get("Id");
+                    else {
+                        target = Txt.newId();
+                        Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,?,'')", target, UNSORTED, 998);
+                    }
+                    Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE CategoryId=?", target, id);
+                }
+                int kids = Db.update(conn, "UPDATE LibCategories SET ParentId='' WHERE ParentId=?", id);
+                Db.update(conn, "DELETE FROM LibCategories WHERE Id=?", id);
+                if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories") == 0) {
+                    Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,?,'')", Txt.newId(), UNSORTED, 998);
+                }
+                String msg = "폴더 '" + f.name + "'를 지웠습니다.";
+                if (docs > 0) msg += " 안에 있던 자료 " + docs + "건은 '" + UNSORTED + "' 폴더로 옮겼습니다.";
+                if (kids > 0) msg += " 하위 폴더 " + kids + "개는 맨 위로 올렸습니다.";
+                return Op.ok(msg, target == null ? "" : target);
+            });
+        }
         return db.run(conn -> {
             int docs = Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE CategoryId=?", f.parentId, id);
             int kids = Db.update(conn, "UPDATE LibCategories SET ParentId=? WHERE ParentId=?", f.parentId, id);

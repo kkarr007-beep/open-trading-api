@@ -548,8 +548,14 @@ class CoreTest {
         // 지우기: 안의 자료는 한 단계 위로
         assertTrue(lib.deleteFolder(c.id).ok);
         assertEquals(b.id, lib.get(d.id).get("CategoryId"));
-        assertFalse(lib.deleteFolder(lib.trail(b.id).get(0).id).ok, "자료가 든 맨 위 폴더는 못 지움");
+        // 맨 위 폴더도 지울 수 있다: 안의 자료는 '정리 필요'로, 하위 폴더는 맨 위로. 자료는 남는다
+        String top = lib.trail(b.id).get(0).id;
+        int depthBefore = lib.folder(b.id).depth;
+        assertTrue(lib.deleteFolder(top).ok, "자료가 든 맨 위 폴더도 지움");
+        assertNull(lib.folder(top));
+        assertEquals(depthBefore - 1, lib.folder(b.id).depth, "하위 폴더는 한 단계 위로(맨 위 폴더의 바로 아래는 맨 위로)");
+        assertEquals(b.id, lib.get(d.id).get("CategoryId"), "하위 폴더 속 자료는 그대로");
         assertTrue(lib.moveFolder(b.id, other).ok);
-        assertEquals(2, lib.folder(b.id).depth);
+        assertEquals(lib.folder(other).depth + 1, lib.folder(b.id).depth);
     }
 }

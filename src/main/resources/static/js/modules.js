@@ -381,7 +381,10 @@ document.addEventListener('click', function (e) {
         else if (what === 'top') post('/library/folder/' + id + '/move', { parentId: '' });
         else if (what === 'archive') post('/library/folder/' + id + '/archive', {});
         else if (what === 'delete') {
-            if (window.confirm("폴더 '" + name + "'를 지울까요? 안에 든 자료와 폴더는 한 단계 위로 올립니다.")) post('/library/folder/' + id + '/delete', { current: current });
+            var isTop = !h.getAttribute('data-parent');
+            var msg = isTop ? "맨 위 폴더 '" + name + "'를 지울까요?\n안에 든 자료는 '정리 필요' 폴더로 옮기고, 하위 폴더는 맨 위로 올립니다. 자료는 지워지지 않습니다."
+                : "폴더 '" + name + "'를 지울까요? 안에 든 자료와 폴더는 한 단계 위로 올립니다.";
+            if (window.confirm(msg)) post('/library/folder/' + id + '/delete', { current: current });
         }
     }
     if (ctx) ctx.addEventListener('click', function (e) {
@@ -633,3 +636,29 @@ document.addEventListener('click', function (e) {
     document.querySelectorAll('select').forEach(fit);
     document.addEventListener('change', function (e) { if (e.target && e.target.tagName === 'SELECT') fit(e.target); });
 })();
+
+// 자료: 타일(한 줄에 여러 개)·목록(한 줄에 하나) 보기. 고른 보기는 이 컴퓨터에 기억한다.
+function libViewInit() {
+  var t = document.getElementById('lib-table');
+  if (!t || t.dataset.viewReady) return;
+  t.dataset.viewReady = '1';
+  var mode = 'tiles';
+  try { mode = localStorage.getItem('libView') || 'tiles'; } catch (e) { }
+  function set(m) {
+    mode = m === 'list' ? 'list' : 'tiles';
+    t.classList.toggle('tiles', mode === 'tiles');
+    var all = document.querySelector('.lib-allchk'); if (all) all.hidden = mode !== 'tiles';   // 목록 보기는 표 머리에 '모두 고르기'가 있다
+    document.querySelectorAll('[data-lib-view]').forEach(function (b) { var on = b.getAttribute('data-lib-view') === mode; b.classList.toggle('btn-primary', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    try { localStorage.setItem('libView', mode); } catch (e) { }
+    if (window.pinHeads) window.pinHeads();
+  }
+  t.__libView = set;
+  set(mode);
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-lib-view]'), t = document.getElementById('lib-table');
+  if (b && t && t.__libView) t.__libView(b.getAttribute('data-lib-view'));
+});
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', libViewInit); else libViewInit();
+// 화면 일부가 새로 그려져도(저장 뒤 등) 다시 붙인다
+new MutationObserver(function () { libViewInit(); }).observe(document.documentElement, { childList: true, subtree: true });

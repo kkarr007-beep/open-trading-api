@@ -99,10 +99,17 @@
     </span>
 </form>
 
-<p class="count-line" th:text="|${view == '' and !#lists.isEmpty(subFolders) ? '폴더 ' + #lists.size(subFolders) + '개 · ' : ''}자료 ${v.total}건${v.deep and cur != null and scope != 'all' ? ' (하위 폴더 포함)' : ''}${v.pages > 1 ? ' · ' + v.page + '/' + v.pages + '쪽' : ''}|"></p>
+<div class="lib-viewbar">
+    <p class="count-line" th:text="|${view == '' and !#lists.isEmpty(subFolders) ? '폴더 ' + #lists.size(subFolders) + '개 · ' : ''}자료 ${v.total}건${v.deep and cur != null and scope != 'all' ? ' (하위 폴더 포함)' : ''}${v.pages > 1 ? ' · ' + v.page + '/' + v.pages + '쪽' : ''}|"></p>
+    <label class="lib-allchk no-print" th:unless="${v.total == 0}"><input type="checkbox" form="lib-bulk" data-check-all="id" aria-label="이 쪽 모두 고르기" /> 모두 고르기</label>
+    <span class="seg lib-viewsw no-print" role="group" aria-label="보기 방식" th:unless="${v.total == 0 and #lists.isEmpty(subFolders)}">
+        <button type="button" class="btn btn-sm" data-lib-view="tiles" title="한 줄에 여러 개를 칸으로 봅니다">타일</button>
+        <button type="button" class="btn btn-sm" data-lib-view="list" title="한 줄에 하나씩 날짜·크기와 함께 봅니다">목록</button>
+    </span>
+</div>
 <p class="empty" th:if="${v.total == 0 and #lists.isEmpty(subFolders)}"
    th:text="${view == 'star'} ? '즐겨찾기한 자료가 없습니다. 자료 줄의 ☆를 누르면 여기에 모입니다.' : (${view == 'recent'} ? '아직 연 자료가 없습니다.' : (${#strings.isEmpty(q) and #strings.isEmpty(tag) and #strings.isEmpty(kind)} ? '이 폴더는 비어 있습니다. 위 \'파일 올리기\'로 넣거나 파일을 이 화면에 끌어 놓으세요.' : '맞는 자료가 없습니다. 범위를 \'전체\'로 바꾸거나 낱말을 줄여 보세요.'))"></p>
-<table class="xt lib-table" th:unless="${v.total == 0 and #lists.isEmpty(subFolders)}" data-nofold>
+<table class="xt lib-table tiles" id="lib-table" th:unless="${v.total == 0 and #lists.isEmpty(subFolders)}" data-nofold>
     <thead><tr>
         <th scope="col" class="no-print c-chk"><input type="checkbox" form="lib-bulk" data-check-all="id" aria-label="이 쪽 모두 고르기" /></th>
         <th scope="col">이름</th><th scope="col" class="c-star"><span class="sr-only">즐겨찾기</span>★</th>
@@ -123,7 +130,7 @@
             <div class="nm">
                 <span class="bx" th:classappend="|k-${d.Kind}|" aria-hidden="true" th:text="${#strings.isEmpty(d.Ext) ? 'FILE' : d.Ext}">FILE</span>
                 <span>
-                    <a class="doc-title" th:href="|/library/${d.Id}/file|" th:data-open-local="|/library/${d.Id}/open|" th:text="${d.Title}" title="눌러서 원본 열기"></a>
+                    <a class="doc-title" th:href="|/library/${d.Id}/file|" th:data-open-local="|/library/${d.Id}/open|" th:text="${d.Title}" th:title="|${d.Title} — 눌러서 원본 열기|"></a>
                     <small>
                         <a class="mini-tag" th:each="t : ${d.TagList}" th:href="@{/library(f=${f},view=${view},tag=${t})}" th:text="|#${t}|"></a>
                         <span class="muted fpath" th:if="${view != '' or scope == 'all' or v.deep}"><svg class="ti" aria-hidden="true"><use href="#i-folder" xlink:href="#i-folder"/></svg><span th:text="${d.FolderPath}"></span></span>
@@ -140,7 +147,7 @@
                 <input type="hidden" name="id" th:value="${d.Id}" /><input type="hidden" name="op" th:value="${d.Starred == 1} ? 'unstar' : 'star'" />
                 <button type="submit" class="star" th:classappend="${d.Starred == 1} ? 'on'" th:text="${d.Starred == 1} ? '★' : '☆'"
                         th:aria-label="${d.Starred == 1} ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기'" th:title="${d.Starred == 1} ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기'"></button></form></td>
-        <td class="c-date nowrap" th:text="${#strings.substring((view == 'recent' ? d.OpenedAt : d.RegisteredAt) + '          ', 0, 10)}"></td>
+        <td class="c-date nowrap" th:text="${#strings.substring((view == 'recent' ? d.OpenedAt : d.RegisteredAt) + '          ', 0, 10)}" th:attr="data-label=${view == 'recent'} ? '연 때' : '올린 날'"></td>
         <td class="num nowrap c-size" th:text="${d.SizeText}"></td>
         <td class="no-print c-more">
             <details class="ex-menu"><summary class="btn btn-quiet btn-sm" th:aria-label="|${d.Title} 메뉴|">⋯</summary>
