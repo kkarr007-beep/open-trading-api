@@ -37,10 +37,24 @@ public class DisciplineService {
         return d;
     }
 
-    public List<Map<String, Object>> list(String text, String sanction, Integer year) {
+    public List<Map<String, Object>> list(String text, String sanction, Integer year) { return list(text, sanction, year, null); }
+
+    public List<Map<String, Object>> list(String text, String sanction, Integer year, String dept) {
         StringBuilder sql = new StringBuilder(SELECT + " WHERE 1=1");
         List<Object> args = new ArrayList<>();
-        if (SANCTIONS.contains(sanction)) { sql.append(" AND d.SanctionType=?"); args.add(sanction); }
+        if (!Txt.blank(sanction)) {
+            if ("감급".equals(sanction) || "감봉".equals(sanction)) sql.append(" AND (d.SanctionType LIKE '%감급%' OR d.SanctionType LIKE '%감봉%')");
+            else { sql.append(" AND d.SanctionType=?"); args.add(sanction); }
+        }
+        if (!Txt.blank(dept)) {
+            if ("(부서 없음)".equals(dept)) sql.append(" AND TRIM(d.Department)=''");
+            else {
+                String e = Txt.like(dept.strip());
+                e = e.substring(1, e.length() - 1);   // 앞뒤 % 뺀, 특수문자를 막은 글
+                sql.append(" AND (TRIM(d.Department)=? OR d.Department LIKE ? ESCAPE '\\' OR d.Department LIKE ? ESCAPE '\\' OR d.Department LIKE ? ESCAPE '\\')");
+                args.add(dept.strip()); args.add(e + " %"); args.add(e + "/%"); args.add(e + ">%");
+            }
+        }
         if (year != null) { sql.append(" AND d.Year=?"); args.add(year); }
         if (!Txt.blank(text)) {
             String[] cols = { "d.EmployeeNo", "d.PersonName", "d.Department", "d.Position", "d.ViolationText", "d.RuleText",
@@ -62,6 +76,174 @@ public class DisciplineService {
         List<Map<String, Object>> rows = db.rows(SELECT + " WHERE d.CaseId=? ORDER BY d.Seq", caseId);
         rows.forEach(DisciplineService::decorate);
         return rows;
+    }
+
+    // ───── 징계 현황판: 연도·부서·팀별 건수, 누적 징계 검토 ─────
+
+    /** 같은 사람이 기간 안에 같은 징계를 정한 횟수 이상 받으면 상위 징계를 검토한다. */
+    public record Rule(String from, int years, int times, String to) {
+        public String text() { return (years == 1 ? "1년" : years + "년") + " 안에 " + from + " " + times + "회 → " + to + " 검토"; }
+    }
+
+    static final String DEFAULT_RULES = "주의,1,2,경고;경고,2,2,감급;견책,2,2,정직;감급,2,2,면직";
+
+    public List<Rule> rules() {
+        List<Rule> out = new ArrayList<>();
+        for (String part : settings.get("disciplineRules", DEFAULT_RULES).split(";")) {
+            String[] f = part.split(",");
+            if (f.length != 4) continue;
+            Integer y = Txt.intOrNull(f[1].strip()), n = Txt.intOrNull(f[2].strip());
+            if (y == null || n == null || y < 1 || n < 2 || f[0].isBlank() || f[3].isBlank()) continue;
+            out.add(new Rule(f[0].strip(), y, n, f[3].strip()));
+        }
+        return out;
+    }
+
+    public Op saveRules(Map<String, String> p) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            String from = Txt.str(p.get("from" + i)).strip(), to = Txt.str(p.get("to" + i)).strip();
+            Integer y = Txt.intOrNull(p.get("years" + i)), n = Txt.intOrNull(p.get("times" + i));
+            if (from.isEmpty() && to.isEmpty()) continue;
+            if (from.isEmpty() || to.isEmpty() || y == null || n == null || y < 1 || y > 10 || n < 2 || n > 9 || from.contains(",") || from.contains(";") || to.contains(",") || to.contains(";"))
+                return Op.bad((i + 1) + "번째 줄을 확인하세요: 징계·기간(1~10년)·횟수(2~9회)·검토할 징계를 모두 적어야 합니다.");
+            if (sb.length() > 0) sb.append(';');
+            sb.append(from).append(',').append(y).append(',').append(n).append(',').append(to);
+        }
+        settings.set("disciplineRules", sb.toString());
+        return Op.ok("누적 징계 검토 기준을 저장했습니다.");
+    }
+
+    /** 감급과 감봉은 같은 징계로 본다. */
+    static boolean same(String sanction, String name) {
+        String a = Txt.str(sanction).replace("감봉", "감급"), b = Txt.str(name).replace("감봉", "감급");
+        return a.contains(b);
+    }
+
+    /** 부서 칸의 첫 말을 부서(본부·실), 나머지 전체를 팀으로 본다. 한 말뿐이면 둘 다 같다. */
+    static String[] deptTeam(String department) {
+        String d = Txt.str(department).strip();
+        if (d.isEmpty()) return new String[] { "(부서 없음)", "(부서 없음)" };
+        String[] w = d.split("\\s*[/>·]\\s*|\\s+");
+        return new String[] { w[0], d };
+    }
+
+    static String when(Map<String, Object> d) {
+        String s = Txt.str(d.get("SanctionDate"));
+        return s.length() >= 10 ? s.substring(0, 10) : Txt.str(d.get("ViolationDate"));
+    }
+
+    static String personKey(Map<String, Object> d) {
+        String no = Txt.str(d.get("EmployeeNo")).strip();
+        return no.isEmpty() ? "n:" + Txt.str(d.get("PersonName")).strip() + "|" + Txt.str(d.get("Department")).strip() : "e:" + no;
+    }
+
+    /** 누적 징계 검토 대상: 사람마다, 기준마다, 기간 안에 정한 횟수 이상 받은 경우. */
+    public List<Map<String, Object>> escalations() {
+        List<Map<String, Object>> all = db.rows(SELECT + " WHERE d.Status<>'삭제됨' ORDER BY d.Seq");
+        all.forEach(DisciplineService::decorate);
+        Map<String, List<Map<String, Object>>> byPerson = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> d : all) byPerson.computeIfAbsent(personKey(d), k -> new ArrayList<>()).add(d);
+        java.util.Set<String> reviewed = new java.util.HashSet<>(java.util.Arrays.asList(settings.get("disciplineReviewed", "").split(";")));
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Rule r : rules()) {
+            for (List<Map<String, Object>> recs : byPerson.values()) {
+                List<Map<String, Object>> hits = new ArrayList<>(recs.stream().filter(d -> same(Txt.str(d.get("SanctionType")), r.from()) && when(d).length() >= 10).toList());
+                if (hits.size() < r.times()) continue;
+                hits.sort(java.util.Comparator.comparing(DisciplineService::when));
+                // 기간 안에 든 가장 최근 묶음을 찾는다
+                for (int end = hits.size() - 1; end >= r.times() - 1; end--) {
+                    java.time.LocalDate last = java.time.LocalDate.parse(when(hits.get(end)));
+                    java.time.LocalDate first = java.time.LocalDate.parse(when(hits.get(end - r.times() + 1)));
+                    if (first.isBefore(last.minusYears(r.years()))) continue;
+                    List<Map<String, Object>> group = new ArrayList<>(hits.subList(end - r.times() + 1, end + 1));
+                    for (int k = end - r.times(); k >= 0 && !java.time.LocalDate.parse(when(hits.get(k))).isBefore(last.minusYears(r.years())); k--) group.add(0, hits.get(k));
+                    Map<String, Object> last0 = group.get(group.size() - 1);
+                    String key = personKey(last0) + "|" + r.from() + "|" + when(last0);
+                    // 마지막 건 뒤에 이미 상위 징계를 받았으면 처리된 것으로 본다
+                    boolean done = recs.stream().anyMatch(d -> same(Txt.str(d.get("SanctionType")), r.to()) && when(d).compareTo(when(last0)) >= 0);
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("key", key);
+                    m.put("rule", r.text());
+                    m.put("to", r.to());
+                    m.put("from", r.from());
+                    m.put("count", group.size());
+                    m.put("person", last0.get("PersonMasked"));
+                    m.put("employeeNo", last0.get("EmployeeNo"));
+                    m.put("department", last0.get("Department"));
+                    m.put("records", group);
+                    m.put("lastDate", when(last0));
+                    m.put("done", done);
+                    m.put("reviewed", reviewed.contains(key));
+                    out.add(m);
+                    break;
+                }
+            }
+        }
+        out.sort(java.util.Comparator.comparing((Map<String, Object> m) -> (Boolean) m.get("done") || (Boolean) m.get("reviewed"))
+            .thenComparing(m -> (String) m.get("lastDate"), java.util.Comparator.reverseOrder()));
+        return out;
+    }
+
+    public Op markReviewed(String key, boolean on) {
+        if (Txt.blank(key) || key.length() > 300 || key.contains(";")) return Op.bad("검토 표시를 찾지 못했습니다.");
+        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>(java.util.Arrays.asList(settings.get("disciplineReviewed", "").split(";")));
+        set.remove("");
+        if (on) set.add(key); else set.remove(key);
+        settings.set("disciplineReviewed", String.join(";", set));
+        return Op.ok(on ? "검토한 것으로 표시했습니다." : "검토 표시를 풀었습니다.");
+    }
+
+    /** 현황판 숫자: 연도×징계종류, 부서·팀×연도. */
+    public Map<String, Object> board() {
+        List<Map<String, Object>> all = db.rows("SELECT Year, Department, SanctionType FROM Discipline WHERE Status<>'삭제됨'");
+        java.util.TreeSet<Integer> years = new java.util.TreeSet<>(java.util.Comparator.reverseOrder());
+        java.util.LinkedHashSet<String> kinds = new java.util.LinkedHashSet<>();
+        for (String k : SANCTIONS) kinds.add(k.replace("감봉", "감급"));
+        Map<String, Integer> byYK = new java.util.HashMap<>(), byYear = new java.util.HashMap<>(), byKind = new java.util.HashMap<>();
+        Map<String, Map<Integer, Integer>> byDept = new java.util.TreeMap<>(), byTeam = new java.util.TreeMap<>();
+        for (Map<String, Object> d : all) {
+            int y = ((Number) d.get("Year")).intValue();
+            String k = Txt.str(d.get("SanctionType")).replace("감봉", "감급");
+            years.add(y);
+            if (!k.isEmpty()) kinds.add(k);
+            byYK.merge(y + "|" + k, 1, Integer::sum);
+            byYear.merge(String.valueOf(y), 1, Integer::sum);
+            byKind.merge(k, 1, Integer::sum);
+            String[] dt = deptTeam(Txt.str(d.get("Department")));
+            byDept.computeIfAbsent(dt[0], x -> new java.util.HashMap<>()).merge(y, 1, Integer::sum);
+            byTeam.computeIfAbsent(dt[1], x -> new java.util.HashMap<>()).merge(y, 1, Integer::sum);
+        }
+        kinds.removeIf(k -> !byKind.containsKey(k));
+        List<Integer> recent = years.stream().limit(5).toList();
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("total", all.size());
+        m.put("years", new ArrayList<>(years));
+        m.put("recentYears", recent);
+        m.put("kinds", new ArrayList<>(kinds));
+        m.put("byYK", byYK);
+        m.put("byYear", byYear);
+        m.put("byKind", byKind);
+        m.put("depts", rowsOf(byDept, recent));
+        m.put("teams", rowsOf(byTeam, recent));
+        m.put("thisYear", byYear.getOrDefault(String.valueOf(Kst.today().getYear()), 0));
+        m.put("year", Kst.today().getYear());
+        return m;
+    }
+
+    static List<Map<String, Object>> rowsOf(Map<String, Map<Integer, Integer>> src, List<Integer> recent) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (var e : src.entrySet()) {
+            Map<String, Object> r = new java.util.LinkedHashMap<>();
+            r.put("name", e.getKey());
+            List<Integer> cells = new ArrayList<>();
+            for (Integer y : recent) cells.add(e.getValue().getOrDefault(y, 0));
+            r.put("cells", cells);
+            r.put("total", e.getValue().values().stream().mapToInt(Integer::intValue).sum());
+            out.add(r);
+        }
+        out.sort(java.util.Comparator.comparing((Map<String, Object> r) -> (Integer) r.get("total")).reversed());
+        return out;
     }
 
     public List<Map<String, Object>> years() { return db.rows("SELECT DISTINCT Year FROM Discipline ORDER BY Year DESC"); }

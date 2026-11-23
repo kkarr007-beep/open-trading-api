@@ -61,10 +61,29 @@ public class OtherControllers {
     @GetMapping("/discipline")
     public String disciplineList(@RequestParam Map<String, String> q, Model model) {
         model.addAttribute("q", q);
-        model.addAttribute("rows", discipline.list(q.get("text"), q.get("sanction"), Txt.intOrNull(q.get("year"))));
+        model.addAttribute("rows", discipline.list(q.get("text"), q.get("sanction"), Txt.intOrNull(q.get("year")), q.get("dept")));
         model.addAttribute("years", discipline.years());
         model.addAttribute("sanctions", DisciplineService.SANCTIONS);
         return "discipline";
+    }
+
+    /** 징계 현황판: 연도·종류·부서·팀별 건수와 누적 징계 검토 대상. */
+    @GetMapping("/discipline/board")
+    public String disciplineBoard(Model model) {
+        model.addAttribute("b", discipline.board());
+        model.addAttribute("esc", discipline.escalations());
+        model.addAttribute("rules", discipline.rules());
+        return "discipline-board";
+    }
+
+    @PostMapping("/discipline/rules")
+    public Object disciplineRules(@RequestParam Map<String, String> p, HttpServletRequest req) {
+        return Web.reply(req, discipline.saveRules(p), "/discipline/board");
+    }
+
+    @PostMapping("/discipline/reviewed")
+    public Object disciplineReviewed(@RequestParam(required = false) String key, @RequestParam(required = false) String on, HttpServletRequest req) {
+        return Web.reply(req, discipline.markReviewed(key, !"0".equals(on)), null);
     }
 
     @GetMapping("/discipline/export")
@@ -84,6 +103,9 @@ public class OtherControllers {
         model.addAttribute("sanctions", DisciplineService.SANCTIONS);
         model.addAttribute("year", Kst.today().getYear());
         model.addAttribute("caseRefInit", caseRef);
+        // 이 사람이 누적 징계 검토 대상이면 위쪽에 알린다
+        model.addAttribute("myEsc", fresh ? java.util.List.of() : discipline.escalations().stream()
+            .filter(e -> ((java.util.List<?>) e.get("records")).stream().anyMatch(r -> id.equals(((Map<?, ?>) r).get("DisciplineId")))).toList());
         return "discipline-edit";
     }
 

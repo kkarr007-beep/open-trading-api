@@ -9,6 +9,7 @@
         <p class="hint">등재 항목 그대로 한 줄에 담습니다. 목록의 성명은 일부를 가립니다. 징계대장 엑셀이나 의결서를 <a href="/inbox">수집함</a>에 넣으면 초안으로 등재됩니다.</p>
     </div>
     <div class="row-actions">
+        <a class="btn" href="/discipline/board">징계 현황</a>
         <button type="button" class="btn" data-dialog="import-dialog">파일로 일괄 등재</button>
         <a class="btn" href="/discipline/export">CSV 내려받기</a>
         <a class="btn btn-primary" href="/discipline/new">기록 등재</a>
@@ -32,7 +33,9 @@
             <select name="sanction" aria-label="징계종류"><option value="">전체</option>
                 <option th:each="name : ${sanctions}" th:text="${name}" th:selected="${q['sanction'] == name}"></option></select>
         </label>
-        <a class="btn" href="/discipline" th:if="${!#strings.isEmpty(q['text']) or !#strings.isEmpty(q['sanction']) or !#strings.isEmpty(q['year'])}">조건 지우기</a>
+        <input type="hidden" name="dept" th:if="${!#strings.isEmpty(q['dept'])}" th:value="${q['dept']}" />
+        <span class="pill" th:if="${!#strings.isEmpty(q['dept'])}" th:text="|부서: ${q['dept']}|"></span>
+        <a class="btn" href="/discipline" th:if="${!#strings.isEmpty(q['text']) or !#strings.isEmpty(q['sanction']) or !#strings.isEmpty(q['year']) or !#strings.isEmpty(q['dept'])}">조건 지우기</a>
     </form>
 </div>
 <p class="count-line" role="status" th:text="|${#lists.size(rows)} 건|"></p>

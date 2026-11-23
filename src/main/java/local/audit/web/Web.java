@@ -31,12 +31,14 @@ public class Web {
     private final local.audit.CaseService cases;
     private final local.audit.LibraryService library;
     private final local.audit.OrgService orgs;
+    private final local.audit.DisciplineService discipline;
 
     public Web(local.audit.OrgService orgs, Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
-               local.audit.LibraryService library,
+               local.audit.LibraryService library, local.audit.DisciplineService discipline,
                @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
         this.version = version;
         this.orgs = orgs;
+        this.discipline = discipline;
         this.work = work;
         this.cases = cases;
         this.library = library;
@@ -55,7 +57,7 @@ public class Web {
     public void common(HttpServletRequest req, Model model) {
         if (!"GET".equals(req.getMethod())) return;
         String path = req.getRequestURI();
-        String nav = path.startsWith("/cases") ? "cases" : path.startsWith("/files") ? "files" : path.startsWith("/discipline") ? "discipline"
+        String nav = path.startsWith("/cases") ? "cases" : path.startsWith("/files") ? "files" : path.startsWith("/discipline/board") ? "discipline-board" : path.startsWith("/discipline") ? "discipline"
             : path.startsWith("/inbox") ? "inbox" : path.startsWith("/admin") ? "admin" : path.startsWith("/settings") ? "settings"
             : path.startsWith("/work") || path.startsWith("/rules") || path.equals("/import") || path.startsWith("/library") || path.startsWith("/board") || path.startsWith("/tools") ? "module" : path.startsWith("/search") ? "search" : "todo";
         model.addAttribute("nav", nav);
@@ -102,6 +104,8 @@ public class Web {
             String me = work.config().me;
             model.addAttribute("workMine", work.all().stream().filter(x -> x.isWork() && local.audit.work.WorkService.isOpen(x) && me.equals(x.ownerId)).count());
         }
+        if ("audit".equals(navGroup))
+            model.addAttribute("escPending", discipline.escalations().stream().filter(e -> !(Boolean) e.get("done") && !(Boolean) e.get("reviewed")).count());
         String[] fab = switch (navGroup) {
             case "work", "home" -> new String[] { "/work/list#new", "새 업무" };
             case "audit" -> new String[] { "/cases/new", "감사 건 등록" };
@@ -125,7 +129,7 @@ public class Web {
         model.addAttribute("searchQuery", "");
         model.addAttribute("appVersion", version);
         // 목록으로 돌아가는 단추
-        String listHref = path.matches("/cases/.+") ? "/cases" : path.matches("/discipline/.+") ? "/discipline"
+        String listHref = path.matches("/cases/.+") ? "/cases" : path.matches("/discipline/(?!board).+") ? "/discipline"
             : path.startsWith("/work/item/") ? "/work/list" : path.matches("/tools/card/[0-9a-f]{32}.*") || path.startsWith("/tools/card-analysis/") ? "/tools/card"
             : path.startsWith("/board/kpi/") ? "/board" : path.matches("/rules/(?!search|marks|compare|settings|new|import|export|solution|timeline|index|glossary|scan|checklists|data)[0-9a-zA-Z_]+") ? "/rules" : null;
         model.addAttribute("listHref", listHref);

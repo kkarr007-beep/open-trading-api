@@ -15,6 +15,11 @@
             <span class="badge" data-state="삭제 보류" th:if="${item.Hold == 1}"><span class="dot" aria-hidden="true"></span>삭제 보류</span>
         </div>
     </div>
+    <div class="banner warn card esc-note" th:each="e : ${myEsc}" th:if="${!e.done}">
+        <p><strong th:text="|누적 징계 검토: ${e.to} 검토 필요|"></strong> <span class="muted" th:text="|(${e.rule})|"></span></p>
+        <p class="hint" th:text="|이 사람은 ${e.from}을(를) ${e.count}회 받았습니다. 마지막 ${e.lastDate}.${e.reviewed ? ' 검토한 것으로 표시되어 있습니다.' : ''}|"></p>
+        <p class="row-actions" style="margin:0"><a class="btn btn-sm" href="/discipline/board#esc">징계 현황에서 보기</a></p>
+    </div>
     <ul class="summary" th:if="${item != null}">
         <li><span>순번</span><strong th:text="${item.Seq}"></strong></li>
         <li><span>사번</span><strong th:text="${#strings.isEmpty(item.EmployeeNo)} ? '—' : ${item.EmployeeNo}"></strong></li>

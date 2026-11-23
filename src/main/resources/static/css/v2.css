@@ -340,3 +340,18 @@ table.data tbody th { background: transparent; color: var(--ink); }
 #inbox .wrow form { margin-left: auto; }
 #inbox .wrow form + form { margin-left: 0; }
 .inbox-list .wrow .t a { font-size: 15px; }
+
+/* 징계 현황 */
+.dc-metrics { margin-bottom: 16px; }
+
+.dc-rules { margin: 4px 0 12px; padding-left: 18px; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.dc-esc .dc-to { color: var(--danger); }
+.dc-esc tr.dc-quiet td { opacity: .6; }
+.dc-recs { margin: 0; padding-left: 16px; font-size: 13px; }
+.dc-matrix td.num a, .dc-matrix th a { font-weight: 700; }
+.dc-matrix tfoot th, .dc-matrix tfoot td { border-top: 2px solid var(--line); background: var(--paper-2); }
+.dc-rule-edit { margin-top: 14px; }
+.dc-rule-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+.dc-rule-row input { width: 120px; }
+.dc-rule-row input[type=number] { width: 64px; }
+.dc-rule-row span { color: var(--muted); font-size: 13px; }

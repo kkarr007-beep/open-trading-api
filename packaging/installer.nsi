@@ -10,7 +10,7 @@ RequestExecutionLevel user
 !define DATA_DIR "감사기록"
 !define APP_ID "AuditRecordLocal"
 !ifndef APP_VERSION
-  !define APP_VERSION "3.4.8"
+  !define APP_VERSION "3.5.0"
 !endif
 !ifndef STAGE
   !define STAGE "stage"

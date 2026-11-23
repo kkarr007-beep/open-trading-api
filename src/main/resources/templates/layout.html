@@ -113,6 +113,7 @@
                 <a href="/cases" th:aria-current="${nav == 'cases'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-folder" xlink:href="#i-folder"/></svg><span>감사 건 목록</span></a>
                 <a href="/files" th:aria-current="${nav == 'files'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-clip" xlink:href="#i-clip"/></svg><span>첨부 파일 찾기</span></a>
                 <a href="/discipline" th:aria-current="${nav == 'discipline'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-user" xlink:href="#i-user"/></svg><span>징계기록</span></a>
+                <a href="/discipline/board" th:aria-current="${nav == 'discipline-board'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-chart" xlink:href="#i-chart"/></svg><span>징계 현황</span><b class="n red" th:if="${escPending != null and escPending > 0}" th:text="${escPending}">0</b></a>
             <p class="sn-title">설정</p>
                 <a href="/settings" th:aria-current="${false} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-gear" xlink:href="#i-gear"/></svg><span>감사기록 설정</span></a>
         </nav>

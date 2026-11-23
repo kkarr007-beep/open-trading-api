@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
+<head><title>징계 현황 · Portal</title></head>
+<body>
+<th:block id="content">
+<div class="page-head">
+    <div>
+        <h1>징계 현황</h1>
+        <p class="hint">징계기록 전체를 연도·징계종류·부서·팀별 건수로 봅니다. 숫자를 누르면 그 조건의 징계기록 목록으로 들어가 세부 내용을 볼 수 있습니다. 성명은 일부를 가립니다.</p>
+    </div>
+    <div class="row-actions"><a class="btn" href="/discipline">징계기록 목록</a></div>
+</div>
+
+<ul class="metrics dc-metrics">
+    <li class="metric-ok"><a href="/discipline"><span class="metric-top">전체 징계기록</span><strong th:text="|${b.total}건|">0</strong><span class="metric-sub">눌러서 전체 목록</span></a></li>
+    <li class="metric-ok"><a th:href="@{/discipline(year=${b.year})}"><span class="metric-top" th:text="|올해(${b.year}년)|">올해</span><strong th:text="|${b.thisYear}건|">0</strong><span class="metric-sub">눌러서 올해 목록</span></a></li>
+    <li th:with="open=${#lists.size(esc.?[!done and !reviewed])}" th:class="${open > 0} ? 'metric-bad' : 'metric-ok'"><a href="#esc"><span class="metric-top">누적 징계 검토 대기</span>
+        <strong th:text="|${open}건|">0</strong><span class="metric-sub" th:text="${open > 0} ? '상위 징계 필요 여부를 검토하세요' : '검토할 대상 없음'"></span></a></li>
+</ul>
+
+<section class="card" id="esc">
+    <div class="card-head"><h2>누적 징계 검토</h2><span class="sub">같은 사람이 정한 기간 안에 같은 징계를 거듭 받은 경우입니다. 상위 징계가 필요한지 검토하세요.</span></div>
+    <ul class="dc-rules"><li th:each="r : ${rules}" th:text="${r.text()}"></li></ul>
+    <p class="empty" th:if="${#lists.isEmpty(esc)}">검토할 대상이 없습니다.</p>
+    <div class="table-wrap" th:unless="${#lists.isEmpty(esc)}">
+    <table class="data dc-esc">
+        <thead><tr><th scope="col">검토할 징계</th><th scope="col">사번</th><th scope="col">성명</th><th scope="col">부서</th><th scope="col">근거(받은 징계)</th><th scope="col">상태</th><th scope="col"></th></tr></thead>
+        <tbody>
+        <tr th:each="e : ${esc}" th:classappend="${e.done or e.reviewed} ? 'dc-quiet'">
+            <td><strong class="dc-to" th:text="|${e.to} 검토|"></strong><br/><small class="muted" th:text="${e.rule}"></small></td>
+            <td th:text="${#strings.isEmpty(e.employeeNo)} ? '—' : ${e.employeeNo}"></td>
+            <td th:text="${e.person}"></td>
+            <td th:text="${e.department}"></td>
+            <td><ul class="dc-recs"><li th:each="r : ${e.records}"><a th:href="|/discipline/${r.DisciplineId}|" th:text="|${r.SanctionDate != '' ? r.SanctionDate : r.ViolationDate} ${r.SanctionType} · ${#strings.abbreviate(r.ViolationText, 30)}|"></a></li></ul></td>
+            <td>
+                <span class="pill ok" th:if="${e.done}" th:text="|${e.to} 이미 받음|"></span>
+                <span class="pill" th:if="${!e.done and e.reviewed}">검토함</span>
+                <span class="pill warn" th:if="${!e.done and !e.reviewed}">검토 필요</span>
+            </td>
+            <td>
+                <form method="post" action="/discipline/reviewed" data-write="1" th:unless="${e.done}">
+                    <input type="hidden" name="key" th:value="${e.key}" /><input type="hidden" name="on" th:value="${e.reviewed ? '0' : '1'}" />
+                    <button type="submit" class="btn btn-sm" th:text="${e.reviewed} ? '검토 표시 풀기' : '검토함'"></button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+    <details class="dc-rule-edit">
+        <summary class="small muted">검토 기준 고치기</summary>
+        <form method="post" action="/discipline/rules" data-write="1">
+            <p class="hint">한 줄에 하나씩: 받은 징계 · 기간(년) · 횟수 · 검토할 상위 징계. 감급과 감봉은 같은 것으로 셉니다. 빈 줄은 지웁니다.</p>
+            <div class="dc-rule-row" th:each="i : ${#numbers.sequence(0, 7)}" th:with="r=${i < #lists.size(rules) ? rules[i] : null}">
+                <input th:name="|from${i}|" th:value="${r != null ? r.from() : ''}" placeholder="받은 징계" maxlength="20" aria-label="받은 징계" />
+                <input type="number" th:name="|years${i}|" th:value="${r != null ? r.years() : ''}" min="1" max="10" placeholder="년" aria-label="기간(년)" />
+                <span>년 안에</span>
+                <input type="number" th:name="|times${i}|" th:value="${r != null ? r.times() : ''}" min="2" max="9" placeholder="회" aria-label="횟수" />
+                <span>회 →</span>
+                <input th:name="|to${i}|" th:value="${r != null ? r.to() : ''}" placeholder="검토할 징계" maxlength="20" aria-label="검토할 징계" />
+            </div>
+            <button type="submit" class="btn btn-primary">기준 저장</button>
+        </form>
+    </details>
+</section>
+
+<section class="card">
+    <div class="card-head"><h2>연도별 · 징계종류별</h2><span class="sub">숫자를 누르면 그 연도·종류의 목록</span></div>
+    <p class="empty" th:if="${b.total == 0}">징계기록이 없습니다.</p>
+    <div class="table-wrap" th:if="${b.total > 0}">
+    <table class="data dc-matrix">
+        <thead><tr><th scope="col">연도</th><th scope="col" class="num" th:each="k : ${b.kinds}" th:text="${k}"></th><th scope="col" class="num">합계</th></tr></thead>
+        <tbody>
+        <tr th:each="y : ${b.years}">
+            <th scope="row"><a th:href="@{/discipline(year=${y})}" th:text="|${y}년|"></a></th>
+            <td class="num" th:each="k : ${b.kinds}" th:with="n=${b.byYK[y + '|' + k]}">
+                <a th:if="${n != null}" th:href="@{/discipline(year=${y},sanction=${k})}" th:text="${n}"></a><span class="muted" th:unless="${n != null}">·</span></td>
+            <td class="num"><a th:href="@{/discipline(year=${y})}" th:text="${b.byYear['' + y]}"></a></td>
+        </tr>
+        </tbody>
+        <tfoot><tr><th scope="row">합계</th>
+            <td class="num" th:each="k : ${b.kinds}"><a th:href="@{/discipline(sanction=${k})}" th:text="${b.byKind.get(k)}"></a></td>
+            <td class="num"><a href="/discipline" th:text="${b.total}"></a></td></tr></tfoot>
+    </table>
+    </div>
+</section>
+
+<div class="grid-2" th:if="${b.total > 0}">
+    <section class="card" th:each="grp : ${ {'dept', 'team'} }" th:with="rows=${grp == 'dept' ? b.depts : b.teams}">
+        <div class="card-head"><h2 th:text="${grp == 'dept'} ? '부서별' : '팀별'">부서별</h2>
+            <span class="sub" th:text="${grp == 'dept'} ? '부서 칸의 첫 말(본부·실) 기준 · 최근 5개 연도' : '부서 칸 전체(팀) 기준 · 최근 5개 연도'"></span></div>
+        <div class="table-wrap">
+        <table class="data dc-matrix">
+            <thead><tr><th scope="col" th:text="${grp == 'dept'} ? '부서' : '팀'">부서</th><th scope="col" class="num" th:each="y : ${b.recentYears}" th:text="${y}"></th><th scope="col" class="num">전체</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${rows}">
+                <th scope="row"><a th:href="@{/discipline(dept=${r.name})}" th:text="${r.name}"></a></th>
+                <td class="num" th:each="n, st : ${r.cells}">
+                    <a th:if="${n > 0}" th:href="@{/discipline(dept=${r.name},year=${b.recentYears[st.index]})}" th:text="${n}"></a><span class="muted" th:if="${n == 0}">·</span></td>
+                <td class="num"><a th:href="@{/discipline(dept=${r.name})}" th:text="${r.total}"></a></td>
+            </tr>
+            </tbody>
+        </table>
+        </div>
+    </section>
+</div>
+</th:block>
+</body>
+</html>
