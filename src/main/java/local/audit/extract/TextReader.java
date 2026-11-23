@@ -71,7 +71,7 @@ public class TextReader {
                 if (text.isBlank()) return new Result("읽음", "직접", "글자가 없는 문서입니다(스캔본일 수 있음).", "", false);
                 if (".pdf".equals(ext)) {
                     String[] how = new String[1];
-                    String html = pdfHtml(file, how);
+                    String html = pdfHtml(file, text, how);
                     return new Result("읽음", how[0] == null ? "직접" : how[0], "", text, false, html);
                 }
                 return new Result("읽음", "직접", "", text, false, Rich.fromFile(file, ext));
@@ -407,7 +407,7 @@ public class TextReader {
      * 2) 워드가 없거나 실패하면 테두리 선과 글자 위치로 표를 직접 찾는다.
      * 둘 다 표를 못 찾으면 null(지금처럼 글만).
      */
-    String pdfHtml(Path file, String[] how) {
+    String pdfHtml(Path file, String pdfText, String[] how) {
         int pages = 0;
         try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(file.toFile())) { pages = doc.getNumberOfPages(); }
         catch (Exception ignored) { }
@@ -416,7 +416,8 @@ public class TextReader {
             if (docx != null) {
                 try {
                     String h = Rich.fromFile(docx, ".docx");
-                    if (h != null && !h.isBlank()) { how[0] = "직접·워드 표"; return h; }
+                    if (h != null && !h.isBlank() && sameContent(pdfText, h)) { how[0] = "직접·워드 표"; return h; }
+                    log.info("워드가 바꾼 PDF가 원문과 달라 쓰지 않음");
                 } finally {
                     try { Files.deleteIfExists(docx); } catch (IOException ignored) { }
                 }
@@ -425,6 +426,24 @@ public class TextReader {
         String h = PdfTables.html(file);
         if (h != null) how[0] = "직접·표 찾기";
         return h;
+    }
+
+    /**
+     * 워드가 바꾼 결과가 PDF의 글과 같은 내용인지. 워드가 PDF를 변환하지 못하고 파일 속 날것(%PDF, endobj, 그림 데이터)을
+     * 글자로 열어 버리는 경우가 있어, 그 결과는 쓰지 않는다. PDF에서 뽑은 낱말의 절반 이상이 들어 있어야 같다고 본다.
+     */
+    public static boolean sameContent(String pdfText, String html) {
+        String t = html.replaceAll("<[^>]+>", " ").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&");
+        if (t.contains("%PDF-") || t.matches("(?s).*\\bendobj\\b.*") || t.matches("(?s).*/Type\\s*/(XObject|Page|Catalog|Font).*")) return false;
+        if (looksLikeCipherText(t.strip())) return false;
+        String src = Txt.str(pdfText);
+        java.util.List<String> words = new java.util.ArrayList<>();
+        for (String w : src.substring(0, Math.min(4000, src.length())).split("\\s+")) if (w.codePointCount(0, w.length()) >= 2) words.add(w);
+        if (words.isEmpty()) return !t.isBlank();
+        String flat = t.replaceAll("\\s+", "");
+        int hit = 0, n = Math.min(60, words.size());
+        for (int i = 0; i < n; i++) if (flat.contains(words.get(i * words.size() / n).replaceAll("\\s+", ""))) hit++;
+        return hit * 2 >= n;
     }
 
     private static String pdf(Path file) throws Exception {

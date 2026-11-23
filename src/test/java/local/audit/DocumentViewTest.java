@@ -222,4 +222,15 @@ class DocumentViewTest {
     void pdfWithoutLinesStaysPlainText() throws Exception {
         assertTrue(local.audit.extract.PdfTables.html(pdfWithTable(dir.resolve("n.pdf"), false)) == null, "선 없는 PDF는 지금처럼 글만");
     }
+
+    @Test
+    void wordResultThatIsRawPdfIsRejected() {
+        String pdfText = "고객보호비용 관리지침\n제1조(목적) 이 지침은 고객보호비용의 관리에 필요한 사항을 정한다.\n제2조(정의) 고객보호비용이란 민원 해결을 위해 지급하는 비용을 말한다.";
+        String raw = "<div class=\"para\">/Type /XObject</div><div class=\"para\">/Width 1815</div><div class=\"para\">stream</div><div class=\"para\">\u253c pJFIF \u2588C endobj</div>";
+        assertFalse(local.audit.extract.TextReader.sameContent(pdfText, raw), "워드가 PDF 날것을 글자로 연 결과는 버림");
+        String good = "<div class=\"para\">고객보호비용 관리지침</div><div class=\"para\">제1조(목적) 이 지침은 고객보호비용의 관리에 필요한 사항을 정한다.</div>"
+            + "<table><tr><td><div class=\"para\">제2조(정의)</div></td><td><div class=\"para\">고객보호비용이란 민원 해결을 위해 지급하는 비용을 말한다.</div></td></tr></table>";
+        assertTrue(local.audit.extract.TextReader.sameContent(pdfText, good), "같은 내용이면 씀");
+        assertFalse(local.audit.extract.TextReader.sameContent(pdfText, "<div class=\"para\">전혀 다른 문서의 내용입니다 여기에는 겹치는 낱말이 없습니다</div>"), "내용이 다르면 버림");
+    }
 }

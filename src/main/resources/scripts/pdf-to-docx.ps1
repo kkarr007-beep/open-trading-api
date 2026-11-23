@@ -27,6 +27,10 @@ try {
         try { $app.Options.ConfirmConversions = $false } catch { }
         # Open(FileName, ConfirmConversions, ReadOnly, AddToRecentFiles)
         $doc = $app.Documents.Open($Path, $false, $true, $false)
+        # 워드가 PDF를 변환하지 못하면(오래된 워드, 회사 정책 등) 파일을 글자로 열어 버린다. 그때는 저장하지 않고 실패로 끝낸다.
+        $head = ''
+        try { $head = [string]$doc.Range(0, [Math]::Min(400, $doc.Content.End)).Text } catch { }
+        if ($head -match '%PDF-|\bendobj\b|/Type\s*/(XObject|Page|Catalog|Font)') { $doc.Close($false); Release $doc; throw '워드가 PDF를 문서로 바꾸지 못하고 글자로 열었습니다.' }
         # SaveAs2(FileName, FileFormat=16(wdFormatXMLDocument, docx))
         try { $doc.SaveAs2($Out, 16) }
         finally { $doc.Close($false); Release $doc }
