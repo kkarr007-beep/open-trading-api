@@ -123,27 +123,24 @@ public class WorkController {
         return "work-annual";
     }
 
-    /** 계획 대기함: 아직 하기로 정하지 않은 일. 업무 목록·부하 계산에는 들어가지 않는다. */
-    /** 수집함: 담아 둔 생각(최근 것이 위). */
-    @GetMapping("/work/inbox")
+    /**
+     * 수집함: 정리 전 생각(inbox)과 나중에 할 일(plan)을 한 화면에. 업무 목록·부하 계산에는 들어가지 않는다.
+     * 예전 '계획 대기함' 주소(/work/plans)도 이 화면을 연다.
+     */
+    @GetMapping({ "/work/inbox", "/work/plans" })
     public String inbox(Model model) {
         common(model);
-        List<WorkItem> all = new java.util.ArrayList<>(work.ofKind("inbox"));
-        all.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.str(x.created)).reversed());
-        model.addAttribute("inbox", all);
-        return "work-inbox";
-    }
-
-    @GetMapping("/work/plans")
-    public String plans(Model model) {
-        common(model);
-        List<WorkItem> all = new java.util.ArrayList<>(work.ofKind("plan"));
+        List<WorkItem> ideas = new java.util.ArrayList<>(work.ofKind("inbox"));
+        ideas.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.str(x.created)).reversed());
+        List<WorkItem> plans = new java.util.ArrayList<>(work.ofKind("plan"));
         String t = Kst.today().toString();
-        all.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.blank(x.tick) ? "9" : x.tick).thenComparing(x -> Txt.str(x.created), java.util.Comparator.reverseOrder()));
-        model.addAttribute("plans", all);
-        model.addAttribute("duePlans", all.stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(t) <= 0).toList());
-        model.addAttribute("waitPlans", all.stream().filter(x -> Txt.blank(x.tick) || x.tick.compareTo(t) > 0).toList());
-        return "work-plans";
+        plans.sort(java.util.Comparator.comparing((WorkItem x) -> Txt.blank(x.tick) ? "9" : x.tick).thenComparing(x -> Txt.str(x.created), java.util.Comparator.reverseOrder()));
+        model.addAttribute("inbox", ideas);
+        model.addAttribute("plans", plans);
+        model.addAttribute("duePlans", plans.stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(t) <= 0).toList());
+        model.addAttribute("waitPlans", plans.stream().filter(x -> Txt.blank(x.tick) || x.tick.compareTo(t) > 0).toList());
+        model.addAttribute("staleBefore", Kst.today().minusDays(7).toString());   // 7일 넘게 정리 안 된 생각 표시
+        return "work-inbox";
     }
 
     /** 연간 정기 현황에서 바로 정기 업무를 만든다. 고른 달마다 이행 칸이 생긴다. */
@@ -389,6 +386,7 @@ public class WorkController {
                 Txt.intOrNull(p.get("m")) == null ? 0 : Txt.intOrNull(p.get("m")));
             case "delete" -> work.delete(id);
             case "towork" -> work.toWork(id);
+            case "toplan" -> work.toPlan(id, p.get("when"), p.get("tick"));
             default -> Op.fail(404, "없는 작업입니다.");
         });
         String go = null;
@@ -398,7 +396,7 @@ public class WorkController {
     }
 
     private static final Map<String, String> ACTION_NAMES = Map.of("status", "상태 변경", "stage", "단계 변경", "todo", "체크리스트",
-        "log", "진행 기록", "check", "정기 이행 표시", "delete", "지우기", "towork", "업무로 옮기기");
+        "log", "진행 기록", "check", "정기 이행 표시", "delete", "지우기", "towork", "업무로 옮기기", "toplan", "나중에 할 일로");
 
     /** 되돌리기 (Ctrl+Z). */
     @PostMapping("/work/undo")

@@ -87,7 +87,7 @@
         <nav class="sn-group" data-group="work" th:hidden="${(#strings.isEmpty(navGroup) ? 'home' : navGroup) != 'work'}" aria-label="업무">
             <p class="sn-title">오늘</p>
                 <a href="/work" th:aria-current="${navKey == 'work'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-home" xlink:href="#i-home"/></svg><span>홈 · 오늘 할 일</span><b class="n red" th:if="${workUrgent > 0}" th:text="${workUrgent}">0</b></a>
-                <a href="/work/inbox" th:aria-current="${navKey == 'work/inbox'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-inbox" xlink:href="#i-inbox"/></svg><span>수집함</span><b class="n" th:if="${workInbox > 0}" th:text="${workInbox}">0</b></a>
+                <a href="/work/inbox" th:aria-current="${navKey == 'work/inbox' or navKey == 'work/plans'} ? 'page'" title="정리 전 생각과 나중에 할 일"><svg class="ei" aria-hidden="true"><use href="#i-inbox" xlink:href="#i-inbox"/></svg><span>수집함</span><b class="n" th:if="${workInbox > 0}" th:text="${workInbox}">0</b></a>
                 <a href="/work/list?scope=mine" th:aria-current="${navKey == 'work/list' and qScope == 'mine'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-user" xlink:href="#i-user"/></svg><span>내 업무</span><b class="n" th:if="${workMine > 0}" th:text="${workMine}">0</b></a>
             <p class="sn-title">업무 보기</p>
                 <a href="/work/board" th:aria-current="${navKey == 'work/board'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-columns" xlink:href="#i-columns"/></svg><span>진행 상태판</span></a>
@@ -98,7 +98,6 @@
             <p class="sn-title">팀</p>
                 <a href="/work/team" th:aria-current="${navKey == 'work/team'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"/></svg><span>담당별 부하</span></a>
                 <a href="/work/directives" th:aria-current="${navKey == 'work/directives'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-pin" xlink:href="#i-pin"/></svg><span>지시 · 피드백</span><b class="n red" th:if="${workDirs > 0}" th:text="${workDirs}">0</b></a>
-                <a href="/work/plans" th:aria-current="${navKey == 'work/plans'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-box" xlink:href="#i-box"/></svg><span>계획 대기함</span><b class="n" th:if="${workPlans > 0}" th:text="${workPlans}">0</b></a>
                 <a href="/work/insight" th:aria-current="${navKey == 'work/insight'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-trend" xlink:href="#i-trend"/></svg><span>분석 · 보고서</span></a>
             <p class="sn-title">지식</p>
                 <a href="/work/meetings" th:aria-current="${navKey == 'work/meetings'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-chat" xlink:href="#i-chat"/></svg><span>회의 · 쟁점</span></a>

@@ -99,7 +99,9 @@ public class Web {
         model.addAttribute("workUrgent", work.urgentCount());
         model.addAttribute("workDirs", work.openDirectives());
         if ("work".equals(navGroup)) {
-            model.addAttribute("workInbox", work.ofKind("inbox").size());
+            String today0 = local.audit.Kst.today().toString();
+            model.addAttribute("workInbox", work.ofKind("inbox").size()
+                + work.ofKind("plan").stream().filter(x -> !Txt.blank(x.tick) && x.tick.compareTo(today0) <= 0).count());
             model.addAttribute("workPlans", work.ofKind("plan").size());
             String me = work.config().me;
             model.addAttribute("workMine", work.all().stream().filter(x -> x.isWork() && local.audit.work.WorkService.isOpen(x) && me.equals(x.ownerId)).count());

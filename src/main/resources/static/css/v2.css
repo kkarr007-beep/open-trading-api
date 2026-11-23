@@ -396,3 +396,6 @@ table.data tbody th { background: transparent; color: var(--ink); }
 .lib-table.tiles .ex-form { right: 0; top: 100%; }
 @media print { .lib-table.tiles, .lib-table.tiles tbody, .lib-table.tiles tr { display: revert; } .lib-table.tiles thead { display: table-header-group; } }
 .lib-allchk[hidden] { display: none !important; }
+/* 수집함: 나중으로(예상 시기·다시 볼 날) */
+.line-add .when-in { width: 160px; flex: none; }
+.later-menu .ex-form { width: 260px; }

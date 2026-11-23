@@ -500,6 +500,18 @@ public class WorkService {
     }
 
     /** 지시·생각 담기·계획 대기를 업무로 옮긴다. 원래 항목은 남겨 두고 연결한다. */
+    /** 수집함의 생각을 '나중에 할 일'(계획)로 돌린다. 같은 항목의 종류만 바꾸고 예상 시기·다시 볼 날을 적는다. */
+    public Op toPlan(String id, String when, String tick) {
+        WorkItem x = get(id);
+        if (x == null) return Op.fail(404, "항목을 찾을 수 없습니다.");
+        if (!"inbox".equals(x.kind)) return Op.bad("수집함의 생각만 '나중에 할 일'로 돌릴 수 있습니다.");
+        x.kind = "plan";
+        x.when = Txt.fit(when, 60, false);
+        x.tick = Work.date(tick) == null ? "" : tick;
+        store.save(x);
+        return Op.ok("'나중에 할 일'로 옮겼습니다." + (x.tick.isEmpty() ? "" : " " + x.tick + "에 다시 알려 드립니다."), x.id);
+    }
+
     public Op toWork(String id) {
         WorkItem x = get(id);
         if (x == null) return Op.fail(404, "항목을 찾을 수 없습니다.");

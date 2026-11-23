@@ -5,31 +5,65 @@
 <th:block id="content">
 <div class="page-head">
     <div>
-        <p class="kicker" th:text="|담아 둔 생각 ${#lists.size(inbox)}건|"></p>
+        <p class="kicker" th:text="|정리 전 ${#lists.size(inbox)}건 · 나중에 할 일 ${#lists.size(plans)}건${#lists.isEmpty(duePlans) ? '' : ' (다시 볼 때 ' + #lists.size(duePlans) + '건)'}|"></p>
         <h1>수집함</h1>
-        <p class="hint">떠오른 생각이나 할지 말지 정하지 않은 일을 한 줄로 담아 둡니다. 할 일로 정해지면 '업무로', 필요 없으면 '버리기'를 누르세요.</p>
+        <p class="hint">아직 업무가 아닌 것을 모아 둡니다. 떠오른 생각은 '정리 전'에 한 줄로 담고, 하나씩 <b>업무로</b> 보내거나, 시기를 정해 <b>나중으로</b> 미루거나, <b>버리기</b>로 정리하세요.
+            '나중에 할 일'은 다시 볼 날이 되면 맨 위와 업무 홈에 올라옵니다. 업무 목록·담당별 부하에는 들어가지 않습니다.</p>
     </div>
 </div>
-<section class="card">
-    <h2>생각 담기</h2>
+
+<section class="card" id="ideas">
+    <div class="card-head"><h2>정리 전 <span class="count" th:text="${#lists.size(inbox)}">0</span></h2><span class="sub">떠오른 생각·들은 말·할지 말지 모르는 일</span></div>
     <form method="post" action="/work/new/inbox" data-write="1" class="line-add">
         <input name="title" required maxlength="200" placeholder="떠오른 생각 한 줄 (Enter)" class="wide" aria-label="생각 한 줄" />
         <button type="submit" class="btn btn-primary">담기</button>
     </form>
-</section>
-<section class="card">
-    <h2>담아 둔 생각 <span class="count" th:text="${#lists.size(inbox)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(inbox)}">담아 둔 생각이 없습니다.</p>
+    <p class="empty" th:if="${#lists.isEmpty(inbox)}">정리할 생각이 없습니다.</p>
     <ul class="wlist inbox-list">
-        <li class="wrow" th:each="x : ${inbox}">
+        <li class="wrow" th:each="x : ${inbox}" th:with="old=${#strings.substring(x.created + '          ', 0, 10) < staleBefore}">
             <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
                 <small th:text="|담은 날 ${#strings.substring(x.created + '          ', 0, 10)}|"></small></div>
+            <span class="pill warn" th:if="${old}" title="7일 넘게 정리하지 않은 생각입니다">정리 필요</span>
             <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="no-print"><button type="submit" class="btn btn-quiet">업무로</button></form>
+            <details class="ex-menu later-menu no-print"><summary class="btn btn-quiet">나중으로</summary>
+                <form method="post" th:action="|/work/item/${x.id}/toplan|" data-write="1" class="ex-form">
+                    <label class="field">예상 시기<input name="when" maxlength="60" placeholder="예: 다음 분기 · 내년 상반기" /></label>
+                    <label class="field">다시 볼 날<input type="date" name="tick" /></label>
+                    <button type="submit" class="btn btn-primary btn-sm">나중에 할 일로</button>
+                </form>
+            </details>
             <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="no-print" data-confirm="이 생각을 버릴까요?">
                 <input type="hidden" name="back" value="/work/inbox" /><button type="submit" class="btn btn-quiet">버리기</button></form>
         </li>
     </ul>
 </section>
+
+<section class="card" id="later">
+    <div class="card-head"><h2>나중에 할 일 <span class="count" th:text="${#lists.size(plans)}">0</span></h2><span class="sub">하기로 마음은 있지만 아직 때가 아닌 일 (예전 '계획 대기함')</span></div>
+    <form method="post" action="/work/new/plan" data-write="1" class="line-add">
+        <input name="title" required maxlength="200" placeholder="계획 (예: 하도급 거래 점검 신설)" class="wide" aria-label="계획" />
+        <input name="when" maxlength="60" placeholder="예상 시기" aria-label="예상 시기" class="when-in" />
+        <button type="submit" class="btn btn-primary">넣기</button>
+    </form>
+    <th:block th:unless="${#lists.isEmpty(duePlans)}">
+        <h3 class="h3">다시 볼 때가 된 계획 <span class="count" th:text="${#lists.size(duePlans)}">0</span></h3>
+        <ul class="wlist"><li class="wrow" th:each="x : ${duePlans}" th:insert="~{:: prow(${x})}"></li></ul>
+    </th:block>
+    <h3 class="h3" th:unless="${#lists.isEmpty(duePlans)}">대기 중</h3>
+    <p class="empty" th:if="${#lists.isEmpty(waitPlans) and #lists.isEmpty(duePlans)}">나중에 할 일이 없습니다.</p>
+    <ul class="wlist"><li class="wrow" th:each="x : ${waitPlans}" th:insert="~{:: prow(${x})}"></li></ul>
+</section>
+
+<th:block th:if="${false}">
+    <th:block th:fragment="prow(x)">
+        <div class="t"><a th:href="|/work/item/${x.id}|" th:text="${x.title}"></a>
+            <small th:text="|${#strings.isEmpty(x.when) ? '시기 미정' : '예상 ' + x.when}${#strings.isEmpty(x.tick) ? '' : ' · 다시 볼 날 ' + x.tick} · 넣은 날 ${#strings.substring(x.created + '          ', 0, 10)}|"></small></div>
+        <span class="pill warn" th:if="${!#strings.isEmpty(x.tick) and x.tick <= today}">다시 볼 때</span>
+        <form method="post" th:action="|/work/item/${x.id}/towork|" data-write="1" class="no-print"><button type="submit" class="btn btn-quiet">업무로</button></form>
+        <form method="post" th:action="|/work/item/${x.id}/delete|" data-write="1" class="no-print" th:data-confirm="|「${x.title}」 계획을 지울까요?|">
+            <input type="hidden" name="back" value="/work/inbox" /><button type="submit" class="btn btn-quiet">지우기</button></form>
+    </th:block>
+</th:block>
 </th:block>
 </body>
 </html>
