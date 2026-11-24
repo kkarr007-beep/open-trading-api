@@ -83,6 +83,11 @@
        th:classappend="${kind == k.key} ? 'on'" th:text="|${k.value} ${v.kinds[k.key]}|"></a></th:block>
 </div>
 
+<div class="banner warn card trash-note" th:if="${isTrash}">
+    <p><strong>휴지통</strong> — 지운 자료를 30일 동안 둡니다. 그 뒤에는 자동으로 영구 삭제됩니다. 줄의 ⋯ 메뉴에서 <b>되돌리기</b>를 누르면 원래 폴더로 돌아갑니다.</p>
+    <form method="post" action="/library/trash/empty" data-write="1" data-reload class="inline-form" data-confirm="휴지통의 자료를 모두 영구 삭제할까요? 되돌릴 수 없습니다(백업으로만 복구).">
+        <button type="submit" class="btn btn-quiet danger-text">휴지통 비우기</button></form>
+</div>
 <form id="lib-bulk" method="post" action="/library/bulk" data-write="1" data-reload class="bulk-bar lib-bulk" hidden data-bulk>
     <input type="hidden" name="op" value="move" />
     <strong data-bulk-count data-bulk-label="고른 {n}건">고른 0건</strong>
@@ -95,7 +100,8 @@
         <button type="button" class="btn" data-bulk-op="star">★ 즐겨찾기</button>
         <input name="tags" maxlength="100" placeholder="붙일 태그" aria-label="붙일 태그" class="bulk-tag" />
         <button type="button" class="btn" data-bulk-op="tag">태그 붙이기</button>
-        <button type="button" class="btn btn-quiet danger-text" data-bulk-delete="고른 자료를 지울까요? 원본 파일도 함께 지워집니다.">지우기</button>
+        <button type="button" class="btn" data-bulk-op="restore" th:if="${isTrash}">되돌리기</button>
+        <button type="button" class="btn btn-quiet danger-text" th:attr="data-bulk-delete=${isTrash} ? '고른 자료를 영구 삭제할까요? 되돌릴 수 없습니다.' : '고른 자료를 휴지통으로 옮길까요? 30일 안에 되돌릴 수 있습니다.'" th:text="${isTrash} ? '영구 삭제' : '지우기'">지우기</button>
     </span>
 </form>
 
@@ -136,6 +142,7 @@
                         <span class="muted fpath" th:if="${view != '' or scope == 'all' or v.deep}"><svg class="ti" aria-hidden="true"><use href="#i-folder" xlink:href="#i-folder"/></svg><span th:text="${d.FolderPath}"></span></span>
                         <span class="muted" th:text="${d.FileName}"></span>
                     </small>
+                    <small class="muted" th:if="${isTrash and trashAt[d.Id] != null}" th:text="|지운 때 ${trashAt[d.Id]}|"></small>
                     <small class="snip" th:unless="${#strings.isEmpty(d.Snippet)}" th:text="${d.Snippet}"></small>
                     <small class="lib-cases" th:if="${linked[d.Id] != null}">감사 건:
                         <a th:each="c : ${linked[d.Id]}" th:href="|/cases/${c.CaseId}#related|" th:text="${c.Title}"></a></small>
@@ -173,8 +180,11 @@
                             <option th:each="c : ${caseChoices}" th:value="${c.CaseId}" th:text="|${c.Year} · ${c.Title}|"></option></select></label>
                         <button type="submit" class="btn btn-sm">연결</button>
                     </form>
-                    <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" data-reload th:data-confirm="|'${d.Title}'를 지울까요? 원본 파일도 함께 지워집니다.|">
-                        <button type="submit" class="btn btn-quiet btn-sm danger-text">지우기</button></form>
+                    <form method="post" th:action="|/library/${d.Id}/restore|" data-write="1" data-reload th:if="${isTrash}">
+                        <button type="submit" class="btn btn-primary btn-sm">되돌리기</button></form>
+                    <form method="post" th:action="|/library/${d.Id}/delete|" data-write="1" data-reload
+                          th:data-confirm="${isTrash} ? |'${d.Title}'를 영구 삭제할까요? 원본 파일도 지워지고 되돌릴 수 없습니다.| : |'${d.Title}'를 휴지통으로 옮길까요? 30일 안에 되돌릴 수 있습니다.|">
+                        <button type="submit" class="btn btn-quiet btn-sm danger-text" th:text="${isTrash} ? '영구 삭제' : '지우기'">지우기</button></form>
                 </div>
             </details>
         </td>

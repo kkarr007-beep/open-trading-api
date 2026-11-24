@@ -1,23 +1,75 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::#content})}">
-<head><title>백업 옮겨 오기 · Portal</title></head>
+<head><title>백업·복원·옮기기 · Portal</title></head>
 <body>
 <th:block id="content">
 <div class="page-head">
     <div>
-        <h1>백업 옮겨 오기</h1>
-        <p class="hint" th:text="|지금 업무·일정 항목 ${workCount}건, 사규 ${ruleCount}건이 있습니다.|"></p>
+        <p class="kicker">설정 · 기록 지키기</p>
+        <h1>백업·복원·옮기기</h1>
+        <p class="hint">백업, 백업에서 되돌리기, 예전 프로그램 파일 옮겨 오기, 내려받기를 이 화면 한 곳에서 합니다.</p>
     </div>
 </div>
-<section class="card">
-    <h2>예전 프로그램의 백업 파일</h2>
-    <p class="hint">여러 파일을 한 번에 넣을 수 있습니다. 파일마다 내용을 보고 알아서 나눠 넣습니다.</p>
+
+<section class="card" id="where">
+    <h2>기록이 있는 곳</h2>
+    <p>모든 기록(데이터 파일·첨부 원문·자료)은 <span class="path" th:text="${home}"></span> 폴더 하나에 있습니다. 프로그램을 지우거나 다시 깔아도 이 폴더는 그대로 남습니다.</p>
+    <p class="hint">PC를 포맷하거나 바꿀 때: 이 폴더를 통째로 USB·D 드라이브에 복사해 두고 → 새 PC에 프로그램을 설치한 뒤 → 아래 '다른 위치에서 되돌리기'에 복사해 둔 폴더를 적으면 됩니다.</p>
+</section>
+
+<section class="card" id="backup">
+    <h2>백업</h2>
+    <p class="banner warn" th:if="${backupInside}">지금 백업 폴더가 기록 폴더 안에 있습니다. PC가 망가지면 백업도 함께 사라지니 USB·D 드라이브·회사 공유 폴더 등 다른 곳으로 바꾸세요.</p>
+    <p th:text="${autoBackup} ? '자동 백업: 켜짐 — 프로그램이 켜져 있으면 하루에 한 번, 최근 7개를 남깁니다.' : '자동 백업: 꺼짐 — 설정 화면에서 켤 수 있습니다.'"></p>
+    <form method="post" action="/import/backup" data-write="1" class="inline-form">
+        <label class="field grow">백업할 폴더 (바꾸면 다음 자동 백업도 이 폴더로)<input name="folder" th:value="${backupFolder}" maxlength="400" placeholder="예: D:\감사기록백업" /></label>
+        <button type="submit" class="btn btn-primary">지금 백업</button>
+    </form>
+    <p class="hint">데이터 파일과 첨부·자료 원문을 함께 복사합니다. 인터넷으로 보내지 않습니다. 원문이 모두 들어 있으니 보관 장소에 유의하세요.</p>
+</section>
+
+<section class="card" id="restore">
+    <h2>백업에서 되돌리기</h2>
+    <th:block th:if="${pending != null}">
+        <p class="banner warn">되돌리기 예약됨: <span class="path" th:text="${pending}"></span><br />프로그램을 닫았다가 다시 켜면 이 시점으로 바뀝니다.</p>
+        <div class="row-actions">
+            <form method="post" action="/admin/quit" data-write="1" data-confirm="프로그램을 닫을까요? 다시 켜면 되돌리기가 끝납니다."><button type="submit" class="btn btn-primary">프로그램 닫기</button></form>
+            <form method="post" action="/import/restore/cancel" data-write="1"><button type="submit" class="btn">예약 취소</button></form>
+        </div>
+    </th:block>
+    <p class="hint">되돌리면 지금 기록은 지우지 않고 백업 폴더 안 '되돌리기전-날짜' 폴더에 남겨 둡니다. 되돌린 뒤 생각과 다르면 그 폴더로 다시 되돌릴 수 있습니다.</p>
+    <div class="table-wrap" tabindex="0" th:unless="${#lists.isEmpty(backups)}">
+        <table class="data">
+            <thead><tr><th scope="col">백업 시각</th><th scope="col">상태</th><th scope="col">위치</th><th scope="col">비고</th><th scope="col">되돌리기</th></tr></thead>
+            <tbody>
+            <tr th:each="b : ${backups}">
+                <td class="num nowrap" th:text="${b.AtDisplay}"></td><td th:text="${b.State}"></td>
+                <td><span class="path" th:text="${b.Location}"></span></td><td th:text="${b.Note}"></td>
+                <td class="nowrap">
+                    <form th:if="${b.Exists}" method="post" action="/import/restore" data-write="1" th:data-confirm="|${b.AtDisplay} 시점으로 되돌릴까요? 그 뒤에 넣은 기록은 '되돌리기전' 폴더로 옮겨집니다.|">
+                        <input type="hidden" name="folder" th:value="${b.Location}" /><button type="submit" class="btn btn-quiet">이 시점으로</button></form>
+                    <small class="muted" th:unless="${b.Exists}">폴더 없음</small>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="empty" th:if="${#lists.isEmpty(backups)}">아직 백업이 없습니다.</p>
+    <h3 class="h3">다른 위치에서 되돌리기</h3>
+    <form method="post" action="/import/restore" data-write="1" class="inline-form" data-confirm="이 폴더의 기록으로 되돌릴까요? 지금 기록은 '되돌리기전' 폴더에 남겨 둡니다.">
+        <label class="field grow">폴더 위치 — 백업 폴더(감사기록-백업-…) 또는 USB 등에 통째로 복사해 둔 감사기록 폴더<input name="folder" maxlength="400" required placeholder="예: E:\감사기록" /></label>
+        <button type="submit" class="btn">되돌리기 예약</button>
+    </form>
+</section>
+
+<section class="card" id="import">
+    <h2>예전 프로그램 백업 파일 옮겨 오기</h2>
+    <p class="hint" th:text="|지금 업무·일정 항목 ${workCount}건, 사규 ${ruleCount}건이 있습니다. 여러 파일을 한 번에 넣을 수 있고, 파일마다 내용을 보고 알아서 나눠 넣습니다.|"></p>
     <ul class="tips">
-        <li><strong>업무 일정</strong> · 예전 '업무·일정 관리'(v2와 그 이전 판)에서 <em>설정 · 데이터 → JSON 내보내기</em>로 받은 파일, 또는 이 프로그램의 업무 설정에서 내려받은 파일</li>
-        <li><strong>사규</strong> · 예전 '사규 관리 시스템'(v4와 v3)에서 <em>설정·백업 → JSON 백업</em>으로 받은 파일, 또는 이 프로그램의 사규 설정에서 내려받은 파일</li>
-        <li><strong>감사 건·징계기록</strong> · 서버판 감사기록은 <a href="/admin">관리 화면</a>의 '이전 판에서 옮겨 오기'로 가져옵니다.</li>
+        <li><strong>업무 일정</strong> · 예전 '업무·일정 관리'(v2와 그 이전 판)의 <em>JSON 내보내기</em> 파일, 또는 아래에서 내려받은 업무 JSON</li>
+        <li><strong>사규</strong> · 예전 '사규 관리 시스템'(v4·v3)의 <em>JSON 백업</em> 파일, 또는 아래에서 내려받은 사규 JSON</li>
     </ul>
-    <form method="post" action="/import" data-write="1" enctype="multipart/form-data" style="margin-top:12px">
+    <form method="post" action="/import" data-write="1" enctype="multipart/form-data">
         <div class="drop">
             <p class="drop-copy"><strong>JSON 백업 파일을 고르거나 끌어 놓으세요</strong> (여러 개 가능)</p>
             <input type="file" name="upload" multiple required accept=".json,application/json" aria-label="백업 파일" />
@@ -26,14 +78,32 @@
         <div class="form-grid" style="margin-top:12px">
             <label class="field">방법
                 <select name="mode">
-                    <option value="merge">합치기 — 없는 항목만 더하고, 같은 항목은 더 최근 것으로 (여러 백업을 차례로 넣을 때)</option>
-                    <option value="replace">전부 바꾸기 — 처음 옮길 때. 같은 종류 파일이 여럿이면 첫 파일로 바꾸고 나머지는 합침</option>
+                    <option value="merge">합치기 — 없는 항목만 더하고, 같은 항목은 더 최근 것으로</option>
+                    <option value="replace">전부 바꾸기 — 처음 옮길 때</option>
                 </select>
             </label>
         </div>
         <button type="submit" class="btn btn-primary">옮겨 오기</button>
     </form>
-    <p class="hint" style="margin-top:12px" th:text="|전부 바꾸기 전에는 지금 데이터를 ${backupFolder} 폴더에 JSON으로 남깁니다. 업무 일정은 Ctrl+Z(되돌리기)로도 바로 돌릴 수 있습니다.|"></p>
+    <p class="hint" style="margin-top:12px" th:text="|전부 바꾸기 전에는 지금 데이터를 ${defaultBackup} 폴더에 JSON으로 남깁니다.|"></p>
+
+    <h3 class="h3">경영현황 백업 파일</h3>
+    <form method="post" action="/board/import" data-write="1" enctype="multipart/form-data" class="inline-form" data-confirm="불러오면 지금 경영현황 자료(조직·지표·실적·이슈)를 파일 내용으로 모두 바꿉니다. 계속할까요?">
+        <input type="file" name="upload" required accept=".json,application/json" aria-label="경영현황 백업 파일" />
+        <button type="submit" class="btn">경영현황 옮겨 오기</button>
+    </form>
+    <p class="hint">감사 건·징계기록(서버판 감사기록)은 <a href="/admin#import">관리 화면</a>의 '이전 판에서 옮겨 오기'로 가져옵니다.</p>
+</section>
+
+<section class="card" id="export">
+    <h2>내려받기 (다른 PC·예전 프로그램용)</h2>
+    <p class="hint">메뉴별 내용을 JSON 파일로 받습니다. 전체 백업은 위 '지금 백업'이 더 확실합니다.</p>
+    <p class="row-actions">
+        <a class="btn" href="/work/data/export">업무 JSON</a>
+        <a class="btn" href="/work/export?scope=all">업무 CSV</a>
+        <a class="btn" href="/rules/data/export">사규 JSON</a>
+        <a class="btn" href="/board/data/export">경영현황 JSON</a>
+    </p>
 </section>
 </th:block>
 </body>

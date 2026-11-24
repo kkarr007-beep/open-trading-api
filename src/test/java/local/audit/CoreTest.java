@@ -402,8 +402,19 @@ class CoreTest {
         assertEquals(0, lib.list("", "없는말", 1, 20).get("total"));
         java.nio.file.Path stored = lib.file(added.id);
         assertTrue(java.nio.file.Files.exists(stored));
-        assertTrue(lib.delete(added.id).ok);
+        // 처음 지우면 휴지통으로(원문은 남고 찾기에서는 빠짐), 되돌리면 다시 보이고, 휴지통에서 한 번 더 지우면 영구 삭제
+        Op trash = lib.delete(added.id);
+        assertTrue(trash.ok, trash.message);
+        assertEquals("trash", trash.extra);
         assertEquals(0, lib.total());
+        assertTrue(java.nio.file.Files.exists(stored));
+        assertEquals(0, lib.list("", "비밀번호 분기", 1, 20).get("total"));
+        assertTrue(lib.restoreDoc(added.id).ok);
+        assertEquals(1, lib.total());
+        assertEquals("trash", lib.delete(added.id).extra);
+        Op gone = lib.delete(added.id);
+        assertTrue(gone.ok, gone.message);
+        assertEquals("gone", gone.extra);
         assertFalse(java.nio.file.Files.exists(stored));
     }
 
@@ -557,5 +568,35 @@ class CoreTest {
         assertEquals(b.id, lib.get(d.id).get("CategoryId"), "하위 폴더 속 자료는 그대로");
         assertTrue(lib.moveFolder(b.id, other).ok);
         assertEquals(lib.folder(other).depth + 1, lib.folder(b.id).depth);
+    }
+
+    @Test
+    void restoreFromBackupSwapsDataAndKeepsCurrent() throws Exception {
+        java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("rst");
+        java.nio.file.Path home = tmp.resolve("home"), bak = tmp.resolve("bak");
+        java.nio.file.Files.createDirectories(home.resolve("data"));
+        java.nio.file.Files.createDirectories(home.resolve("files"));
+        java.nio.file.Files.write(home.resolve("data/audit.db"), "SQLite format 3\0now".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+        java.nio.file.Files.writeString(home.resolve("files/a.txt"), "now");
+        java.nio.file.Files.createDirectories(bak.resolve("data"));
+        java.nio.file.Files.createDirectories(bak.resolve("files/x"));
+        java.nio.file.Files.write(bak.resolve("data/audit.db"), "SQLite format 3\0old".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+        java.nio.file.Files.writeString(bak.resolve("files/x/b.txt"), "old");
+        assertNotNull(Restore.check(tmp.resolve("none")));
+        assertNull(Restore.check(bak));
+        Restore.request(home, bak);
+        assertNotNull(Restore.pending(home));
+        Restore.applyPending(home);
+        assertNull(Restore.pending(home));
+        assertTrue(new String(java.nio.file.Files.readAllBytes(home.resolve("data/audit.db")), java.nio.charset.StandardCharsets.ISO_8859_1).endsWith("old"));
+        assertTrue(java.nio.file.Files.exists(home.resolve("files/x/b.txt")));
+        assertFalse(java.nio.file.Files.exists(home.resolve("files/a.txt")));
+        String done = Restore.takeResult(home);
+        assertTrue(done.startsWith("백업에서 되돌렸습니다"), done);
+        assertNull(Restore.takeResult(home));
+        try (var st = java.nio.file.Files.list(home.resolve("backup"))) {
+            java.nio.file.Path keep = st.filter(p -> p.getFileName().toString().startsWith("되돌리기전-")).findFirst().orElseThrow();
+            assertEquals("now", java.nio.file.Files.readString(keep.resolve("files/a.txt")));
+        }
     }
 }

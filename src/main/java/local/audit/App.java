@@ -60,6 +60,8 @@ public class App {
             if (!running.contains("shown") && !"none".equals(mode) && openWindow(url, home.resolve("window"), null) == null) openBrowser(url);
             return;
         }
+        // 백업에서 되돌리기를 예약해 두었으면 기록 파일을 열기 전에 바꾼다
+        Restore.applyPending(home);
         if ("app".equals(mode)) {
             try {
                 if (Desktop.launch(args, url, home)) return;

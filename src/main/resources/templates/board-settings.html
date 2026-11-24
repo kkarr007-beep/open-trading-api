@@ -94,16 +94,10 @@
         </form>
     </section>
 </div>
-<section class="card" id="data">
-    <h2>데이터</h2>
-    <p class="hint">현황판 자료는 Portal 데이터 파일에 저장되어 '관리' 화면의 백업에 함께 들어갑니다. 따로 보관하려면 내려받으세요.
-        예전 현황판(HTML)의 '백업 · 복원 → 지금 파일로 내보내기'로 받은 파일도 그대로 불러올 수 있습니다.</p>
-    <p class="row-actions"><a class="btn" href="/board/data/export">현황판 데이터 내려받기 (JSON)</a></p>
-    <form method="post" action="/board/import" data-write="1" enctype="multipart/form-data" data-confirm="불러오면 지금 현황판 자료(조직·지표·실적·이슈)를 파일 내용으로 모두 바꿉니다. 계속할까요?">
-        <div class="drop"><p class="drop-copy"><strong>현황판 백업 파일(JSON)을 고르세요</strong> — 지금 자료를 바꿉니다</p>
-            <input type="file" name="upload" accept=".json,application/json" aria-label="현황판 백업 파일" /><span class="drop-name" data-file-name hidden></span></div>
-        <p class="row-actions" style="margin-top:10px"><button type="submit" class="btn">불러오기</button></p>
-    </form>
+<section class="card" id="import">
+    <h2>백업·옮겨 오기·내려받기</h2>
+    <p class="hint">경영현황 자료는 프로그램 전체 백업에 함께 들어갑니다. 예전 현황판(HTML) 백업 파일도 그곳에서 불러옵니다. 백업, 백업에서 되돌리기, 예전 프로그램 파일 옮겨 오기는 설정의 <strong>백업·복원·옮기기</strong> 한 곳에서 합니다.</p>
+    <p class="row-actions"><a class="btn btn-primary" href="/import">백업·복원·옮기기 열기</a> <a class="btn" href="/board/data/export">경영현황 JSON 내려받기</a></p>
 </section>
 </th:block>
 </body>

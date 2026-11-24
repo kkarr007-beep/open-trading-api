@@ -27,6 +27,39 @@ public class RetentionService {
     private final Paths2 paths;
     private final DisciplineService discipline;
 
+    private LibraryService library;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLibrary(LibraryService library) { this.library = library; }
+
+    /** 백업 폴더가 기록 폴더(감사기록) 안이면 true. 그 폴더나 디스크가 망가지면 백업도 함께 사라진다. */
+    public boolean backupInsideHome() {
+        try { return Path.of(settings.get("backupFolder", paths.backup.toString())).toAbsolutePath().normalize().startsWith(paths.home); }
+        catch (RuntimeException e) { return true; }
+    }
+
+    public String backupFolder() { return settings.get("backupFolder", paths.backup.toString()); }
+
+    /** 백업에서 되돌리기를 예약한다(다음에 켤 때 바꾼다). 예약 전에 지금 상태를 한 번 더 백업한다. */
+    public Op requestRestore(String folder) {
+        if (Txt.blank(folder)) return Op.bad("되돌릴 백업 폴더를 고르거나 적으세요.");
+        Path src;
+        try { src = Path.of(folder.strip().replace("\"", "")).toAbsolutePath().normalize(); } catch (RuntimeException e) { return Op.bad("폴더 위치를 확인하세요."); }
+        if (src.equals(paths.home)) return Op.bad("지금 쓰는 감사기록 폴더 자신은 고를 수 없습니다.");
+        String why = Restore.check(src);
+        if (why != null) return Op.bad(why);
+        Op before = backup(backupFolder(), false);
+        try { Restore.request(paths.home, src); } catch (IOException e) { return Op.fail(500, "되돌리기를 예약하지 못했습니다: " + e.getMessage()); }
+        return Op.ok("되돌리기를 예약했습니다. 프로그램을 닫았다가 다시 켜면 '" + src.getFileName() + "' 시점으로 바뀝니다."
+            + (before.ok ? " 혹시 몰라 지금 기록도 먼저 백업해 두었습니다." : " (지금 기록 백업은 실패했지만, 되돌릴 때 지금 기록을 따로 남겨 둡니다.)"));
+    }
+
+    public Op cancelRestore() {
+        try { Restore.cancel(paths.home); return Op.ok("되돌리기 예약을 취소했습니다."); } catch (IOException e) { return Op.fail(500, e.getMessage()); }
+    }
+
+    public String pendingRestore() { return Restore.pending(paths.home); }
+
     public RetentionService(Db db, Chain chain, Settings settings, FileStore files, Paths2 paths, DisciplineService discipline) {
         this.db = db;
         this.chain = chain;
@@ -36,12 +69,13 @@ public class RetentionService {
         this.discipline = discipline;
     }
 
-    /** 켜져 있는 동안 한 시간마다. 설정에서 자동 삭제를 켠 경우에만 지운다. */
+    /** 켜져 있는 동안 한 시간마다. 설정에서 자동 삭제를 켠 경우에만 지운다. 자료 휴지통은 30일 지난 것을 비운다. */
     @Scheduled(initialDelay = 20_000, fixedDelay = 3_600_000)
     public void tick() {
         try {
             if (settings.autoPurge()) purgeDue();
             autoBackup();
+            if (library != null) library.purgeTrash(LibraryService.TRASH_DAYS);
         } catch (RuntimeException e) {
             log.warn("보존 삭제 처리 실패: {}", e.toString());
         }
@@ -112,8 +146,8 @@ public class RetentionService {
 
     /** 하루에 한 번, 기록이 있을 때만. 자동 백업은 최근 7개만 남긴다. 직접 만든 백업은 지우지 않는다. */
     void autoBackup() {
-        if (!settings.autoBackup() || !chain.intact()) return;
-        if (db.read(c -> Db.intOf(c, "SELECT (SELECT COUNT(*) FROM Cases) + (SELECT COUNT(*) FROM Discipline)")) == 0) return;
+        // 기록 종류(업무·사규·자료·감사 건 …)와 상관없이 하루 한 번. 이력 지문에 문제가 있어도 백업은 한다(그때가 더 필요하다).
+        if (!settings.autoBackup()) return;
         String today = Kst.today().toString();
         if (today.equals(settings.get("lastAutoBackup", ""))) return;
         String folder = settings.get("backupFolder", paths.backup.toString());

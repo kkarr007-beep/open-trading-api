@@ -42,6 +42,9 @@ public class LibraryService {
             boolean fresh = Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories") == 0;
             boolean upgrade = Db.intOf(conn, "SELECT COUNT(*) FROM pragma_table_info('LibCategories') WHERE name='ParentId'") == 0;
             if (upgrade) Db.update(conn, "ALTER TABLE LibCategories ADD COLUMN ParentId TEXT NOT NULL DEFAULT ''");
+            try (var st = conn.createStatement()) {
+                st.execute("CREATE TABLE IF NOT EXISTS LibTrash (DocId TEXT PRIMARY KEY, FromCategory TEXT NOT NULL DEFAULT '', DeletedAt TEXT NOT NULL)");
+            }
             if (fresh) {
                 String[] names = { "사내 규정·매뉴얼", "보고서", "회의 자료", "서식·양식", "법령·감독규정", "참고 자료" };
                 for (int i = 0; i < names.length; i++) section(conn, names[i], i + 1);
@@ -103,7 +106,8 @@ public class LibraryService {
             ORDER BY COALESCE(p.Ord, c.Ord), COALESCE(p.Name, c.Name), CASE WHEN c.ParentId='' THEN 0 ELSE 1 END, c.Ord, c.Name""");
     }
 
-    public int total() { return db.read(conn -> Db.intOf(conn, "SELECT COUNT(*) FROM LibDocs")); }
+    /** 자료 수(휴지통에 있는 것은 빼고). */
+    public int total() { return db.read(conn -> Db.intOf(conn, "SELECT COUNT(*) FROM LibDocs WHERE Id NOT IN (SELECT DocId FROM LibTrash)")); }
 
     public Op category(String what, Map<String, String> p) {
         String id = Txt.str(p.get("id"));
@@ -233,6 +237,8 @@ public class LibraryService {
             Set<String> ids = subtree(categoryId);
             sql.append(" AND d.CategoryId IN (").append(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))).append(")");
             args.addAll(ids);
+        } else {
+            sql.append(" AND d.Id NOT IN (SELECT DocId FROM LibTrash)");   // 전체 찾기에는 휴지통을 빼고
         }
         List<String> terms = new ArrayList<>();
         for (String w : Txt.str(q).strip().split("\\s+")) if (!w.isBlank()) terms.add(w);
@@ -311,8 +317,13 @@ public class LibraryService {
         String title = Txt.clean(p.get("title"), 200, false);
         if (Txt.blank(title)) return Op.bad("제목을 적으세요.");
         if (db.row("SELECT Id FROM LibCategories WHERE Id=?", p.get("categoryId")) == null) return Op.bad("분류를 고르세요.");
-        int n = db.tx(conn -> Db.update(conn, "UPDATE LibDocs SET Title=?, CategoryId=?, Tags=?, Note=? WHERE Id=?",
-            title, p.get("categoryId"), Txt.fit(p.get("tags"), 300, false), Txt.fit(p.get("note"), 2000, true), id));
+        String tid = trashId();
+        if (tid != null && tid.equals(p.get("categoryId")) && !inTrash(id)) return Op.bad("휴지통으로는 '지우기'로 옮기세요.");
+        int n = db.tx(conn -> {
+            if (tid == null || !tid.equals(p.get("categoryId"))) Db.update(conn, "DELETE FROM LibTrash WHERE DocId=?", id);   // 휴지통 밖 폴더로 바꾸면 되돌린 것
+            return Db.update(conn, "UPDATE LibDocs SET Title=?, CategoryId=?, Tags=?, Note=? WHERE Id=?",
+                title, p.get("categoryId"), Txt.fit(p.get("tags"), 300, false), Txt.fit(p.get("note"), 2000, true), id);
+        });
         return n == 0 ? Op.fail(404, "자료를 찾을 수 없습니다.") : Op.ok("저장했습니다.");
     }
 
@@ -322,14 +333,95 @@ public class LibraryService {
         return db.run(conn -> {
             if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Id=?", Txt.str(categoryId)) == 0) throw Op.abort("옮길 분류를 고르세요.");
             int n = 0;
-            for (String id : ids) if (Txt.isId(id)) n += Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE Id=?", categoryId, id);
+            Map<String, Object> target = Db.row(conn, "SELECT Name, ParentId FROM LibCategories WHERE Id=?", Txt.str(categoryId));
+            boolean toTrash = target != null && TRASH.equals(target.get("Name")) && Txt.str(target.get("ParentId")).isEmpty();
+            for (String id : ids) {
+                if (!Txt.isId(id)) continue;
+                Map<String, Object> cur = Db.row(conn, "SELECT CategoryId FROM LibDocs WHERE Id=?", id);
+                if (cur == null) continue;
+                // 휴지통으로 끌어 놓으면 지우기, 휴지통에서 꺼내면 되돌리기
+                if (toTrash) Db.update(conn, "INSERT OR IGNORE INTO LibTrash(DocId, FromCategory, DeletedAt) VALUES (?,?,?)", id, cur.get("CategoryId"), Kst.stamp());
+                else Db.update(conn, "DELETE FROM LibTrash WHERE DocId=?", id);
+                n += Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE Id=?", categoryId, id);
+            }
             return Op.ok("자료 " + n + "건을 옮겼습니다.");
         });
     }
 
+    /** 휴지통 폴더(맨 위, 맨 아래). 지운 자료는 여기에 30일 두었다가 비운다. */
+    public static final String TRASH = "휴지통";
+    public static final int TRASH_DAYS = 30;
+
+    public String trashId() {
+        Map<String, Object> t = db.row("SELECT Id FROM LibCategories WHERE Name=? AND ParentId=''", TRASH);
+        return t == null ? null : (String) t.get("Id");
+    }
+
+    public boolean inTrash(String docId) { return db.row("SELECT DocId FROM LibTrash WHERE DocId=?", docId) != null; }
+
+    /**
+     * 자료 지우기: 휴지통으로 옮긴다(파일은 그대로, 30일 안에 되돌리기). 이미 휴지통에 있는 자료는 영구 삭제.
+     * 돌려주는 Op의 extra: "trash"(휴지통으로) 또는 "gone"(영구 삭제).
+     */
     public Op delete(String id) {
+        Map<String, Object> d = db.row("SELECT Title, CategoryId FROM LibDocs WHERE Id=?", id);
+        if (d == null) return Op.fail(404, "자료를 찾을 수 없습니다.");
+        if (inTrash(id)) return destroy(id);
+        return db.run(conn -> {
+            Map<String, Object> t = Db.row(conn, "SELECT Id FROM LibCategories WHERE Name=? AND ParentId=''", TRASH);
+            String tid;
+            if (t != null) tid = (String) t.get("Id");
+            else { tid = Txt.newId(); Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,1000,'')", tid, TRASH); }
+            Db.update(conn, "INSERT OR REPLACE INTO LibTrash(DocId, FromCategory, DeletedAt) VALUES (?,?,?)", id, d.get("CategoryId"), Kst.stamp());
+            Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE Id=?", tid, id);
+            Db.update(conn, "DELETE FROM LibStars WHERE DocId=?", id);
+            Db.update(conn, "DELETE FROM LibRecent WHERE DocId=?", id);
+            return Op.ok("'" + d.get("Title") + "'를 휴지통으로 옮겼습니다. " + TRASH_DAYS + "일 안에 휴지통에서 되돌릴 수 있습니다.").extra("trash");
+        });
+    }
+
+    /** 휴지통에서 원래 폴더로 되돌린다. 원래 폴더가 없으면 '정리 필요'로. */
+    public Op restoreDoc(String id) {
+        Map<String, Object> t = db.row("SELECT FromCategory FROM LibTrash WHERE DocId=?", id);
+        Map<String, Object> d = db.row("SELECT Title FROM LibDocs WHERE Id=?", id);
+        if (t == null || d == null) return Op.fail(404, "휴지통에서 그 자료를 찾지 못했습니다.");
+        return db.run(conn -> {
+            String to = (String) t.get("FromCategory");
+            String name = null;
+            Map<String, Object> f = Db.row(conn, "SELECT Name FROM LibCategories WHERE Id=?", to);
+            if (f == null || TRASH.equals(f.get("Name"))) {
+                Map<String, Object> u = Db.row(conn, "SELECT Id FROM LibCategories WHERE Name=? AND ParentId=''", UNSORTED);
+                if (u != null) to = (String) u.get("Id");
+                else { to = Txt.newId(); Db.update(conn, "INSERT INTO LibCategories(Id, Name, Ord, ParentId) VALUES (?,?,?,'')", to, UNSORTED, 998); }
+                name = UNSORTED;
+            } else name = (String) f.get("Name");
+            Db.update(conn, "UPDATE LibDocs SET CategoryId=? WHERE Id=?", to, id);
+            Db.update(conn, "DELETE FROM LibTrash WHERE DocId=?", id);
+            return Op.ok("'" + d.get("Title") + "'를 '" + name + "' 폴더로 되돌렸습니다.", to);
+        });
+    }
+
+    /** 휴지통에서 정한 날이 지난 자료를 영구 삭제한다. */
+    public int purgeTrash(int days) {
+        String cut = Kst.now().minusDays(days).toString();
+        int n = 0;
+        for (Map<String, Object> r : db.rows("SELECT DocId FROM LibTrash WHERE DeletedAt < ?", cut)) if (destroy((String) r.get("DocId")).ok) n++;
+        return n;
+    }
+
+    public Op emptyTrash() {
+        int n = 0;
+        for (Map<String, Object> r : db.rows("SELECT DocId FROM LibTrash")) if (destroy((String) r.get("DocId")).ok) n++;
+        return Op.ok("휴지통을 비웠습니다(자료 " + n + "건 영구 삭제).");
+    }
+
+    public List<Map<String, Object>> trashInfo() { return db.rows("SELECT DocId, DeletedAt FROM LibTrash"); }
+
+    /** 영구 삭제: 기록과 원본 파일을 지운다. 되돌릴 수 없다(백업으로만). */
+    public Op destroy(String id) {
         Map<String, Object> d = db.row("SELECT Title, StoragePath FROM LibDocs WHERE Id=?", id);
         if (d == null) return Op.fail(404, "자료를 찾을 수 없습니다.");
+        db.tx(conn -> Db.update(conn, "DELETE FROM LibTrash WHERE DocId=?", id));
         db.tx(conn -> {
             Db.update(conn, "DELETE FROM LibText WHERE Id=?", id);
             Db.update(conn, "DELETE FROM LibStars WHERE DocId=?", id);
@@ -338,7 +430,7 @@ public class LibraryService {
             return null;
         });
         boolean gone = files.delete((String) d.get("StoragePath"));
-        return Op.ok("'" + d.get("Title") + "'를 지웠습니다." + (gone ? "" : " 파일이 열려 있어 files 폴더에서 직접 지워야 합니다."));
+        return Op.ok("'" + d.get("Title") + "'를 영구 삭제했습니다." + (gone ? "" : " 파일이 열려 있어 files 폴더에서 직접 지워야 합니다.")).extra("gone");
     }
 
     public List<Map<String, Object>> search(String q, int limit) {
@@ -387,8 +479,9 @@ public class LibraryService {
             Folder p = by.get(f.parentId);
             if (p == null || p == f) top.add(f); else p.children.add(f);
         }
-        top.sort(java.util.Comparator.comparing((Folder f) -> ARCHIVE.equals(f.name)).thenComparingInt(f -> f.ord).thenComparing(f -> f.name));
-        for (Folder f : top) fill(f, 1, ARCHIVE.equals(f.name));
+        // 맨 아래에 보관, 그 아래에 휴지통. 둘 다 전체 찾기에서 빠진다
+        top.sort(java.util.Comparator.comparingInt((Folder f) -> TRASH.equals(f.name) ? 2 : ARCHIVE.equals(f.name) ? 1 : 0).thenComparingInt(f -> f.ord).thenComparing(f -> f.name));
+        for (Folder f : top) fill(f, 1, ARCHIVE.equals(f.name) || TRASH.equals(f.name));
         return top;
     }
 
@@ -448,6 +541,7 @@ public class LibraryService {
         Folder p = parent.isEmpty() ? null : folder(parent);
         if (!parent.isEmpty() && p == null) return Op.fail(404, "위 폴더를 찾지 못했습니다.");
         if (p != null && p.depth >= MAX_DEPTH) return Op.bad("폴더는 " + MAX_DEPTH + "단계까지 만들 수 있습니다. 태그로 나눠 보세요.");
+        if (p != null && p.parentId.isEmpty() && TRASH.equals(p.name)) return Op.bad("휴지통 안에는 폴더를 만들 수 없습니다.");
         return db.run(conn -> {
             if (Db.intOf(conn, "SELECT COUNT(*) FROM LibCategories WHERE Name=? AND ParentId=?", n, parent) > 0) throw Op.abort("같은 자리에 같은 이름의 폴더가 있습니다.");
             int next = Db.intOf(conn, "SELECT IFNULL(MAX(Ord),0)+1 FROM LibCategories WHERE ParentId=?", parent);
@@ -458,6 +552,7 @@ public class LibraryService {
     }
 
     public Op renameFolder(String id, String name) {
+        { Folder tf = folder(id); if (tf != null && tf.parentId.isEmpty() && TRASH.equals(tf.name)) return Op.bad("휴지통은 이름을 바꿀 수 없습니다."); }
         String n = Txt.clean(name, 40, false);
         if (Txt.blank(n)) return Op.bad("폴더 이름을 적으세요.");
         Folder f = folder(id);
@@ -473,6 +568,8 @@ public class LibraryService {
     public Op moveFolder(String id, String parentId) { return moveFolder(id, parentId, false); }
 
     private Op moveFolder(String id, String parentId, boolean archiving) {
+        { Folder tf = folder(id); if (tf != null && tf.parentId.isEmpty() && TRASH.equals(tf.name)) return Op.bad("휴지통은 옮길 수 없습니다."); }
+        { Folder tp = folder(parentId); if (tp != null && tp.parentId.isEmpty() && TRASH.equals(tp.name)) return Op.bad("휴지통 안으로 폴더를 옮길 수 없습니다. 폴더를 지우려면 '지우기'를 쓰세요."); }
         Folder f = folder(id);
         if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
         String parent = Txt.str(parentId);
@@ -493,6 +590,7 @@ public class LibraryService {
 
     /** 끝난 폴더를 '보관' 밑으로. 보관 폴더가 없으면 만든다. 보관은 '전체' 찾기에서 빠진다. */
     public Op archiveFolder(String id) {
+        { Folder tf = folder(id); if (tf != null && tf.parentId.isEmpty() && TRASH.equals(tf.name)) return Op.bad("휴지통은 보관으로 옮길 수 없습니다."); }
         Folder f = folder(id);
         if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
         if (f.archive) return Op.ok("이미 보관에 있습니다.", id);
@@ -514,6 +612,7 @@ public class LibraryService {
     public Op deleteFolder(String id) {
         Folder f = folder(id);
         if (f == null) return Op.fail(404, "폴더를 찾지 못했습니다.");
+        if (f.parentId.isEmpty() && TRASH.equals(f.name)) return Op.bad("휴지통은 지울 수 없습니다. 안의 자료를 지우려면 '휴지통 비우기'를 누르세요.");
         if (f.parentId.isEmpty()) {
             // 맨 위 폴더: 안에 바로 든 자료는 '정리 필요' 폴더로(없으면 만든다), 하위 폴더는 맨 위로 올린다. 자료는 지워지지 않는다.
             if (UNSORTED.equals(f.name) && f.total > 0) return Op.bad("'" + UNSORTED + "' 폴더는 안의 자료를 다른 폴더로 옮긴 뒤 지우세요.");

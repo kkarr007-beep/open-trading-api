@@ -68,8 +68,15 @@ public class LibraryController {
         for (Map<String, Object> d : items) if (counts.containsKey(Txt.str(d.get("Id")))) linked.put(Txt.str(d.get("Id")), links.casesFor("doc", Txt.str(d.get("Id"))));
         model.addAttribute("linked", linked);
         model.addAttribute("caseChoices", links.caseChoices());
-        // 올릴 곳: 지금 폴더, 없으면 보관이 아닌 첫 폴더
-        String target = folder;
+        boolean isTrash = cur != null && cur.parentId.isEmpty() && LibraryService.TRASH.equals(cur.name);
+        model.addAttribute("isTrash", isTrash);
+        if (isTrash) {
+            Map<String, String> at = new java.util.HashMap<>();
+            for (var r : lib.trashInfo()) at.put(Txt.str(r.get("DocId")), local.audit.Kst.display(Txt.str(r.get("DeletedAt"))));
+            model.addAttribute("trashAt", at);
+        }
+        // 올릴 곳: 지금 폴더, 없으면(또는 휴지통이면) 보관·휴지통이 아닌 첫 폴더
+        String target = isTrash ? "" : folder;
         if (target.isEmpty()) for (LibraryService.Folder x : tops) if (!x.archive) { target = x.id; break; }
         model.addAttribute("uploadTo", target);
         LibraryService.Folder ut = lib.folder(target);
@@ -89,14 +96,32 @@ public class LibraryController {
             case "tag": return Web.reply(req, lib.addTags(ids, tags), null);
             case "delete": {
                 int n = 0;
-                for (String id : ids) if (Txt.isId(id) && lib.delete(id).ok) { n++; originals.delete("doc-" + id); }
-                return Web.reply(req, Op.ok("자료 " + n + "건을 지웠습니다."), null);
+                int gone = 0;
+                for (String id : ids) {
+                    if (!Txt.isId(id)) continue;
+                    Op d = lib.delete(id);
+                    if (!d.ok) continue;
+                    n++;
+                    if ("gone".equals(d.extra)) { gone++; originals.delete("doc-" + id); }
+                }
+                return Web.reply(req, Op.ok(gone == n ? "자료 " + n + "건을 영구 삭제했습니다." : "자료 " + (n - gone) + "건을 휴지통으로 옮겼습니다(" + LibraryService.TRASH_DAYS + "일 안에 되돌릴 수 있음)." + (gone > 0 ? " " + gone + "건은 영구 삭제했습니다." : "")), null);
+            }
+            case "restore": {
+                int n = 0;
+                for (String id : ids) if (Txt.isId(id) && lib.restoreDoc(id).ok) n++;
+                return Web.reply(req, Op.ok("자료 " + n + "건을 되돌렸습니다."), null);
             }
             default: return Web.reply(req, Op.bad("할 일을 고르세요."), null);
         }
     }
 
     /** 폴더: 만들기·이름 바꾸기·옮기기·보관·지우기. */
+    @PostMapping("/library/trash/empty")
+    public Object emptyTrash(HttpServletRequest req) {
+        for (var r : lib.trashInfo()) originals.delete("doc-" + r.get("DocId"));
+        return Web.reply(req, lib.emptyTrash(), null);
+    }
+
     @PostMapping("/library/folder/new")
     public Object folderNew(@RequestParam(required = false) String name, @RequestParam(required = false) String parentId, HttpServletRequest req) {
         return Web.reply(req, lib.createFolder(name, parentId), null);
@@ -190,7 +215,8 @@ public class LibraryController {
             case "open" -> openLocally(id);
             case "meta" -> lib.meta(id, p);
             case "reread" -> lib.reread(id);
-            case "delete" -> { Op d = lib.delete(id); if (d.ok) originals.delete("doc-" + id); yield d; }
+            case "delete" -> { Op d = lib.delete(id); if (d.ok && "gone".equals(d.extra)) originals.delete("doc-" + id); yield d; }
+            case "restore" -> lib.restoreDoc(id);
             default -> Op.fail(404, "없는 작업입니다.");
         };
         return Web.reply(req, op, null);

@@ -183,7 +183,7 @@
                 <a href="/board/settings" th:aria-current="${navKey == 'board/settings'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-gear" xlink:href="#i-gear"/></svg><span>경영현황 설정</span></a>
                 <a href="/tools/card/settings" th:aria-current="${navKey == 'tools/card/settings'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-gear" xlink:href="#i-gear"/></svg><span>법인카드 점검 기준</span></a>
             <p class="sn-title">데이터</p>
-                <a href="/import" th:aria-current="${navKey == 'import'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-package" xlink:href="#i-package"/></svg><span>백업 옮겨 오기</span></a>
+                <a href="/import" th:aria-current="${navKey == 'import'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-package" xlink:href="#i-package"/></svg><span>백업·복원·옮기기</span></a>
                 <a href="/admin" th:aria-current="${nav == 'admin'} ? 'page'"><svg class="ei" aria-hidden="true"><use href="#i-shield" xlink:href="#i-shield"/></svg><span>관리</span></a>
         </nav>
         <div class="sn-foot"><a href="/settings" class="who2"><span class="avatar" aria-hidden="true" th:text="${ownerInitial}">나</span><span th:text="${ownerName}">나</span></a><span>자동 저장 · 외부망 연결 없음</span></div>
@@ -216,6 +216,9 @@
                 데이터 파일이 직접 고쳐졌을 수 있습니다. 변경은 멈췄습니다. <a href="/admin#integrity">관리 화면</a>에서 조사 사유를 남기고 해제합니다.
             </div>
             <p class="banner info" role="status" th:if="${flash}" th:text="${flash}"></p>
+            <p class="banner info pre" role="status" th:if="${restoreDone}" th:text="${restoreDone}"></p>
+            <p class="banner warn no-print" role="status" th:if="${restorePending}">백업에서 되돌리기를 예약해 두었습니다: <span class="path" th:text="${restorePending}"></span> — 프로그램을 닫았다가 다시 켜면 바뀝니다. <a href="/import#restore">취소·확인</a></p>
+            <p class="banner warn no-print" role="status" th:if="${backupWarn}">백업 폴더(<span class="path" th:text="${backupWarn}"></span>)가 기록 폴더 안에 있어, 이 컴퓨터나 C 드라이브가 망가지면 백업도 함께 사라집니다. <a href="/import#backup">백업 폴더를 USB·D 드라이브 등 다른 곳으로 바꾸세요.</a></p>
             <th:block th:replace="${content}" />
         </main>
         <footer class="foot">

@@ -38,18 +38,47 @@ public class ImportController {
     private final RuleService rules;
     private final Paths2 paths;
 
-    public ImportController(WorkService work, RuleService rules, Paths2 paths) {
+    private final local.audit.RetentionService retention;
+    private final local.audit.Settings settings;
+
+    public ImportController(WorkService work, RuleService rules, Paths2 paths, local.audit.RetentionService retention, local.audit.Settings settings) {
+        this.retention = retention;
+        this.settings = settings;
         this.work = work;
         this.rules = rules;
         this.paths = paths;
     }
 
+    /** 백업·복원·옮기기: 지금 백업, 백업에서 되돌리기, 예전 프로그램 백업 파일 옮겨 오기, 내려받기를 한 곳에서. */
     @GetMapping("/import")
     public String page(Model model) {
         model.addAttribute("workCount", work.all().size());
         model.addAttribute("ruleCount", rules.regs().size());
-        model.addAttribute("backupFolder", paths.backup.toString());
+        model.addAttribute("backupFolder", retention.backupFolder());
+        model.addAttribute("defaultBackup", paths.backup.toString());
+        model.addAttribute("home", paths.home.toString());
+        model.addAttribute("backupInside", retention.backupInsideHome());
+        model.addAttribute("autoBackup", settings.autoBackup());
+        List<Map<String, Object>> list = new ArrayList<>(retention.recentBackups());
+        for (Map<String, Object> r : list) r.put("Exists", Files.isDirectory(Path.of(Txt.str(r.get("Location")))) && local.audit.Restore.check(Path.of(Txt.str(r.get("Location")))) == null);
+        model.addAttribute("backups", list);
+        model.addAttribute("pending", retention.pendingRestore());
         return "import";
+    }
+
+    @PostMapping("/import/backup")
+    public Object backupNow(@RequestParam(required = false) String folder, HttpServletRequest req) {
+        return Web.reply(req, retention.backup(folder), "/import#backup");
+    }
+
+    @PostMapping("/import/restore")
+    public Object restore(@RequestParam(required = false) String folder, HttpServletRequest req) {
+        return Web.reply(req, retention.requestRestore(folder), "/import#restore");
+    }
+
+    @PostMapping("/import/restore/cancel")
+    public Object restoreCancel(HttpServletRequest req) {
+        return Web.reply(req, retention.cancelRestore(), "/import#restore");
     }
 
     /** 무슨 백업인지: work 업무 일정 · rules 사규 · null 모름. */

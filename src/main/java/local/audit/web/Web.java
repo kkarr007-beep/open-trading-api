@@ -33,6 +33,12 @@ public class Web {
     private final local.audit.OrgService orgs;
     private final local.audit.DisciplineService discipline;
 
+    private local.audit.RetentionService retention;
+    private local.audit.Paths2 paths;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setRetention(local.audit.RetentionService retention, local.audit.Paths2 paths) { this.retention = retention; this.paths = paths; }
+
     public Web(local.audit.OrgService orgs, Chain chain, Settings settings, InboxService inbox, local.audit.work.WorkService work, local.audit.CaseService cases,
                local.audit.LibraryService library, local.audit.DisciplineService discipline,
                @org.springframework.beans.factory.annotation.Value("${audit.version:}") String version) {
@@ -73,6 +79,14 @@ public class Web {
             : path.startsWith("/board/report") ? "board/report" : path.startsWith("/board/settings") ? "board/settings" : "board";
         if (path.startsWith("/tools")) navKey = path.startsWith("/tools/card/settings") ? "tools/card/settings" : path.startsWith("/tools/card/exceptions") ? "tools/card/exceptions" : "tools/card";
         model.addAttribute("navKey", navKey);
+        // 백업에서 되돌린 결과(한 번), 되돌리기 예약 중, 백업 폴더가 기록 폴더 안인 경우 알림
+        if (retention != null && paths != null && !path.startsWith("/api") && !path.contains("/file") && !path.startsWith("/original")) {
+            boolean front = path.equals("/home") || path.equals("/") || path.equals("/import");
+            if (front) { String done = local.audit.Restore.takeResult(paths.home); if (done != null) model.addAttribute("restoreDone", done); }
+            String pend = retention.pendingRestore();
+            if (pend != null) model.addAttribute("restorePending", pend);
+            if (front && retention.backupInsideHome()) model.addAttribute("backupWarn", retention.backupFolder());
+        }
         model.addAttribute("caseCategories", cases.categories());
         if (path.startsWith("/library")) {
             model.addAttribute("libFolders", library.folders());
